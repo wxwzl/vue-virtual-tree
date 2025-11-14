@@ -1,0 +1,486 @@
+<template>
+  <div class="vue-virtual-tree" :style="{ height: typeof height === 'number' ? `${height}px` : height }">
+    <DynamicScroller
+      v-if="visibleNodes.length > 0"
+      :items="visibleNodes"
+      :min-item-size="itemSize || 32"
+      class="vue-virtual-tree__scroller"
+      v-slot="{ item, index, active }"
+    >
+      <DynamicScrollerItem
+        :item="item"
+        :active="active"
+        :data-index="index"
+        class="vue-virtual-tree__item"
+      >
+        <TreeNode
+          :ref="(el) => setNodeRef(item.id, el)"
+          :node="item"
+          :props="props"
+          :show-checkbox="showCheckbox"
+          :expand-on-click-node="expandOnClickNode"
+          :draggable="draggable"
+          :drop-type="dragState.dropNode?.id === item.id ? dragState.dropType : null"
+          @node-click="handleNodeClick"
+          @node-expand="handleNodeExpand"
+          @node-collapse="handleNodeCollapse"
+          @node-check="handleNodeCheck"
+          @drag-start="handleDragStart"
+          @drag-enter="handleDragEnter"
+          @drag-leave="handleDragLeave"
+          @drag-over="handleDragOver"
+          @drag-end="handleDragEnd"
+          @drop="handleDrop"
+        >
+          <template #default="{ node, data }">
+            <slot :node="node" :data="data" />
+          </template>
+        </TreeNode>
+      </DynamicScrollerItem>
+    </DynamicScroller>
+    <div v-else class="vue-virtual-tree__empty">
+      <slot name="empty">
+        <span>暂无数据</span>
+      </slot>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
+import TreeNode from './TreeNode.vue'
+import type { VirtualTreeProps, VirtualTreeEmits, VirtualTreeMethods, FlatTreeNode, TreeNodeData, TreeNodeInstance } from '../types'
+import { useTreeData } from '../composables/useTreeData'
+import { useTreeExpand } from '../composables/useTreeExpand'
+import { useTreeSelection } from '../composables/useTreeSelection'
+import { useTreeFilter } from '../composables/useTreeFilter'
+import { useTreeDrag } from '../composables/useTreeDrag'
+import { getNodeId, findNodeByKey, getNodeChildren, isLeafNode, getNodeLabel } from '../utils/tree'
+import '../style/index.scss'
+
+defineOptions({
+  name: 'VirtualTree'
+})
+
+const props = withDefaults(defineProps<VirtualTreeProps>(), {
+  data: () => [],
+  props: () => ({}),
+  showCheckbox: false,
+  checkStrictly: false,
+  defaultExpandAll: false,
+  defaultExpandedKeys: () => [],
+  defaultCheckedKeys: () => [],
+  expandOnClickNode: true,
+  lazy: false,
+  accordion: false,
+  draggable: false,
+  itemSize: 32,
+  height: '100%'
+})
+
+const emit = defineEmits<VirtualTreeEmits>()
+
+// 节点引用
+const nodeRefs = ref<Map<string | number, any>>(new Map())
+
+const setNodeRef = (id: string | number, el: any) => {
+  if (el) {
+    nodeRefs.value.set(id, el)
+  } else {
+    nodeRefs.value.delete(id)
+  }
+}
+
+// 数据扁平化
+const {
+  flatTree,
+  visibleNodes,
+  expandedKeys,
+  rawData,
+  updateRawData,
+  getNodeData,
+  getFlatNode,
+  updateFlatTree
+} = useTreeData(props)
+
+// 展开/折叠逻辑
+const { expandNode, collapseNode, toggleNode } = useTreeExpand(props, flatTree, expandedKeys)
+
+// 选择逻辑
+const {
+  checkedKeys,
+  halfCheckedKeys,
+  selectedKey,
+  currentNode,
+  setNodeChecked,
+  toggleNodeChecked,
+  setCurrentNode: setSelectionCurrentNode,
+  getCheckedNodes,
+  getCheckedKeys,
+  setCheckedNodes,
+  setCheckedKeys,
+  updateHalfCheckedKeys
+} = useTreeSelection(props, flatTree, getNodeData)
+
+// 过滤逻辑
+const { filter: filterNodes, clearFilter } = useTreeFilter(props, flatTree, expandedKeys)
+
+// 拖拽逻辑
+const dragState = useTreeDrag(props, flatTree, getNodeData)
+
+// 更新节点的选中状态到扁平树
+watch([checkedKeys, halfCheckedKeys], () => {
+  flatTree.value.forEach(node => {
+    node.isChecked = checkedKeys.value.has(node.id)
+    node.isIndeterminate = halfCheckedKeys.value.has(node.id)
+  })
+}, { deep: true })
+
+// 更新节点的选中状态到扁平树
+watch(selectedKey, () => {
+  flatTree.value.forEach(node => {
+    // 可以添加当前选中节点的样式类
+  })
+})
+
+// 节点点击
+const handleNodeClick = (node: FlatTreeNode, event: MouseEvent) => {
+  if (node.isDisabled) return
+
+  // 设置当前选中节点
+  setSelectionCurrentNode(node.id, node.data)
+  emit('current-change', node.data, createNodeInstance(node))
+
+  emit('node-click', node.data, createNodeInstance(node), event)
+}
+
+// 节点展开
+const handleNodeExpand = async (node: FlatTreeNode) => {
+  if (node.isDisabled) return
+
+  // 懒加载
+  if (props.lazy && !node.isLoaded && props.load) {
+    node.isLoading = true
+    try {
+      await new Promise<void>((resolve) => {
+        props.load!(node.data, (children: TreeNodeData[]) => {
+          // 更新节点的子节点
+          if (children && children.length > 0) {
+            const config = props.props || {}
+            const childrenKey = config.children || 'children'
+            node.data[childrenKey] = children
+            node.isLoaded = true
+            updateFlatTree()
+          }
+          node.isLoading = false
+          resolve()
+        })
+      })
+    } catch (error) {
+      node.isLoading = false
+      console.error('Lazy load error:', error)
+    }
+  }
+
+  expandNode(node)
+  emit('node-expand', node.data, createNodeInstance(node))
+}
+
+// 节点折叠
+const handleNodeCollapse = (node: FlatTreeNode) => {
+  if (node.isDisabled) return
+  collapseNode(node)
+  emit('node-collapse', node.data, createNodeInstance(node))
+}
+
+// 节点复选框点击
+const handleNodeCheck = (node: FlatTreeNode) => {
+  if (node.isDisabled) return
+  toggleNodeChecked(node.id)
+
+  const checkedNodes = getCheckedNodes()
+  const checkedKeysArray = getCheckedKeys()
+  const halfCheckedNodes = getCheckedNodes(false, true).filter(n => {
+    const key = getNodeId(n, props.props)
+    return halfCheckedKeys.value.has(key) && !checkedKeys.value.has(key)
+  })
+  const halfCheckedKeysArray = Array.from(halfCheckedKeys.value).filter(
+    key => !checkedKeys.value.has(key)
+  )
+
+  emit('node-check', node.data, {
+    checkedKeys: checkedKeysArray,
+    checkedNodes,
+    halfCheckedKeys: halfCheckedKeysArray,
+    halfCheckedNodes
+  })
+}
+
+// 拖拽开始
+const handleDragStart = (node: FlatTreeNode, event: DragEvent) => {
+  dragState.handleDragStart(node, event)
+  emit('node-drag-start', node.data, event)
+}
+
+// 拖拽进入
+const handleDragEnter = (node: FlatTreeNode, event: DragEvent) => {
+  dragState.handleDragEnter(node, event)
+  if (dragState.dropNode?.id === node.id) {
+    emit('node-drag-enter', dragState.draggingNode!.data, event, node.data)
+  }
+}
+
+// 拖拽离开
+const handleDragLeave = (node: FlatTreeNode, event: DragEvent) => {
+  dragState.handleDragLeave(node, event)
+  if (dragState.draggingNode) {
+    emit('node-drag-leave', dragState.draggingNode.data, event, node.data)
+  }
+}
+
+// 拖拽悬停
+const handleDragOver = (node: FlatTreeNode, event: DragEvent) => {
+  dragState.handleDragOver(node, event)
+  if (dragState.dropNode?.id === node.id && dragState.draggingNode) {
+    emit('node-drag-over', dragState.draggingNode.data, event, node.data)
+  }
+}
+
+// 拖拽结束
+const handleDragEnd = (node: FlatTreeNode, event: DragEvent) => {
+  if (dragState.draggingNode) {
+    emit('node-drag-end', dragState.draggingNode.data, event)
+  }
+  dragState.handleDragEnd(node, event)
+}
+
+// 放置
+const handleDrop = (node: FlatTreeNode, event: DragEvent) => {
+  const result = dragState.handleDrop(node, event)
+  if (result) {
+    emit('node-drop', result.draggingNode, result.dropNode, result.dropType, event)
+  }
+}
+
+// 创建节点实例
+const createNodeInstance = (flatNode: FlatTreeNode): TreeNodeInstance => {
+  const getParent = (): TreeNodeInstance | null => {
+    if (flatNode.parentId === null) return null
+    const parent = getFlatNode(flatNode.parentId)
+    return parent ? createNodeInstance(parent) : null
+  }
+
+  const getChildren = (): TreeNodeInstance[] => {
+    const children = flatTree.value.filter(n => n.parentId === flatNode.id)
+    return children.map(child => createNodeInstance(child))
+  }
+
+  const getSiblings = (): TreeNodeInstance[] => {
+    const siblings = flatTree.value.filter(
+      n => n.parentId === flatNode.parentId && n.id !== flatNode.id
+    )
+    return siblings.map(sibling => createNodeInstance(sibling))
+  }
+
+  const getAllChildren = (): TreeNodeInstance[] => {
+    const result: TreeNodeInstance[] = []
+    const traverse = (parentId: string | number) => {
+      const children = flatTree.value.filter(n => n.parentId === parentId)
+      children.forEach(child => {
+        result.push(createNodeInstance(child))
+        traverse(child.id)
+      })
+    }
+    traverse(flatNode.id)
+    return result
+  }
+
+  const getAllParents = (): TreeNodeInstance[] => {
+    const result: TreeNodeInstance[] = []
+    let currentId: string | number | null = flatNode.parentId
+    while (currentId !== null) {
+      const parent = getFlatNode(currentId)
+      if (parent) {
+        result.push(createNodeInstance(parent))
+        currentId = parent.parentId
+      } else {
+        break
+      }
+    }
+    return result
+  }
+
+  return {
+    data: flatNode.data,
+    key: flatNode.id,
+    level: flatNode.level,
+    parent: getParent(),
+    children: getChildren(),
+    expanded: flatNode.isExpanded,
+    checked: flatNode.isChecked || false,
+    disabled: flatNode.isDisabled || false,
+    isLeaf: isLeafNode(flatNode.data, props.props),
+    getLabel: () => getNodeLabel(flatNode.data, props.props),
+    getData: () => flatNode.data,
+    getParent,
+    getChildren,
+    getSiblings,
+    getAllChildren,
+    getAllParents
+  }
+}
+
+// 根据 key 获取节点实例
+const getNode = (key: string | number): TreeNodeInstance | null => {
+  const flatNode = getFlatNode(key)
+  return flatNode ? createNodeInstance(flatNode) : null
+}
+
+
+// 暴露的方法
+const methods: VirtualTreeMethods = {
+  getCheckedNodes: (leafOnly?: boolean, includeHalfChecked?: boolean) => {
+    return getCheckedNodes(leafOnly, includeHalfChecked)
+  },
+  getCheckedKeys: (leafOnly?: boolean) => {
+    return getCheckedKeys(leafOnly)
+  },
+  setCheckedNodes: (nodes: TreeNodeData[], leafOnly?: boolean) => {
+    setCheckedNodes(nodes, leafOnly)
+  },
+  setCheckedKeys: (keys: (string | number)[], leafOnly?: boolean) => {
+    setCheckedKeys(keys, leafOnly)
+  },
+  getCurrentNode: () => {
+    return currentNode.value
+  },
+  setCurrentNode: (node: TreeNodeData | string | number) => {
+    if (typeof node === 'string' || typeof node === 'number') {
+      const nodeData = getNodeData(node)
+      setSelectionCurrentNode(node, nodeData)
+    } else {
+      const key = getNodeId(node, props.props)
+      setSelectionCurrentNode(key, node)
+    }
+  },
+  getCurrentKey: () => {
+    return selectedKey.value
+  },
+  setCurrentKey: (key: string | number) => {
+    setSelectionCurrentNode(key, getNodeData(key))
+  },
+  filter: (value: string) => {
+    filterNodes(value)
+  },
+  getNode: (key: string | number) => {
+    return getNode(key)
+  },
+  remove: (key: string | number) => {
+    const node = findNodeByKey(rawData.value, key, props.props)
+    if (!node) return
+
+    // 从原始数据中删除节点
+    const removeFromArray = (arr: TreeNodeData[], targetKey: string | number): boolean => {
+      for (let i = 0; i < arr.length; i++) {
+        if (getNodeId(arr[i], props.props) === targetKey) {
+          arr.splice(i, 1)
+          return true
+        }
+        const children = getNodeChildren(arr[i], props.props)
+        if (children.length > 0 && removeFromArray(children, targetKey)) {
+          return true
+        }
+      }
+      return false
+    }
+
+    removeFromArray(rawData.value, key)
+    updateFlatTree()
+  },
+  append: (data: TreeNodeData, parentKey?: string | number) => {
+    if (parentKey === undefined) {
+      rawData.value.push(data)
+    } else {
+      const parent = findNodeByKey(rawData.value, parentKey, props.props)
+      if (parent) {
+        const config = props.props || {}
+        const childrenKey = config.children || 'children'
+        if (!parent[childrenKey]) {
+          parent[childrenKey] = []
+        }
+        parent[childrenKey].push(data)
+      }
+    }
+    updateFlatTree()
+  },
+  insertBefore: (data: TreeNodeData, key: string | number) => {
+    const insertIntoArray = (arr: TreeNodeData[], targetKey: string | number, newData: TreeNodeData): boolean => {
+      for (let i = 0; i < arr.length; i++) {
+        if (getNodeId(arr[i], props.props) === targetKey) {
+          arr.splice(i, 0, newData)
+          return true
+        }
+        const children = getNodeChildren(arr[i], props.props)
+        if (children.length > 0 && insertIntoArray(children, targetKey, newData)) {
+          return true
+        }
+      }
+      return false
+    }
+
+    insertIntoArray(rawData.value, key, data)
+    updateFlatTree()
+  },
+  insertAfter: (data: TreeNodeData, key: string | number) => {
+    const insertIntoArray = (arr: TreeNodeData[], targetKey: string | number, newData: TreeNodeData): boolean => {
+      for (let i = 0; i < arr.length; i++) {
+        if (getNodeId(arr[i], props.props) === targetKey) {
+          arr.splice(i + 1, 0, newData)
+          return true
+        }
+        const children = getNodeChildren(arr[i], props.props)
+        if (children.length > 0 && insertIntoArray(children, targetKey, newData)) {
+          return true
+        }
+      }
+      return false
+    }
+
+    insertIntoArray(rawData.value, key, data)
+    updateFlatTree()
+  },
+  updateKeyChildren: (key: string | number, data: TreeNodeData[]) => {
+    const node = findNodeByKey(rawData.value, key, props.props)
+    if (node) {
+      const config = props.props || {}
+      const childrenKey = config.children || 'children'
+      node[childrenKey] = data
+      updateFlatTree()
+    }
+  }
+}
+
+// 暴露方法给父组件
+defineExpose(methods)
+</script>
+
+<style scoped>
+.vue-virtual-tree {
+  width: 100%;
+  overflow: hidden;
+}
+
+.vue-virtual-tree__scroller {
+  height: 100%;
+}
+
+.vue-virtual-tree__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #909399;
+  font-size: 14px;
+}
+</style>

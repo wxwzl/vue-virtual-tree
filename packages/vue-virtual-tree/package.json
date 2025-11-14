@@ -1,0 +1,53 @@
+{
+  "name": "vue-virtual-tree",
+  "version": "0.1.0",
+  "description": "A high-performance virtual tree component for Vue 3",
+  "type": "module",
+  "main": "./dist/vue-virtual-tree.cjs",
+  "module": "./dist/vue-virtual-tree.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/vue-virtual-tree.js"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/vue-virtual-tree.cjs"
+      }
+    },
+    "./style": "./dist/style.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "vue",
+    "vue3",
+    "tree",
+    "virtual-scroll",
+    "virtual-tree",
+    "component"
+  ],
+  "author": "wxwzl",
+  "license": "MIT",
+  "peerDependencies": {
+    "vue": "^3.3.0",
+    "vue-virtual-scroller": "~2.0.0-beta.8"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.0",
+    "vue": "^3.4.0",
+    "vue-virtual-scroller": "~2.0.0-beta.8"
+  },
+  "scripts": {
+    "build": "vite build",
+    "type-check": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "sass-embedded": "^1.93.3"
+  }
+}

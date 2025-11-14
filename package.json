@@ -1,0 +1,29 @@
+{
+  "name": "vue-virtual-tree-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A high-performance virtual tree component for Vue 3",
+  "scripts": {
+    "dev": "pnpm --filter playground dev",
+    "build": "pnpm --filter vue-virtual-tree build",
+    "build:playground": "pnpm --filter playground build",
+    "type-check": "pnpm --filter vue-virtual-tree type-check"
+  },
+  "keywords": [
+    "vue",
+    "vue3",
+    "tree",
+    "virtual-scroll",
+    "virtual-tree"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}
+
