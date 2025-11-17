@@ -7,7 +7,6 @@
       <div class="tree-container">
         <VirtualTree :data="treeData" :height="400" />
       </div>
-      <CodePanel :code="basicCode" />
     </div>
 
     <div class="demo-section">
@@ -20,7 +19,6 @@
           @node-check="handleNodeCheck"
         />
       </div>
-      <CodePanel :code="checkboxCode" />
     </div>
 
     <div class="demo-section">
@@ -32,7 +30,6 @@
           default-expand-all
         />
       </div>
-      <CodePanel :code="expandAllCode" />
     </div>
 
     <div class="demo-section">
@@ -63,7 +60,6 @@
         </div>
         <button @click="clearDragLogs" class="btn btn-small">清空日志</button>
       </div>
-      <CodePanel :code="dragCode" />
     </div>
 
     <div class="demo-section">
@@ -109,7 +105,6 @@
         <button @click="updateExpandedKeys" class="btn">更新展开节点</button>
         <button @click="updateCheckedKeys" class="btn">更新选中节点</button>
       </div>
-      <CodePanel :code="defaultKeysCode" />
     </div>
 
     <div class="demo-section">
@@ -131,7 +126,6 @@
       <div class="control-panel">
         <button @click="loadAsyncData" class="btn">重新加载数据</button>
       </div>
-      <CodePanel :code="asyncDataCode" />
     </div>
   </div>
 </template>
@@ -140,7 +134,6 @@
 import { ref, onMounted } from 'vue'
 import { VirtualTree } from 'vue-virtual-tree'
 import type { TreeNodeData, VirtualTreeMethods } from 'vue-virtual-tree'
-import CodePanel from './components/CodePanel.vue'
 
 const treeRef = ref<VirtualTreeMethods | null>(null)
 const filterText = ref('')
@@ -446,190 +439,6 @@ const handleFilter = () => {
 onMounted(() => {
   loadAsyncData()
 })
-
-// 示例代码
-const basicCode = `<template>
-  <VirtualTree :data="treeData" :height="400" />
-</template>
-
-<script setup>
-import { ref } from 'vue'
-import { VirtualTree } from 'vue-virtual-tree'
-
-const treeData = ref([
-  {
-    id: '1',
-    label: '节点 1',
-    children: [
-      { id: '1-1', label: '节点 1-1' },
-      { id: '1-2', label: '节点 1-2' }
-    ]
-  }
-])
-<\/script>`
-
-const checkboxCode = `<template>
-  <VirtualTree
-    :data="dragTreeData"
-    :height="400"
-    show-checkbox
-    @node-check="handleNodeCheck"
-  />
-</template>
-
-<script setup>
-import { ref } from 'vue'
-import { VirtualTree } from 'vue-virtual-tree'
-
-const dragTreeData = ref([...])
-
-const handleNodeCheck = (data, info) => {
-  console.log('Node checked:', data, info)
-}
-<\/script>`
-
-const expandAllCode = `<template>
-  <VirtualTree
-    :data="treeData"
-    :height="400"
-    default-expand-all
-  />
-</template>
-
-<script setup>
-import { VirtualTree } from 'vue-virtual-tree'
-<\/script>`
-
-const dragCode = `<template>
-  <VirtualTree
-    :data="treeData"
-    :height="400"
-    draggable
-    @node-drag-start="handleDragStart"
-    @node-drag-enter="handleDragEnter"
-    @node-drag-leave="handleDragLeave"
-    @node-drag-over="handleDragOver"
-    @node-drag-end="handleDragEnd"
-    @node-drop="handleNodeDrop"
-  />
-</template>
-
-<script setup>
-import { ref } from 'vue'
-import { VirtualTree } from 'vue-virtual-tree'
-import type { TreeNodeData } from 'vue-virtual-tree'
-
-const treeData = ref([...])
-
-const handleDragStart = (node: TreeNodeData, event: DragEvent) => {
-  console.log('Drag start:', node)
-}
-
-const handleDragEnter = (draggingNode: TreeNodeData, event: DragEvent, node: TreeNodeData) => {
-  console.log('Drag enter:', { draggingNode, node })
-}
-
-const handleDragLeave = (draggingNode: TreeNodeData, event: DragEvent, node: TreeNodeData) => {
-  console.log('Drag leave:', { draggingNode, node })
-}
-
-const handleDragOver = (draggingNode: TreeNodeData, event: DragEvent, node: TreeNodeData) => {
-  console.log('Drag over:', { draggingNode, node })
-}
-
-const handleDragEnd = (draggingNode: TreeNodeData, event: DragEvent) => {
-  console.log('Drag end:', draggingNode)
-}
-
-const handleNodeDrop = (
-  draggingNode: TreeNodeData,
-  dropNode: TreeNodeData,
-  dropType: 'prev' | 'inner' | 'next',
-  event: DragEvent
-) => {
-  console.log('Node dropped:', { draggingNode, dropNode, dropType })
-  // 根据 dropType 更新树形数据结构
-  // dropType: 'prev' - 拖拽到节点前
-  // dropType: 'inner' - 拖拽到节点内
-  // dropType: 'next' - 拖拽到节点后
-}
-<\/script>`
-
-const defaultKeysCode = `<template>
-  <VirtualTree
-    :data="treeData"
-    :height="400"
-    :default-expanded-keys="defaultExpandedKeys"
-    :default-checked-keys="defaultCheckedKeys"
-    show-checkbox
-    @node-check="handleNodeCheck"
-  />
-</template>
-
-<script setup>
-import { ref } from 'vue'
-import { VirtualTree } from 'vue-virtual-tree'
-
-const treeData = ref([...])
-
-// 默认展开的节点
-const defaultExpandedKeys = ref([
-  'node-1',
-  'node-2',
-  'node-1-1',
-  'node-2-1'
-])
-
-// 默认选中的节点
-const defaultCheckedKeys = ref([
-  'node-1',
-  'node-1-1',
-  'node-2-2',
-  'node-3'
-])
-
-const handleNodeCheck = (data, info) => {
-  console.log('Node checked:', data, info)
-}
-<\/script>`
-
-const asyncDataCode = `<template>
-  <VirtualTree
-    v-if="asyncTreeData.length > 0"
-    :data="asyncTreeData"
-    :height="400"
-    :default-expanded-keys="asyncExpandedKeys"
-    :default-checked-keys="asyncCheckedKeys"
-    show-checkbox
-  />
-  <div v-else>加载中...</div>
-</template>
-
-<script setup>
-import { ref, onMounted } from 'vue'
-import { VirtualTree } from 'vue-virtual-tree'
-
-const asyncTreeData = ref([])
-const asyncExpandedKeys = ref(['async-1', 'async-1-1'])
-const asyncCheckedKeys = ref(['async-1', 'async-2', 'async-1-1'])
-
-const loadAsyncData = () => {
-  asyncTreeData.value = []
-  setTimeout(() => {
-    asyncTreeData.value = [
-      {
-        id: 'async-1',
-        label: '异步节点 1',
-        children: [...]
-      }
-    ]
-  }, 1000)
-}
-
-onMounted(() => {
-  loadAsyncData()
-})
-<\/script>`
 </script>
 
 <style>
