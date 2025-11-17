@@ -6,6 +6,7 @@
       'is-checked': node.isChecked,
       'is-disabled': node.isDisabled,
       'is-leaf': isLeaf,
+      'is-loading': node.isLoading,
       'is-dragging': isDragging,
       [`drop-${dropType}`]: dropType
     }"
@@ -21,10 +22,24 @@
     <div class="vue-virtual-tree-node__content" @click="handleClick">
       <span
         class="vue-virtual-tree-node__expand-icon"
-        :class="{ 'is-leaf': isLeaf }"
+        :class="{ 'is-leaf': isLeaf, 'is-loading': node.isLoading }"
         @click.stop="handleExpandClick"
       >
-        <svg v-if="!isLeaf" viewBox="0 0 1024 1024" width="16" height="16">
+        <!-- Loading 图标 -->
+        <svg v-if="node.isLoading" class="vue-virtual-tree-node__loading-icon" viewBox="0 0 24 24" width="16" height="16">
+          <g transform="translate(12,12)">
+            <!-- 轨道圆环 -->
+            <circle cx="0" cy="0" r="8" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2"/>
+            <!-- 旋转的3个点 -->
+            <g class="vue-virtual-tree-loading-dots">
+              <circle cx="0" cy="-8" r="2" fill="currentColor"/>
+              <circle cx="6.928" cy="-4" r="2" fill="currentColor" opacity="0.7"/>
+              <circle cx="6.928" cy="4" r="2" fill="currentColor" opacity="0.4"/>
+            </g>
+          </g>
+        </svg>
+        <!-- 展开/折叠 图标 -->
+        <svg v-else-if="!isLeaf" viewBox="0 0 1024 1024" width="16" height="16">
           <path d="M384 384l256 256-256 256z" fill="currentColor" />
         </svg>
       </span>

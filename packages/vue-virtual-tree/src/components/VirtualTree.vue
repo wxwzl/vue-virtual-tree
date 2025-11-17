@@ -92,17 +92,18 @@ const setNodeRef = (id: string | number, el: any) => {
   }
 }
 
-// 数据扁平化
-const {
-  flatTree,
-  visibleNodes,
-  expandedKeys,
-  rawData,
-  updateRawData,
-  getNodeData,
-  getFlatNode,
-  updateFlatTree
-} = useTreeData(props)
+  // 数据扁平化
+  const {
+    flatTree,
+    visibleNodes,
+    expandedKeys,
+    rawData,
+    updateRawData,
+    getNodeData,
+    getFlatNode,
+    updateFlatTree,
+    setNodeState
+  } = useTreeData(props)
 
 // 展开/折叠逻辑
 const { expandNode, collapseNode, toggleNode } = useTreeExpand(props, flatTree, expandedKeys)
@@ -169,14 +170,19 @@ const handleNodeExpand = async (node: FlatTreeNode) => {
 
   // 懒加载
   if (props.lazy && !node.isLoaded && props.load) {
-    node.isLoading = true
+    // 设置loading状态到缓存
+    setNodeState(node.id, { isLoading: true })
+    // 立即更新UI以显示loading状态
+    updateFlatTree()
+
     try {
       await new Promise<void>((resolve, reject) => {
         let resolved = false
         const timeout = setTimeout(() => {
           if (!resolved) {
             resolved = true
-            node.isLoading = false
+            setNodeState(node.id, { isLoading: false })
+            updateFlatTree()
             console.warn('Lazy load timeout: load function did not call resolve callback')
             reject(new Error('Lazy load timeout'))
           }
@@ -186,24 +192,26 @@ const handleNodeExpand = async (node: FlatTreeNode) => {
           if (resolved) return
           resolved = true
           clearTimeout(timeout)
-          
+
           // 更新节点的子节点
           if (children && children.length > 0) {
             const config = props.props || {}
             const childrenKey = config.children || 'children'
             node.data[childrenKey] = children
-            node.isLoaded = true
+            // 设置加载完成状态到缓存
+            setNodeState(node.id, { isLoading: false, isLoaded: true })
             updateFlatTree()
           } else {
             // 即使没有子节点，也标记为已加载
-            node.isLoaded = true
+            setNodeState(node.id, { isLoading: false, isLoaded: true })
+            updateFlatTree()
           }
-          node.isLoading = false
           resolve()
         })
       })
     } catch (error) {
-      node.isLoading = false
+      setNodeState(node.id, { isLoading: false })
+      updateFlatTree()
       console.error('Lazy load error:', error)
     }
   }

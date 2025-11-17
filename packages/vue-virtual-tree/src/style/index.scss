@@ -61,6 +61,12 @@
     }
   }
 
+  &.is-loading {
+    .vue-virtual-tree-node__expand-icon {
+      color: #409eff;
+    }
+  }
+
   &__checkbox {
     margin-right: 8px;
     flex-shrink: 0;
@@ -75,6 +81,32 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  &__loading-icon {
+    animation: vue-virtual-tree-loading-rotate 1.5s linear infinite;
+  }
+
+  &__loading-dots {
+    animation: vue-virtual-tree-loading-dots-rotate 1.5s linear infinite;
+  }
+}
+
+@keyframes vue-virtual-tree-loading-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes vue-virtual-tree-loading-dots-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
   }
 }
 

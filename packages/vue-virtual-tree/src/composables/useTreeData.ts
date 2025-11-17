@@ -11,6 +11,9 @@ export function useTreeData(props: VirtualTreeProps) {
   const flatTree = ref<FlatTreeNode[]>([])
   const rawData = ref<TreeNodeData[]>(props.data)
 
+  // 节点状态缓存，用于保存 isLoading 和 isLoaded 状态
+  const nodeStateCache = ref<Map<string | number, { isLoading?: boolean; isLoaded?: boolean }>>(new Map())
+
   // 初始化展开的节点
   const initExpandedKeys = () => {
     if (props.defaultExpandAll) {
@@ -37,6 +40,9 @@ export function useTreeData(props: VirtualTreeProps) {
       const isExpanded = expandedKeys.value.has(id)
       const isLeaf = isLeafNode(node, config)
 
+      // 从缓存中恢复状态
+      const cachedState = nodeStateCache.value.get(id) || {}
+
       const flatNode: FlatTreeNode = {
         id,
         data: node,
@@ -46,6 +52,8 @@ export function useTreeData(props: VirtualTreeProps) {
         isVisible: true,
         isDisabled: isNodeDisabled(node, config),
         isLeaf: isLeaf,
+        isLoading: cachedState.isLoading || false,
+        isLoaded: cachedState.isLoaded || false,
         rawChildren: children.length > 0 ? children : undefined
       }
 
@@ -82,6 +90,12 @@ export function useTreeData(props: VirtualTreeProps) {
   // 根据 key 获取扁平节点
   const getFlatNode = (id: string | number): FlatTreeNode | null => {
     return flatTree.value.find(n => n.id === id) || null
+  }
+
+  // 设置节点状态
+  const setNodeState = (id: string | number, state: { isLoading?: boolean; isLoaded?: boolean }) => {
+    const currentState = nodeStateCache.value.get(id) || {}
+    nodeStateCache.value.set(id, { ...currentState, ...state })
   }
 
   // 初始化
@@ -132,7 +146,8 @@ export function useTreeData(props: VirtualTreeProps) {
     updateRawData,
     getNodeData,
     getFlatNode,
-    updateFlatTree
+    updateFlatTree,
+    setNodeState
   }
 }
 
