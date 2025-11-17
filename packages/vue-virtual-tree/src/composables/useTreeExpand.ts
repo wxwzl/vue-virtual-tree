@@ -14,9 +14,9 @@ export function useTreeExpand(
    */
   const expandNode = (node: FlatTreeNode) => {
     if (props.accordion) {
-      // 手风琴模式：折叠同级其他节点
+      // 手风琴模式：折叠同级其他节点（只处理可见的兄弟节点）
       const siblings = flatTree.value.filter(
-        n => n.parentId === node.parentId && n.id !== node.id
+        n => n.parentId === node.parentId && n.id !== node.id && n.isVisible
       )
       siblings.forEach(sibling => {
         expandedKeys.value.delete(sibling.id)

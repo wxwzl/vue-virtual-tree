@@ -16,11 +16,11 @@
         <TreeNode
           :ref="(el) => setNodeRef(item.id, el)"
           :node="item"
-          :props="props"
+          :props="props.props"
           :show-checkbox="showCheckbox"
           :expand-on-click-node="expandOnClickNode"
           :draggable="draggable"
-          :drop-type="dragState.dropNode?.id === item.id ? dragState.dropType : null"
+          :drop-type="dragState.dropNode?.value?.id === item.id ? dragState.dropType?.value ?? null : null"
           @node-click="handleNodeClick"
           @node-expand="handleNodeExpand"
           @node-collapse="handleNodeCollapse"
@@ -163,8 +163,22 @@ const handleNodeExpand = async (node: FlatTreeNode) => {
   if (props.lazy && !node.isLoaded && props.load) {
     node.isLoading = true
     try {
-      await new Promise<void>((resolve) => {
+      await new Promise<void>((resolve, reject) => {
+        let resolved = false
+        const timeout = setTimeout(() => {
+          if (!resolved) {
+            resolved = true
+            node.isLoading = false
+            console.warn('Lazy load timeout: load function did not call resolve callback')
+            reject(new Error('Lazy load timeout'))
+          }
+        }, 30000) // 30秒超时
+
         props.load!(node.data, (children: TreeNodeData[]) => {
+          if (resolved) return
+          resolved = true
+          clearTimeout(timeout)
+          
           // 更新节点的子节点
           if (children && children.length > 0) {
             const config = props.props || {}
@@ -172,6 +186,9 @@ const handleNodeExpand = async (node: FlatTreeNode) => {
             node.data[childrenKey] = children
             node.isLoaded = true
             updateFlatTree()
+          } else {
+            // 即使没有子节点，也标记为已加载
+            node.isLoaded = true
           }
           node.isLoading = false
           resolve()
@@ -226,31 +243,31 @@ const handleDragStart = (node: FlatTreeNode, event: DragEvent) => {
 // 拖拽进入
 const handleDragEnter = (node: FlatTreeNode, event: DragEvent) => {
   dragState.handleDragEnter(node, event)
-  if (dragState.dropNode?.id === node.id) {
-    emit('node-drag-enter', dragState.draggingNode!.data, event, node.data)
+  if (dragState.dropNode?.value?.id === node.id && dragState.draggingNode?.value) {
+    emit('node-drag-enter', dragState.draggingNode.value.data, event, node.data)
   }
 }
 
 // 拖拽离开
 const handleDragLeave = (node: FlatTreeNode, event: DragEvent) => {
   dragState.handleDragLeave(node, event)
-  if (dragState.draggingNode) {
-    emit('node-drag-leave', dragState.draggingNode.data, event, node.data)
+  if (dragState.draggingNode?.value) {
+    emit('node-drag-leave', dragState.draggingNode.value.data, event, node.data)
   }
 }
 
 // 拖拽悬停
 const handleDragOver = (node: FlatTreeNode, event: DragEvent) => {
   dragState.handleDragOver(node, event)
-  if (dragState.dropNode?.id === node.id && dragState.draggingNode) {
-    emit('node-drag-over', dragState.draggingNode.data, event, node.data)
+  if (dragState.dropNode?.value?.id === node.id && dragState.draggingNode?.value) {
+    emit('node-drag-over', dragState.draggingNode.value.data, event, node.data)
   }
 }
 
 // 拖拽结束
 const handleDragEnd = (node: FlatTreeNode, event: DragEvent) => {
-  if (dragState.draggingNode) {
-    emit('node-drag-end', dragState.draggingNode.data, event)
+  if (dragState.draggingNode?.value) {
+    emit('node-drag-end', dragState.draggingNode.value.data, event)
   }
   dragState.handleDragEnd(node, event)
 }
@@ -263,31 +280,57 @@ const handleDrop = (node: FlatTreeNode, event: DragEvent) => {
   }
 }
 
+// 节点实例缓存，避免重复创建和循环引用
+const nodeInstanceCache = new WeakMap<FlatTreeNode, TreeNodeInstance>()
+
 // 创建节点实例
 const createNodeInstance = (flatNode: FlatTreeNode): TreeNodeInstance => {
+  // 如果已经缓存，直接返回
+  if (nodeInstanceCache.has(flatNode)) {
+    return nodeInstanceCache.get(flatNode)!
+  }
+
+  // 延迟计算 parent 和 children，避免循环引用
+  let parentInstance: TreeNodeInstance | null = null
+  let childrenInstances: TreeNodeInstance[] | null = null
+
   const getParent = (): TreeNodeInstance | null => {
-    if (flatNode.parentId === null) return null
+    if (parentInstance !== null) return parentInstance
+    if (flatNode.parentId === null) {
+      parentInstance = null
+      return null
+    }
     const parent = getFlatNode(flatNode.parentId)
-    return parent ? createNodeInstance(parent) : null
+    if (!parent) {
+      parentInstance = null
+      return null
+    }
+    parentInstance = createNodeInstance(parent)
+    return parentInstance
   }
 
   const getChildren = (): TreeNodeInstance[] => {
-    const children = flatTree.value.filter(n => n.parentId === flatNode.id)
-    return children.map(child => createNodeInstance(child))
+    if (childrenInstances !== null) return childrenInstances
+    const children = flatTree.value.filter(n => n.parentId === flatNode.id && n.isVisible)
+    childrenInstances = children.map(child => createNodeInstance(child))
+    return childrenInstances
   }
 
   const getSiblings = (): TreeNodeInstance[] => {
     const siblings = flatTree.value.filter(
-      n => n.parentId === flatNode.parentId && n.id !== flatNode.id
+      n => n.parentId === flatNode.parentId && n.id !== flatNode.id && n.isVisible
     )
     return siblings.map(sibling => createNodeInstance(sibling))
   }
 
   const getAllChildren = (): TreeNodeInstance[] => {
     const result: TreeNodeInstance[] = []
+    const visited = new Set<string | number>()
     const traverse = (parentId: string | number) => {
-      const children = flatTree.value.filter(n => n.parentId === parentId)
+      const children = flatTree.value.filter(n => n.parentId === parentId && n.isVisible)
       children.forEach(child => {
+        if (visited.has(child.id)) return // 防止循环引用
+        visited.add(child.id)
         result.push(createNodeInstance(child))
         traverse(child.id)
       })
@@ -298,8 +341,11 @@ const createNodeInstance = (flatNode: FlatTreeNode): TreeNodeInstance => {
 
   const getAllParents = (): TreeNodeInstance[] => {
     const result: TreeNodeInstance[] = []
+    const visited = new Set<string | number>()
     let currentId: string | number | null = flatNode.parentId
     while (currentId !== null) {
+      if (visited.has(currentId)) break // 防止循环引用
+      visited.add(currentId)
       const parent = getFlatNode(currentId)
       if (parent) {
         result.push(createNodeInstance(parent))
@@ -311,12 +357,16 @@ const createNodeInstance = (flatNode: FlatTreeNode): TreeNodeInstance => {
     return result
   }
 
-  return {
+  const instance: TreeNodeInstance = {
     data: flatNode.data,
     key: flatNode.id,
     level: flatNode.level,
-    parent: getParent(),
-    children: getChildren(),
+    get parent() {
+      return getParent()
+    },
+    get children() {
+      return getChildren()
+    },
     expanded: flatNode.isExpanded,
     checked: flatNode.isChecked || false,
     disabled: flatNode.isDisabled || false,
@@ -329,6 +379,10 @@ const createNodeInstance = (flatNode: FlatTreeNode): TreeNodeInstance => {
     getAllChildren,
     getAllParents
   }
+
+  // 缓存实例
+  nodeInstanceCache.set(flatNode, instance)
+  return instance
 }
 
 // 根据 key 获取节点实例

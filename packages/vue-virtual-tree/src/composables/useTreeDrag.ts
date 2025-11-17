@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import type { Ref } from 'vue'
 import type { VirtualTreeProps, FlatTreeNode, TreeNodeData } from '../types'
+import { getNodeId, getNodeChildren } from '../utils/tree'
 
 /**
  * 拖拽类型
@@ -28,14 +29,15 @@ export function useTreeDrag(
   const defaultAllowDrop = (
     draggingNode: TreeNodeData,
     dropNode: TreeNodeData,
-    type: DropType
+    type: DropType,
+    props: VirtualTreeProps
   ): boolean => {
     // 不能拖拽到自己内部
     if (type === 'inner') {
-      const draggingId = draggingNode.id
+      const draggingId = getNodeId(draggingNode, props.props)
       const isDescendant = (node: TreeNodeData): boolean => {
-        if (node.id === draggingId) return true
-        const children = node.children || []
+        if (getNodeId(node, props.props) === draggingId) return true
+        const children = getNodeChildren(node, props.props)
         return children.some(child => isDescendant(child))
       }
       return !isDescendant(dropNode)
@@ -83,7 +85,7 @@ export function useTreeDrag(
     }
 
     // 判断是否允许放置
-    const allowDrop = props.allowDrop || defaultAllowDrop
+    const allowDrop = props.allowDrop || ((dragging, dropping, type) => defaultAllowDrop(dragging, dropping, type, props))
     if (!allowDrop(draggingData, dropData, dropType.value)) {
       dropType.value = null
       return
@@ -130,7 +132,7 @@ export function useTreeDrag(
     }
 
     // 判断是否允许放置
-    const allowDrop = props.allowDrop || defaultAllowDrop
+    const allowDrop = props.allowDrop || ((dragging, dropping, type) => defaultAllowDrop(dragging, dropping, type, props))
     if (!allowDrop(draggingData, dropData, newDropType)) {
       dropType.value = null
       event.preventDefault()
@@ -160,7 +162,7 @@ export function useTreeDrag(
     if (!draggingData || !dropData) return
 
     // 判断是否允许放置
-    const allowDrop = props.allowDrop || defaultAllowDrop
+    const allowDrop = props.allowDrop || ((dragging, dropping, type) => defaultAllowDrop(dragging, dropping, type, props))
     if (!allowDrop(draggingData, dropData, dropType.value)) {
       return
     }

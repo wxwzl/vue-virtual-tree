@@ -34,6 +34,8 @@ export interface FlatTreeNode {
   isLoading?: boolean
   /** 是否已加载（懒加载） */
   isLoaded?: boolean
+  /** 是否为叶子节点 */
+  isLeaf?: boolean
   /** 子节点列表（扁平化后的） */
   children?: FlatTreeNode[]
   /** 原始子节点数据 */

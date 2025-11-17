@@ -1,7 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import type { Ref } from 'vue'
 import type { VirtualTreeProps, FlatTreeNode, TreeNodeData } from '../types'
-import { getNodeId, getNodeChildren, traverseTree } from '../utils/tree'
+import { getNodeId, getNodeChildren, traverseTree, isLeafNode } from '../utils/tree'
 
 /**
  * 树节点选择逻辑
@@ -39,17 +39,20 @@ export function useTreeSelection(
     }
   }
 
-  // 获取节点的所有子节点 key
+  // 获取节点的所有子节点 key（只获取已展开的可见子节点）
   const getAllChildrenKeys = (nodeId: string | number): (string | number)[] => {
     const keys: (string | number)[] = []
     const node = flatTree.value.find(n => n.id === nodeId)
     if (!node) return keys
 
     const traverse = (id: string | number) => {
-      const children = flatTree.value.filter(n => n.parentId === id)
+      const children = flatTree.value.filter(n => n.parentId === id && n.isVisible)
       children.forEach(child => {
         keys.push(child.id)
-        traverse(child.id)
+        // 只有当子节点展开时才递归获取其子节点
+        if (child.isExpanded) {
+          traverse(child.id)
+        }
       })
     }
 
@@ -92,8 +95,9 @@ export function useTreeSelection(
   }
 
   // 设置节点选中状态（考虑父子关联）
-  const setNodeChecked = (nodeId: string | number, checked: boolean, checkStrictly: boolean = false) => {
-    if (checkStrictly) {
+  const setNodeChecked = (nodeId: string | number, checked: boolean, checkStrictly?: boolean) => {
+    const isStrictly = checkStrictly ?? props.checkStrictly ?? false
+    if (isStrictly) {
       // 严格模式：不关联父子节点
       if (checked) {
         checkedKeys.value.add(nodeId)
@@ -142,7 +146,7 @@ export function useTreeSelection(
   // 切换节点选中状态
   const toggleNodeChecked = (nodeId: string | number) => {
     const isChecked = checkedKeys.value.has(nodeId)
-    setNodeChecked(nodeId, !isChecked, props.checkStrictly)
+    setNodeChecked(nodeId, !isChecked)
   }
 
   // 设置当前选中节点
@@ -187,18 +191,37 @@ export function useTreeSelection(
   // 设置选中的节点
   const setCheckedNodes = (nodes: TreeNodeData[], leafOnly: boolean = false) => {
     checkedKeys.value.clear()
-    const keys = nodes.map(node => getNodeId(node, props.props))
+    const keys = nodes
+      .filter(node => {
+        if (leafOnly) {
+          return isLeafNode(node, props.props)
+        }
+        return true
+      })
+      .map(node => getNodeId(node, props.props))
     keys.forEach(key => {
-      setNodeChecked(key, true, props.checkStrictly)
+      setNodeChecked(key, true)
     })
+    if (!props.checkStrictly) {
+      updateHalfCheckedKeys()
+    }
   }
 
   // 设置选中的节点 key
   const setCheckedKeys = (keys: (string | number)[], leafOnly: boolean = false) => {
     checkedKeys.value.clear()
-    keys.forEach(key => {
-      setNodeChecked(key, true, props.checkStrictly)
+    const keysToSet = leafOnly
+      ? keys.filter(key => {
+          const node = getNodeData(key)
+          return node && isLeafNode(node, props.props)
+        })
+      : keys
+    keysToSet.forEach(key => {
+      setNodeChecked(key, true)
     })
+    if (!props.checkStrictly) {
+      updateHalfCheckedKeys()
+    }
   }
 
   // 初始化
