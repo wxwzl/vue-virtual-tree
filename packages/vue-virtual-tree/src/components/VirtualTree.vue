@@ -1,37 +1,14 @@
 <template>
   <div class="vue-virtual-tree" :style="{ height: typeof height === 'number' ? `${height}px` : height }">
-    <DynamicScroller
-      v-if="visibleNodes.length > 0"
-      :items="visibleNodes"
-      :min-item-size="itemSize || 32"
-      class="vue-virtual-tree__scroller"
-      v-slot="{ item, index, active }"
-    >
-      <DynamicScrollerItem
-        :item="item"
-        :active="active"
-        :data-index="index"
-        class="vue-virtual-tree__item"
-      >
-        <TreeNode
-          :ref="(el) => setNodeRef(item.id, el)"
-          :node="item"
-          :props="props.props"
-          :show-checkbox="showCheckbox"
-          :expand-on-click-node="expandOnClickNode"
-          :draggable="draggable"
+    <DynamicScroller ref="dynamicScrollerRef" v-if="visibleNodes.length > 0" :items="visibleNodes" :min-item-size="itemSize || 32"
+      class="vue-virtual-tree__scroller" v-slot="{ item, index, active }">
+      <DynamicScrollerItem :item="item" :active="active" :data-index="index" class="vue-virtual-tree__item">
+        <TreeNode :ref="(el) => setNodeRef(item.id, el)" :node="item" :key="item.id" :props="props.props" :show-checkbox="showCheckbox"
+          :expand-on-click-node="expandOnClickNode" :draggable="draggable"
           :drop-type="dragState.dropNode?.value?.id === item.id ? dragState.dropType?.value ?? null : null"
-          @node-click="handleNodeClick"
-          @node-expand="handleNodeExpand"
-          @node-collapse="handleNodeCollapse"
-          @node-check="handleNodeCheck"
-          @drag-start="handleDragStart"
-          @drag-enter="handleDragEnter"
-          @drag-leave="handleDragLeave"
-          @drag-over="handleDragOver"
-          @drag-end="handleDragEnd"
-          @drop="handleDrop"
-        >
+          @node-click="handleNodeClick" @node-expand="handleNodeExpand" @node-collapse="handleNodeCollapse"
+          @node-check="handleNodeCheck" @drag-start="handleDragStart" @drag-enter="handleDragEnter"
+          @drag-leave="handleDragLeave" @drag-over="handleDragOver" @drag-end="handleDragEnd" @drop="handleDrop">
           <template #default="{ node, data }">
             <slot :node="node" :data="data" />
           </template>
@@ -41,12 +18,12 @@
               <svg class="vue-virtual-tree-node__loading-icon" viewBox="0 0 24 24" width="16" height="16">
                 <g transform="translate(12,12)">
                   <!-- 轨道圆环 -->
-                  <circle cx="0" cy="0" r="8" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2"/>
+                  <circle cx="0" cy="0" r="8" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2" />
                   <!-- 旋转的3个点 -->
                   <g class="vue-virtual-tree-loading-dots">
-                    <circle cx="0" cy="-8" r="2" fill="currentColor"/>
-                    <circle cx="6.928" cy="-4" r="2" fill="currentColor" opacity="0.7"/>
-                    <circle cx="6.928" cy="4" r="2" fill="currentColor" opacity="0.4"/>
+                    <circle cx="0" cy="-8" r="2" fill="currentColor" />
+                    <circle cx="6.928" cy="-4" r="2" fill="currentColor" opacity="0.7" />
+                    <circle cx="6.928" cy="4" r="2" fill="currentColor" opacity="0.4" />
                   </g>
                 </g>
               </svg>
@@ -72,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import TreeNode from './TreeNode.vue'
 import type { VirtualTreeProps, VirtualTreeEmits, VirtualTreeMethods, FlatTreeNode, TreeNodeData, TreeNodeInstance } from '../types'
@@ -81,7 +58,7 @@ import { useTreeExpand } from '../composables/useTreeExpand'
 import { useTreeSelection } from '../composables/useTreeSelection'
 import { useTreeFilter } from '../composables/useTreeFilter'
 import { useTreeDrag } from '../composables/useTreeDrag'
-import { getNodeId, findNodeByKey, getNodeChildren, isLeafNode, getNodeLabel } from '../utils/tree'
+import { getNodeId, findNodeByKey, getNodeChildren, isLeafNode, getNodeLabel, getAllKeys } from '../utils/tree'
 import '../style/index.scss'
 
 defineOptions({
@@ -117,21 +94,23 @@ const setNodeRef = (id: string | number, el: any) => {
   }
 }
 
-  // 数据扁平化
-  const {
-    flatTree,
-    visibleNodes,
-    expandedKeys,
-    rawData,
-    updateRawData,
-    getNodeData,
-    getFlatNode,
-    updateFlatTree,
-    setNodeState
-  } = useTreeData(props)
+// 数据扁平化
+const {
+  flatTree,
+  visibleNodes,
+  expandedKeys,
+  rawData,
+  getNodeData,
+  getFlatNode,
+  regenerateFlatTree,
+  setNodeState,
+  insertFlatTree
+} = useTreeData(props)
 
 // 展开/折叠逻辑
-const { expandNode, collapseNode, toggleNode } = useTreeExpand(props, flatTree, expandedKeys)
+const { expandNode, collapseNode } = useTreeExpand(props, flatTree, expandedKeys)
+
+const dynamicScrollerRef = ref<InstanceType<typeof DynamicScroller> | null>(null)
 
 // 选择逻辑
 const {
@@ -139,37 +118,21 @@ const {
   halfCheckedKeys,
   selectedKey,
   currentNode,
-  setNodeChecked,
   toggleNodeChecked,
   setCurrentNode: setSelectionCurrentNode,
   getCheckedNodes,
   getCheckedKeys,
   setCheckedNodes,
   setCheckedKeys,
-  updateHalfCheckedKeys
 } = useTreeSelection(props, flatTree, getNodeData)
 
 // 过滤逻辑
-const { filter: filterNodes, clearFilter } = useTreeFilter(props, flatTree, expandedKeys)
+const { filter: filterNodes } = useTreeFilter(props, flatTree, expandedKeys)
 
 // 拖拽逻辑
 const dragState = useTreeDrag(props, flatTree, getNodeData)
 
-// 更新节点的选中状态到扁平树
-watch([checkedKeys, halfCheckedKeys], () => {
-  flatTree.value.forEach(node => {
-    node.isChecked = checkedKeys.value.has(node.id)
-    node.isIndeterminate = halfCheckedKeys.value.has(node.id)
-  })
-}, { deep: true, immediate: true })
-
-// 当 flatTree 更新时，同步选中状态（防止展开/收起时丢失状态）
-watch(flatTree, () => {
-  flatTree.value.forEach(node => {
-    node.isChecked = checkedKeys.value.has(node.id)
-    node.isIndeterminate = halfCheckedKeys.value.has(node.id)
-  })
-}, { deep: true })
+// 选中状态由useTreeSelection管理，这里不需要额外的同步逻辑
 
 // 更新节点的选中状态到扁平树
 watch(selectedKey, () => {
@@ -195,10 +158,9 @@ const handleNodeExpand = async (node: FlatTreeNode) => {
 
   // 懒加载
   if (props.lazy && !node.isLoaded && props.load) {
-    // 设置loading状态到缓存
+    // 设置loading状态到缓存和节点
     setNodeState(node.id, { isLoading: true })
-    // 立即更新UI以显示loading状态
-    updateFlatTree()
+    node.isLoading = true
 
     try {
       await new Promise<void>((resolve, reject) => {
@@ -207,7 +169,6 @@ const handleNodeExpand = async (node: FlatTreeNode) => {
           if (!resolved) {
             resolved = true
             setNodeState(node.id, { isLoading: false })
-            updateFlatTree()
             console.warn('Lazy load timeout: load function did not call resolve callback')
             reject(new Error('Lazy load timeout'))
           }
@@ -217,30 +178,20 @@ const handleNodeExpand = async (node: FlatTreeNode) => {
           if (resolved) return
           resolved = true
           clearTimeout(timeout)
-
+          setNodeState(node.id, { isLoading: false, isLoaded: true });
           // 更新节点的子节点
           if (children && children.length > 0) {
-            const config = props.props || {}
-            const childrenKey = config.children || 'children'
-            node.data[childrenKey] = children
-            // 设置加载完成状态到缓存
-            setNodeState(node.id, { isLoading: false, isLoaded: true })
-            updateFlatTree()
-          } else {
-            // 即使没有子节点，也标记为已加载
-            setNodeState(node.id, { isLoading: false, isLoaded: true })
-            updateFlatTree()
+            insertFlatTree(node, children);
           }
           resolve()
         })
       })
     } catch (error) {
-      setNodeState(node.id, { isLoading: false })
-      updateFlatTree()
+      setNodeState(node.id, { isLoading: false });
+      node.isLoading = false
       console.error('Lazy load error:', error)
     }
   }
-
   expandNode(node)
   emit('node-expand', node.data, createNodeInstance(node))
 }
@@ -466,7 +417,12 @@ const methods: VirtualTreeMethods = {
     setSelectionCurrentNode(key, getNodeData(key))
   },
   filter: (value: string) => {
-    filterNodes(value)
+    return filterNodes(value).then(() => {
+      nextTick(() => {
+        dynamicScrollerRef.value?.scrollToItem(0);
+        dynamicScrollerRef.value?.forceUpdate();
+      })
+    })
   },
   getNode: (key: string | number) => {
     return getNode(key)
@@ -491,7 +447,7 @@ const methods: VirtualTreeMethods = {
     }
 
     removeFromArray(rawData.value, key)
-    updateFlatTree()
+    regenerateFlatTree()
   },
   append: (data: TreeNodeData, parentKey?: string | number) => {
     if (parentKey === undefined) {
@@ -507,7 +463,7 @@ const methods: VirtualTreeMethods = {
         parent[childrenKey].push(data)
       }
     }
-    updateFlatTree()
+    regenerateFlatTree()
   },
   insertBefore: (data: TreeNodeData, key: string | number) => {
     const insertIntoArray = (arr: TreeNodeData[], targetKey: string | number, newData: TreeNodeData): boolean => {
@@ -525,7 +481,7 @@ const methods: VirtualTreeMethods = {
     }
 
     insertIntoArray(rawData.value, key, data)
-    updateFlatTree()
+    regenerateFlatTree()
   },
   insertAfter: (data: TreeNodeData, key: string | number) => {
     const insertIntoArray = (arr: TreeNodeData[], targetKey: string | number, newData: TreeNodeData): boolean => {
@@ -543,7 +499,7 @@ const methods: VirtualTreeMethods = {
     }
 
     insertIntoArray(rawData.value, key, data)
-    updateFlatTree()
+    regenerateFlatTree()
   },
   updateKeyChildren: (key: string | number, data: TreeNodeData[]) => {
     const node = findNodeByKey(rawData.value, key, props.props)
@@ -551,7 +507,7 @@ const methods: VirtualTreeMethods = {
       const config = props.props || {}
       const childrenKey = config.children || 'children'
       node[childrenKey] = data
-      updateFlatTree()
+      regenerateFlatTree()
     }
   }
 }

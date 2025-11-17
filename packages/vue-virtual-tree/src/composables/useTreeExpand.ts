@@ -10,36 +10,58 @@ export function useTreeExpand(
   expandedKeys: Ref<Set<string | number>>
 ) {
   /**
+   * 更新节点及其子孙节点的可见性
+   */
+  const updateNodeVisibility = (node: FlatTreeNode, isVisible: boolean) => {
+    if (node.children) {
+      node.children.forEach(child => {
+        child.isVisible = isVisible
+        // 如果子节点未展开，则递归隐藏其子孙节点
+        // if (!isVisible) {
+        //   // 如果子节点已展开，则确保其子孙节点可见
+        //   updateNodeVisibility(child, false)
+        // }
+      })
+    }
+  }
+
+  /**
    * 展开节点
    */
   const expandNode = (node: FlatTreeNode) => {
     if (props.accordion) {
-      // 手风琴模式：折叠同级其他节点（只处理可见的兄弟节点）
+      // 手风琴模式：折叠同级其他节点
+      // 查找兄弟节点（需要从flatTree中查找，因为node.parentId可能为null）
       const siblings = flatTree.value.filter(
         n => n.parentId === node.parentId && n.id !== node.id && n.isVisible
       )
       siblings.forEach(sibling => {
-        expandedKeys.value.delete(sibling.id)
+        if (sibling.isExpanded) {
+          sibling.isExpanded = false
+          expandedKeys.value.delete(sibling.id)
+          updateNodeVisibility(sibling, false)
+        }
       })
     }
+
+    // 展开当前节点
+    node.isExpanded = true
     expandedKeys.value.add(node.id)
+    updateNodeVisibility(node, true)
   }
 
   /**
    * 折叠节点
    */
   const collapseNode = (node: FlatTreeNode) => {
+    node.isExpanded = false
     expandedKeys.value.delete(node.id)
-    
-    // 折叠所有子节点
-    const collapseChildren = (parentId: string | number) => {
-      const children = flatTree.value.filter(n => n.parentId === parentId)
-      children.forEach(child => {
-        expandedKeys.value.delete(child.id)
-        collapseChildren(child.id)
+    if (node.children) {
+      node.children.forEach(child => {
+        collapseNode(child);
       })
     }
-    collapseChildren(node.id)
+    updateNodeVisibility(node, false)
   }
 
   /**

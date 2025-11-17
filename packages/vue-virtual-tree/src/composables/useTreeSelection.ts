@@ -1,4 +1,4 @@
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, computed } from 'vue'
 import type { Ref } from 'vue'
 import type { VirtualTreeProps, FlatTreeNode, TreeNodeData } from '../types'
 import { getNodeId, getNodeChildren, isLeafNode } from '../utils/tree'
@@ -11,10 +11,27 @@ export function useTreeSelection(
   flatTree: Ref<FlatTreeNode[]>,
   getNodeData: (id: string | number) => TreeNodeData | null
 ) {
-  // 选中的节点 key 集合
-  const checkedKeys = ref<Set<string | number>>(new Set())
-  // 半选状态的节点 key 集合
-  const halfCheckedKeys = ref<Set<string | number>>(new Set())
+  // 从flatTree计算选中的节点key集合
+  const checkedKeys = computed(() => {
+    const keys = new Set<string | number>()
+    flatTree.value.forEach(node => {
+      if (node.isChecked) {
+        keys.add(node.id)
+      }
+    })
+    return keys
+  })
+
+  // 从flatTree计算半选状态的节点key集合
+  const halfCheckedKeys = computed(() => {
+    const keys = new Set<string | number>()
+    flatTree.value.forEach(node => {
+      if (node.isIndeterminate) {
+        keys.add(node.id)
+      }
+    })
+    return keys
+  })
   // 当前选中的节点 key（单选）
   const selectedKey = ref<string | number | null>(null)
   // 当前选中的节点数据
@@ -23,10 +40,12 @@ export function useTreeSelection(
   // 初始化选中的节点
   const initCheckedKeys = () => {
     if (props.defaultCheckedKeys && props.defaultCheckedKeys.length > 0) {
-      checkedKeys.value = new Set(props.defaultCheckedKeys)
-      if (!props.checkStrictly) {
-        updateHalfCheckedKeys()
-      }
+      props.defaultCheckedKeys.forEach(key => {
+        const node = flatTree.value.find(n => n.id === key)
+        if (node) {
+          setNodeChecked(key, true)
+        }
+      })
     }
   }
 
@@ -94,52 +113,69 @@ export function useTreeSelection(
     }
   }
 
+  // 直接操作flatTree中的节点状态
+  const setNodeCheckedInTree = (node: FlatTreeNode, checked: boolean) => {
+    node.isChecked = checked
+    node.isIndeterminate = false
+
+    // 递归处理子节点
+    const setChildrenChecked = (parentNode: FlatTreeNode, checkedState: boolean) => {
+      if (parentNode.children) {
+        parentNode.children.forEach(child => {
+          child.isChecked = checkedState
+          child.isIndeterminate = false
+          setChildrenChecked(child, checkedState)
+        })
+      }
+    }
+    setChildrenChecked(node, checked)
+
+    // 更新父节点的选中状态
+    const updateParentChecked = (childNode: FlatTreeNode) => {
+      const parentId = childNode.parentId
+      if (parentId !== null) {
+        const parent = flatTree.value.find(n => n.id === parentId)
+        if (parent) {
+          const siblings = flatTree.value.filter(n => n.parentId === parentId)
+          const checkedCount = siblings.filter(n => n.isChecked).length
+          const indeterminateCount = siblings.filter(n => n.isIndeterminate).length
+
+          if (checkedCount === siblings.length) {
+            // 所有子节点都选中
+            parent.isChecked = true
+            parent.isIndeterminate = false
+          } else if (checkedCount === 0 && indeterminateCount === 0) {
+            // 所有子节点都未选中
+            parent.isChecked = false
+            parent.isIndeterminate = false
+          } else {
+            // 部分选中
+            parent.isChecked = false
+            parent.isIndeterminate = true
+          }
+
+          // 递归更新父节点
+          updateParentChecked(parent)
+        }
+      }
+    }
+    updateParentChecked(node)
+  }
+
   // 设置节点选中状态（考虑父子关联）
   const setNodeChecked = (nodeId: string | number, checked: boolean, checkStrictly?: boolean) => {
+    const node = flatTree.value.find(n => n.id === nodeId)
+    if (!node) return
+
     const isStrictly = checkStrictly ?? props.checkStrictly ?? false
+
     if (isStrictly) {
-      // 严格模式：不关联父子节点
-      if (checked) {
-        checkedKeys.value.add(nodeId)
-      } else {
-        checkedKeys.value.delete(nodeId)
-      }
+      // 严格模式：只设置当前节点
+      node.isChecked = checked
+      node.isIndeterminate = false
     } else {
       // 非严格模式：关联父子节点
-      if (checked) {
-        // 选中节点及其所有子节点
-        checkedKeys.value.add(nodeId)
-        const childrenKeys = getAllChildrenKeys(nodeId)
-        childrenKeys.forEach(key => {
-          checkedKeys.value.add(key)
-        })
-
-        // 检查父节点是否应该被选中
-        const parentKeys = getAllParentKeys(nodeId)
-        for (const parentKey of parentKeys) {
-          const childrenKeys = getAllChildrenKeys(parentKey)
-          const allChecked = childrenKeys.every(key => checkedKeys.value.has(key))
-          if (allChecked) {
-            checkedKeys.value.add(parentKey)
-          }
-        }
-      } else {
-        // 取消选中节点及其所有子节点
-        checkedKeys.value.delete(nodeId)
-        const childrenKeys = getAllChildrenKeys(nodeId)
-        childrenKeys.forEach(key => {
-          checkedKeys.value.delete(key)
-        })
-
-        // 取消选中所有父节点
-        const parentKeys = getAllParentKeys(nodeId)
-        parentKeys.forEach(key => {
-          checkedKeys.value.delete(key)
-        })
-      }
-
-      // 更新半选状态
-      updateHalfCheckedKeys()
+      setNodeCheckedInTree(node, checked)
     }
   }
 
@@ -228,28 +264,7 @@ export function useTreeSelection(
   initCheckedKeys()
   initCurrentNode()
 
-  // 监听 defaultCheckedKeys 和原始数据变化
-  watch(
-    () => [props.defaultCheckedKeys, props.data],
-    () => {
-      if (props.defaultCheckedKeys && props.defaultCheckedKeys.length > 0) {
-        checkedKeys.value = new Set(props.defaultCheckedKeys)
-        // 等待 flatTree 更新后再计算半选状态
-        if (!props.checkStrictly) {
-          // 使用 nextTick 确保 flatTree 已经更新
-          nextTick(() => {
-            if (flatTree.value.length > 0) {
-              updateHalfCheckedKeys()
-            }
-          })
-        }
-      } else if (props.defaultCheckedKeys && props.defaultCheckedKeys.length === 0) {
-        checkedKeys.value.clear()
-        halfCheckedKeys.value.clear()
-      }
-    },
-    { deep: true, immediate: false }
-  )
+  // 选中状态现在直接在flatTree中管理，不需要额外的监听器
 
   // 监听 props.currentNodeKey 变化
   watch(

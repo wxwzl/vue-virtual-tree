@@ -18,6 +18,8 @@ export interface FlatTreeNode {
   data: TreeNodeData
   /** 节点层级，从 0 开始 */
   level: number
+  /** 节点索引，从 0 开始 */
+  index: number
   /** 父节点 ID */
   parentId: string | number | null
   /** 是否展开 */
@@ -39,7 +41,8 @@ export interface FlatTreeNode {
   /** 子节点列表（扁平化后的） */
   children?: FlatTreeNode[]
   /** 原始子节点数据 */
-  rawChildren?: TreeNodeData[]
+  rawChildren?: TreeNodeData[],
+  parentNode?: FlatTreeNode | null
 }
 
 /**

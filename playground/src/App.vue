@@ -1,7 +1,7 @@
 <template>
   <div class="app">
     <h1>Vue Virtual Tree Playground</h1>
-    
+
     <div class="demo-section">
       <h2>基础用法</h2>
       <div class="tree-container">
@@ -13,13 +13,8 @@
     <div class="demo-section">
       <h2>带复选框</h2>
       <div class="tree-container">
-        <VirtualTree
-          v-if="!isLoadingTreeData"
-          :data="treeData"
-          :height="400"
-          show-checkbox
-          @node-check="handleNodeCheck"
-        />
+        <VirtualTree v-if="!isLoadingTreeData" :data="treeData" :height="400" show-checkbox
+          @node-check="handleNodeCheck" />
         <div v-else class="loading">数据加载中...</div>
       </div>
     </div>
@@ -27,12 +22,7 @@
     <div class="demo-section">
       <h2>默认展开所有</h2>
       <div class="tree-container">
-        <VirtualTree
-          v-if="!isLoadingTreeData"
-          :data="treeData"
-          :height="400"
-          default-expand-all
-        />
+        <VirtualTree v-if="!isLoadingTreeData" :data="treeData" :height="400" default-expand-all />
         <div v-else class="loading">数据加载中...</div>
       </div>
     </div>
@@ -43,17 +33,9 @@
         <p><strong>说明：</strong>拖拽节点可以重新排序，支持拖拽到节点前、节点内、节点后三种位置</p>
       </div>
       <div class="tree-container">
-        <VirtualTree
-          :data="dragTreeData"
-          :height="400"
-          draggable
-          @node-drag-start="handleDragStart"
-          @node-drag-enter="handleDragEnter"
-          @node-drag-leave="handleDragLeave"
-          @node-drag-over="handleDragOver"
-          @node-drag-end="handleDragEnd"
-          @node-drop="handleNodeDrop"
-        />
+        <VirtualTree :data="dragTreeData" :height="400" draggable @node-drag-start="handleDragStart"
+          @node-drag-enter="handleDragEnter" @node-drag-leave="handleDragLeave" @node-drag-over="handleDragOver"
+          @node-drag-end="handleDragEnd" @node-drop="handleNodeDrop" />
       </div>
       <div class="control-panel">
         <button @click="resetDragTreeData" class="btn">重置拖拽数据</button>
@@ -70,19 +52,9 @@
     <div class="demo-section">
       <h2>过滤</h2>
       <div class="tree-container">
-        <input
-          v-model="filterText"
-          placeholder="输入关键字过滤"
-          @input="handleFilter"
-          class="filter-input"
-        />
-        <VirtualTree
-          v-if="!isLoadingTreeData"
-          ref="treeRef"
-          :data="treeData"
-          :height="400"
-        />
-        <div v-else class="loading">数据加载中...</div>
+        <input v-model="filterText" placeholder="输入关键字过滤" @input="handleFilter" class="filter-input" />
+        <VirtualTree v-show="!isLoadingTreeData && !searching" ref="treeRef" :data="treeData" :height="400" />
+        <div v-show="isLoadingTreeData || searching" class="loading">数据加载中...</div>
       </div>
     </div>
 
@@ -97,15 +69,9 @@
         </ul>
       </div>
       <div class="tree-container">
-        <VirtualTree
-          v-if="!isLoadingTreeData"
-          :data="treeData"
-          :height="400"
-          :default-expanded-keys="defaultExpandedKeys"
-          :default-checked-keys="defaultCheckedKeys"
-          show-checkbox
-          @node-check="handleNodeCheck"
-        />
+        <VirtualTree v-if="!isLoadingTreeData" :data="treeData" :height="400"
+          :default-expanded-keys="defaultExpandedKeys" :default-checked-keys="defaultCheckedKeys" show-checkbox
+          @node-check="handleNodeCheck" />
         <div v-else class="loading">数据加载中...</div>
       </div>
       <div class="control-panel">
@@ -144,14 +110,8 @@
         <p><strong>说明：</strong>模拟异步加载数据，验证在数据加载后 defaultExpandedKeys 和 defaultCheckedKeys 是否正常工作</p>
       </div>
       <div class="tree-container">
-        <VirtualTree
-          v-if="asyncTreeData.length > 0"
-          :data="asyncTreeData"
-          :height="400"
-          :default-expanded-keys="asyncExpandedKeys"
-          :default-checked-keys="asyncCheckedKeys"
-          show-checkbox
-        />
+        <VirtualTree v-if="asyncTreeData.length > 0" :data="asyncTreeData" :height="400"
+          :default-expanded-keys="asyncExpandedKeys" :default-checked-keys="asyncCheckedKeys" show-checkbox />
         <div v-else class="loading">加载中...</div>
       </div>
       <div class="control-panel">
@@ -170,12 +130,7 @@
         </ul>
       </div>
       <div class="tree-container">
-        <VirtualTree
-          :data="lazyTreeData"
-          :height="400"
-          lazy
-          :load="handleLazyLoad"
-        />
+        <VirtualTree :data="lazyTreeData" :height="400" lazy :load="handleLazyLoad" />
       </div>
       <div class="control-panel">
         <button @click="resetLazyData" class="btn">重置懒加载数据</button>
@@ -200,12 +155,7 @@
         </ul>
       </div>
       <div class="tree-container">
-        <VirtualTree
-          :data="customLoadingTreeData"
-          :height="400"
-          lazy
-          :load="handleLazyLoad"
-        >
+        <VirtualTree :data="customLoadingTreeData" :height="400" lazy :load="handleLazyLoad">
           <template #loading="{ node, data }">
             <div class="custom-loading">
               <div class="loading-spinner"></div>
@@ -253,7 +203,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { VirtualTree } from 'vue-virtual-tree'
 import type { TreeNodeData, VirtualTreeMethods } from 'vue-virtual-tree'
 
@@ -812,10 +762,15 @@ const handleNodeDrop = (
 
   dragTreeData.value = [...workingData]
 }
-
+const searching = ref(false)
 const handleFilter = () => {
   if (treeRef.value) {
-    treeRef.value.filter(filterText.value)
+    searching.value = true
+    nextTick(() => {
+      treeRef.value.filter(filterText.value).then(() => {
+        searching.value = false
+      })
+    })
   }
 }
 
@@ -1043,8 +998,13 @@ h1 {
 }
 
 @keyframes custom-loading-spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* 自定义图标样式 */
@@ -1057,4 +1017,3 @@ h1 {
   height: 16px;
 }
 </style>
-

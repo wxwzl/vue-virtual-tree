@@ -1,4 +1,3 @@
-import { ref, computed } from 'vue'
 import type { Ref } from 'vue'
 import type { VirtualTreeProps, FlatTreeNode } from '../types'
 import { getNodeLabel } from '../utils/tree'
@@ -11,7 +10,6 @@ export function useTreeFilter(
   flatTree: Ref<FlatTreeNode[]>,
   expandedKeys: Ref<Set<string | number>>
 ) {
-  const filterText = ref<string>('')
 
   // 默认过滤方法
   const defaultFilterMethod = (value: string, data: any): boolean => {
@@ -22,52 +20,43 @@ export function useTreeFilter(
 
   // 过滤节点
   const filter = (value: string) => {
-    filterText.value = value
 
     if (!value) {
       // 清空过滤，恢复所有节点可见
       flatTree.value.forEach(node => {
         node.isVisible = true
       })
-      return
+      return Promise.resolve()
     }
+    return new Promise(async (resolve) => {
+      const filterMethod = props.filterNodeMethod || defaultFilterMethod
 
-    const filterMethod = props.filterNodeMethod || defaultFilterMethod
+      // 先标记所有节点为不可见
+      flatTree.value.forEach(node => {
+        node.isVisible = false
+        if (filterMethod(value, node.data)) {
+          // 标记当前节点为可见
+          node.isVisible = true
 
-    // 先标记所有节点为不可见
-    flatTree.value.forEach(node => {
-      node.isVisible = false
-    })
-
-    // 标记匹配的节点及其所有父节点为可见
-    flatTree.value.forEach(node => {
-      if (filterMethod(value, node.data)) {
-        // 标记当前节点为可见
-        node.isVisible = true
-
-        // 标记所有父节点为可见并展开
-        let parentId: string | number | null = node.parentId
-        while (parentId !== null) {
-          const parent = flatTree.value.find(n => n.id === parentId)
-          if (parent) {
-            parent.isVisible = true
-            expandedKeys.value.add(parent.id)
-            parentId = parent.parentId
-          } else {
-            break
+          // 标记所有父节点为可见并展开
+          let parentNode: FlatTreeNode | null = node.parentNode || null
+          while (parentNode) {
+            parentNode.isVisible = true
+            parentNode.isExpanded = true
+            expandedKeys.value.add(parentNode.id)
+            parentNode = parentNode.parentNode || null
           }
         }
-      }
+      })
+      resolve(void 0)
     })
   }
-
   // 清空过滤
   const clearFilter = () => {
     filter('')
   }
 
   return {
-    filterText,
     filter,
     clearFilter
   }
