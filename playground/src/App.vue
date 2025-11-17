@@ -5,7 +5,8 @@
     <div class="demo-section">
       <h2>基础用法</h2>
       <div class="tree-container">
-        <VirtualTree :data="treeData" :height="400" />
+        <VirtualTree v-if="!isLoadingTreeData1" :data="treeData1" :height="400" />
+        <div v-else class="loading">数据加载中...</div>
       </div>
     </div>
 
@@ -13,11 +14,13 @@
       <h2>带复选框</h2>
       <div class="tree-container">
         <VirtualTree
+          v-if="!isLoadingTreeData"
           :data="treeData"
           :height="400"
           show-checkbox
           @node-check="handleNodeCheck"
         />
+        <div v-else class="loading">数据加载中...</div>
       </div>
     </div>
 
@@ -25,10 +28,12 @@
       <h2>默认展开所有</h2>
       <div class="tree-container">
         <VirtualTree
+          v-if="!isLoadingTreeData"
           :data="treeData"
           :height="400"
           default-expand-all
         />
+        <div v-else class="loading">数据加载中...</div>
       </div>
     </div>
 
@@ -72,10 +77,12 @@
           class="filter-input"
         />
         <VirtualTree
+          v-if="!isLoadingTreeData"
           ref="treeRef"
           :data="treeData"
           :height="400"
         />
+        <div v-else class="loading">数据加载中...</div>
       </div>
     </div>
 
@@ -91,6 +98,7 @@
       </div>
       <div class="tree-container">
         <VirtualTree
+          v-if="!isLoadingTreeData"
           :data="treeData"
           :height="400"
           :default-expanded-keys="defaultExpandedKeys"
@@ -98,12 +106,35 @@
           show-checkbox
           @node-check="handleNodeCheck"
         />
+        <div v-else class="loading">数据加载中...</div>
       </div>
       <div class="control-panel">
         <button @click="resetExpandedKeys" class="btn">重置展开状态</button>
         <button @click="resetCheckedKeys" class="btn">重置选中状态</button>
         <button @click="updateExpandedKeys" class="btn">更新展开节点</button>
         <button @click="updateCheckedKeys" class="btn">更新选中节点</button>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>使用插槽自定义节点</h2>
+      <div class="info-box">
+        <p><strong>说明：</strong>使用插槽自定义节点渲染，展示节点ID和标签，并添加简单的图标</p>
+      </div>
+      <div class="tree-container">
+        <VirtualTree v-if="!isLoadingTreeData" :data="treeData" :height="400">
+          <template #default="{ node, data }">
+            <div class="custom-node">
+              <span class="node-icon">{{ node.level === 0 ? '🏠' : node.level === 1 ? '📁' : '📄' }}</span>
+              <span class="node-id">[{{ data.id }}]</span>
+              <span class="node-label">{{ data.label }}</span>
+              <span class="node-status" v-if="data.children && data.children.length > 0">
+                ({{ data.children.length }} 子项)
+              </span>
+            </div>
+          </template>
+        </VirtualTree>
+        <div v-else class="loading">数据加载中...</div>
       </div>
     </div>
 
@@ -138,37 +169,76 @@ import type { TreeNodeData, VirtualTreeMethods } from 'vue-virtual-tree'
 const treeRef = ref<VirtualTreeMethods | null>(null)
 const filterText = ref('')
 
-// 生成测试数据
-const generateTreeData = (): TreeNodeData[] => {
-  const data: TreeNodeData[] = []
-  for (let i = 1; i <= 5; i++) {
-    const node: TreeNodeData = {
-      id: `node-${i}`,
-      label: `节点 ${i}`
-    }
-    const children: TreeNodeData[] = []
-    for (let j = 1; j <= 5; j++) {
-      const child: TreeNodeData = {
-        id: `node-${i}-${j}`,
-        label: `节点 ${i}-${j}`
+// 生成测试数据 - 异步分片生成，避免阻塞主线程
+const generateTreeDataAsync = (number: number): Promise<TreeNodeData[]> => {
+  return new Promise((resolve) => {
+    const data: TreeNodeData[] = []
+    let currentIndex = 1
+    const chunkSize = 50 // 每次生成50个根节点
+
+    const generateChunk = () => {
+      const endIndex = Math.min(currentIndex + chunkSize, number + 1)
+
+      for (let i = currentIndex; i < endIndex; i++) {
+        const node: TreeNodeData = {
+          id: `node-${i}`,
+          label: `节点 ${i}`
+        }
+        const children: TreeNodeData[] = []
+        for (let j = 1; j <= 5; j++) {
+          const child: TreeNodeData = {
+            id: `node-${i}-${j}`,
+            label: `节点 ${i}-${j}`
+          }
+          const grandchildren: TreeNodeData[] = []
+          for (let k = 1; k <= 5; k++) {
+            grandchildren.push({
+              id: `node-${i}-${j}-${k}`,
+              label: `节点 ${i}-${j}-${k}`
+            })
+          }
+          child.children = grandchildren
+          children.push(child)
+        }
+        node.children = children
+        data.push(node)
       }
-      const grandchildren: TreeNodeData[] = []
-      for (let k = 1; k <= 5; k++) {
-        grandchildren.push({
-          id: `node-${i}-${j}-${k}`,
-          label: `节点 ${i}-${j}-${k}`
-        })
+
+      currentIndex = endIndex
+
+      if (currentIndex <= number) {
+        // 还有更多数据，使用requestAnimationFrame在下一帧继续生成
+        requestAnimationFrame(generateChunk)
+      } else {
+        // 生成完成
+        resolve(data)
       }
-      child.children = grandchildren
-      children.push(child)
     }
-    node.children = children
-    data.push(node)
-  }
-  return data
+
+    // 开始生成
+    requestAnimationFrame(generateChunk)
+  })
 }
 
-const treeData = ref<TreeNodeData[]>(generateTreeData())
+// 数据状态管理
+const treeData1 = ref<TreeNodeData[]>([])
+const treeData = ref<TreeNodeData[]>([])
+const isLoadingTreeData1 = ref(true)
+const isLoadingTreeData = ref(true)
+
+// 异步初始化数据
+const initData = async () => {
+  // 并行生成两个数据集
+  const [data1, data] = await Promise.all([
+    generateTreeDataAsync(10000),
+    generateTreeDataAsync(1000)
+  ])
+
+  treeData1.value = data1
+  treeData.value = data
+  isLoadingTreeData1.value = false
+  isLoadingTreeData.value = false
+}
 
 // 拖拽示例专用数据
 const generateDraggableTreeData = (): TreeNodeData[] => [
@@ -436,7 +506,9 @@ const handleFilter = () => {
 }
 
 // 组件挂载后加载异步数据
-onMounted(() => {
+onMounted(async () => {
+  // 并行加载数据
+  await initData()
   loadAsyncData()
 })
 </script>
@@ -587,6 +659,35 @@ h1 {
   margin-top: 10px;
   padding: 4px 12px;
   font-size: 12px;
+}
+
+/* 自定义节点样式 */
+.custom-node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.node-icon {
+  font-size: 16px;
+}
+
+.node-id {
+  color: #909399;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.node-label {
+  flex: 1;
+  color: #303133;
+}
+
+.node-status {
+  color: #606266;
+  font-size: 12px;
+  font-style: italic;
 }
 </style>
 
