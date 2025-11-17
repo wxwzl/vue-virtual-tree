@@ -135,6 +135,14 @@ watch([checkedKeys, halfCheckedKeys], () => {
     node.isChecked = checkedKeys.value.has(node.id)
     node.isIndeterminate = halfCheckedKeys.value.has(node.id)
   })
+}, { deep: true, immediate: true })
+
+// 当 flatTree 更新时，同步选中状态（防止展开/收起时丢失状态）
+watch(flatTree, () => {
+  flatTree.value.forEach(node => {
+    node.isChecked = checkedKeys.value.has(node.id)
+    node.isIndeterminate = halfCheckedKeys.value.has(node.id)
+  })
 }, { deep: true })
 
 // 更新节点的选中状态到扁平树
