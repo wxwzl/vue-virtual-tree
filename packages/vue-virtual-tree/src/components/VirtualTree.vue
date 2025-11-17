@@ -35,6 +35,31 @@
           <template #default="{ node, data }">
             <slot :node="node" :data="data" />
           </template>
+          <template #loading="{ node, data }">
+            <slot name="loading" :node="node" :data="data">
+              <!-- 默认loading图标 -->
+              <svg class="vue-virtual-tree-node__loading-icon" viewBox="0 0 24 24" width="16" height="16">
+                <g transform="translate(12,12)">
+                  <!-- 轨道圆环 -->
+                  <circle cx="0" cy="0" r="8" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2"/>
+                  <!-- 旋转的3个点 -->
+                  <g class="vue-virtual-tree-loading-dots">
+                    <circle cx="0" cy="-8" r="2" fill="currentColor"/>
+                    <circle cx="6.928" cy="-4" r="2" fill="currentColor" opacity="0.7"/>
+                    <circle cx="6.928" cy="4" r="2" fill="currentColor" opacity="0.4"/>
+                  </g>
+                </g>
+              </svg>
+            </slot>
+          </template>
+          <template #icon="{ node, data }">
+            <slot name="icon" :node="node" :data="data">
+              <!-- 默认图标 -->
+              <svg v-if="!node.isLeaf" viewBox="0 0 1024 1024" width="16" height="16">
+                <path d="M384 384l256 256-256 256z" fill="currentColor" />
+              </svg>
+            </slot>
+          </template>
         </TreeNode>
       </DynamicScrollerItem>
     </DynamicScroller>

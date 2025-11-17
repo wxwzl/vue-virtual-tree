@@ -188,6 +188,67 @@
         <button @click="clearLazyLogs" class="btn btn-small">清空日志</button>
       </div>
     </div>
+
+    <div class="demo-section">
+      <h2>自定义loading效果</h2>
+      <div class="info-box">
+        <p><strong>说明：</strong>使用loading插槽自定义懒加载时的loading显示效果</p>
+        <ul>
+          <li>使用loading插槽可以完全自定义loading的UI</li>
+          <li>插槽接收node和data参数，可以根据不同节点显示不同效果</li>
+          <li>支持文本、动画、图标等多种自定义loading样式</li>
+        </ul>
+      </div>
+      <div class="tree-container">
+        <VirtualTree
+          :data="customLoadingTreeData"
+          :height="400"
+          lazy
+          :load="handleLazyLoad"
+        >
+          <template #loading="{ node, data }">
+            <div class="custom-loading">
+              <div class="loading-spinner"></div>
+              <span class="loading-text">正在加载 {{ data.label }}...</span>
+            </div>
+          </template>
+        </VirtualTree>
+      </div>
+      <div class="control-panel">
+        <button @click="resetCustomLoadingData" class="btn">重置自定义loading数据</button>
+      </div>
+    </div>
+
+    <div class="demo-section">
+      <h2>自定义节点图标</h2>
+      <div class="info-box">
+        <p><strong>说明：</strong>使用icon插槽自定义每个节点的图标显示</p>
+        <ul>
+          <li>根据节点类型显示不同的图标</li>
+          <li>支持展开状态的图标变化</li>
+          <li>插槽接收node和data参数，可以根据节点信息定制图标</li>
+        </ul>
+      </div>
+      <div class="tree-container">
+        <VirtualTree :data="iconTreeData" :height="400">
+          <template #icon="{ node, data }">
+            <div class="custom-icon">
+              <!-- 根据节点类型和展开状态显示不同图标 -->
+              <span v-if="node.isExpanded">📂</span>
+              <span v-else-if="data.type === 'folder'">📁</span>
+              <span v-else-if="data.type === 'image'">🖼️</span>
+              <span v-else-if="data.type === 'video'">🎥</span>
+              <span v-else-if="data.type === 'audio'">🎵</span>
+              <span v-else-if="data.type === 'document'">📄</span>
+              <span v-else>📄</span>
+            </div>
+          </template>
+        </VirtualTree>
+      </div>
+      <div class="control-panel">
+        <button @click="resetIconData" class="btn">重置图标数据</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -480,6 +541,112 @@ const resetLazyData = () => {
     }
   ]
   lazyLogs.value = []
+}
+
+// 自定义loading效果的数据
+const customLoadingTreeData = ref<TreeNodeData[]>([
+  {
+    id: 'custom-1',
+    label: '文件夹 A',
+    isLeaf: false,
+  },
+  {
+    id: 'custom-2',
+    label: '文件夹 B',
+    isLeaf: false,
+  },
+  {
+    id: 'custom-3',
+    label: '文件夹 C',
+    isLeaf: false,
+  }
+])
+
+// 重置自定义loading数据
+const resetCustomLoadingData = () => {
+  customLoadingTreeData.value = [
+    {
+      id: 'custom-1',
+      label: '文件夹 A',
+      isLeaf: false,
+    },
+    {
+      id: 'custom-2',
+      label: '文件夹 B',
+      isLeaf: false,
+    },
+    {
+      id: 'custom-3',
+      label: '文件夹 C',
+      isLeaf: false,
+    }
+  ]
+}
+
+// 自定义图标的数据
+const iconTreeData = ref<TreeNodeData[]>([
+  {
+    id: 'folder-1',
+    label: '我的文件',
+    type: 'folder',
+    isLeaf: false,
+    children: [
+      {
+        id: 'folder-1-1',
+        label: '图片',
+        type: 'folder',
+        isLeaf: false,
+        children: [
+          { id: 'file-1', label: '照片1.jpg', type: 'image', isLeaf: true },
+          { id: 'file-2', label: '照片2.png', type: 'image', isLeaf: true },
+          { id: 'file-3', label: '壁纸.gif', type: 'image', isLeaf: true }
+        ]
+      },
+      {
+        id: 'folder-1-2',
+        label: '视频',
+        type: 'folder',
+        isLeaf: false,
+        children: [
+          { id: 'file-4', label: '电影.mp4', type: 'video', isLeaf: true },
+          { id: 'file-5', label: '短片.avi', type: 'video', isLeaf: true }
+        ]
+      },
+      {
+        id: 'folder-1-3',
+        label: '音乐',
+        type: 'folder',
+        isLeaf: false,
+        children: [
+          { id: 'file-6', label: '歌曲1.mp3', type: 'audio', isLeaf: true },
+          { id: 'file-7', label: '歌曲2.flac', type: 'audio', isLeaf: true }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'folder-2',
+    label: '文档',
+    type: 'folder',
+    isLeaf: false,
+    children: [
+      { id: 'file-8', label: '报告.docx', type: 'document', isLeaf: true },
+      { id: 'file-9', label: '表格.xlsx', type: 'document', isLeaf: true },
+      { id: 'file-10', label: '演示.pptx', type: 'document', isLeaf: true }
+    ]
+  },
+  {
+    id: 'file-11',
+    label: 'README.md',
+    type: 'document',
+    isLeaf: true
+  }
+])
+
+// 重置图标数据
+const resetIconData = () => {
+  // 重新赋值来触发响应式更新
+  iconTreeData.value = [...iconTreeData.value]
 }
 
 // 重置展开状态
@@ -850,6 +1017,44 @@ h1 {
   color: #606266;
   font-size: 12px;
   font-style: italic;
+}
+
+/* 自定义loading效果样式 */
+.custom-loading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #409eff;
+  font-size: 12px;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e4e7ed;
+  border-top: 2px solid #409eff;
+  border-radius: 50%;
+  animation: custom-loading-spin 1s linear infinite;
+}
+
+.loading-text {
+  color: #909399;
+  font-style: italic;
+}
+
+@keyframes custom-loading-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 自定义图标样式 */
+.custom-icon {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
 }
 </style>
 
