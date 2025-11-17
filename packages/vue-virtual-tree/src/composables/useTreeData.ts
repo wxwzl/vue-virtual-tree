@@ -103,6 +103,22 @@ export function useTreeData(props: VirtualTreeProps) {
     updateFlatTree()
   }, { deep: true })
 
+  // 监听 defaultExpandedKeys 和 defaultExpandAll 变化
+  watch(
+    () => [props.defaultExpandedKeys, props.defaultExpandAll, props.data],
+    () => {
+      if (props.defaultExpandAll) {
+        // 获取所有节点的 key
+        const allKeys = getAllKeys(props.data, props.props)
+        expandedKeys.value = new Set(allKeys)
+      } else if (props.defaultExpandedKeys && props.defaultExpandedKeys.length > 0) {
+        expandedKeys.value = new Set(props.defaultExpandedKeys)
+      }
+      updateFlatTree()
+    },
+    { deep: true, immediate: false }
+  )
+
   // 可见节点（用于虚拟滚动）
   const visibleNodes = computed(() => {
     return flatTree.value.filter(node => node.isVisible)

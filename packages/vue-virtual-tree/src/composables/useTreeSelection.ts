@@ -1,7 +1,7 @@
-import { ref, computed, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import type { Ref } from 'vue'
 import type { VirtualTreeProps, FlatTreeNode, TreeNodeData } from '../types'
-import { getNodeId, getNodeChildren, traverseTree, isLeafNode } from '../utils/tree'
+import { getNodeId, getNodeChildren, isLeafNode } from '../utils/tree'
 
 /**
  * 树节点选择逻辑
@@ -39,24 +39,24 @@ export function useTreeSelection(
     }
   }
 
-  // 获取节点的所有子节点 key（只获取已展开的可见子节点）
+  // 获取节点的所有子节点 key（从原始数据递归获取，包括未展开的子节点）
   const getAllChildrenKeys = (nodeId: string | number): (string | number)[] => {
     const keys: (string | number)[] = []
-    const node = flatTree.value.find(n => n.id === nodeId)
-    if (!node) return keys
+    const nodeData = getNodeData(nodeId)
+    if (!nodeData) return keys
 
-    const traverse = (id: string | number) => {
-      const children = flatTree.value.filter(n => n.parentId === id && n.isVisible)
+    // 从原始数据递归获取所有子节点
+    const traverse = (data: TreeNodeData) => {
+      const children = getNodeChildren(data, props.props)
       children.forEach(child => {
-        keys.push(child.id)
-        // 只有当子节点展开时才递归获取其子节点
-        if (child.isExpanded) {
-          traverse(child.id)
-        }
+        const childId = getNodeId(child, props.props)
+        keys.push(childId)
+        // 递归获取子节点的子节点
+        traverse(child)
       })
     }
 
-    traverse(nodeId)
+    traverse(nodeData)
     return keys
   }
 
@@ -227,6 +227,29 @@ export function useTreeSelection(
   // 初始化
   initCheckedKeys()
   initCurrentNode()
+
+  // 监听 defaultCheckedKeys 和原始数据变化
+  watch(
+    () => [props.defaultCheckedKeys, props.data],
+    () => {
+      if (props.defaultCheckedKeys && props.defaultCheckedKeys.length > 0) {
+        checkedKeys.value = new Set(props.defaultCheckedKeys)
+        // 等待 flatTree 更新后再计算半选状态
+        if (!props.checkStrictly) {
+          // 使用 nextTick 确保 flatTree 已经更新
+          nextTick(() => {
+            if (flatTree.value.length > 0) {
+              updateHalfCheckedKeys()
+            }
+          })
+        }
+      } else if (props.defaultCheckedKeys && props.defaultCheckedKeys.length === 0) {
+        checkedKeys.value.clear()
+        halfCheckedKeys.value.clear()
+      }
+    },
+    { deep: true, immediate: false }
+  )
 
   // 监听 props.currentNodeKey 变化
   watch(
