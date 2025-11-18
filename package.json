@@ -7,9 +7,11 @@
     "prepare": "husky",
     "dev": "pnpm --filter playground dev",
     "build": "pnpm --filter vue-virtual-tree build",
+    "publish": "pnpm run build && pnpm --filter vue-virtual-tree publish",
     "build:playground": "pnpm --filter playground build",
     "type-check": "pnpm --filter vue-virtual-tree type-check",
-    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0"
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
+    "deploy:demo": "pnpm run build:playground && npx gh-pages -d playground/dist"
   },
   "keywords": [
     "vue",
@@ -18,6 +20,11 @@
     "virtual-scroll",
     "virtual-tree"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wxwzl/vue-virtual-tree.git"
+  },
+  "homepage": "https://wxwzl.github.io/vue-virtual-tree",
   "author": "wxwzl",
   "license": "MIT",
   "devDependencies": {

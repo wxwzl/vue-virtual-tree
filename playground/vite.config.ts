@@ -3,10 +3,11 @@ import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
 export default defineConfig({
+  base:"/vue-virtual-tree/",
   plugins: [vue()],
   resolve: {
     alias: {
-      'vue-virtual-tree': resolve(__dirname, '../packages/vue-virtual-tree/src')
+      '@wxwzl/vue-virtual-tree': resolve(__dirname, '../packages/vue-virtual-tree/src')
     }
   }
 })
