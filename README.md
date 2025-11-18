@@ -24,49 +24,54 @@ pnpm add vue-virtual-tree vue-virtual-scroller@next
 </template>
 
 <script setup lang="ts">
-import { VirtualTree } from 'vue-virtual-tree'
-import 'vue-virtual-tree/style'
+  import { VirtualTree } from "vue-virtual-tree";
+  import "vue-virtual-tree/style";
 
-const treeData = [
-  {
-    id: 1,
-    label: '节点 1',
-    children: [
-      { id: 2, label: '节点 1-1' },
-      { id: 3, label: '节点 1-2' }
-    ]
-  }
-]
+  const treeData = [
+    {
+      id: 1,
+      label: "节点 1",
+      children: [
+        { id: 2, label: "节点 1-1" },
+        { id: 3, label: "节点 1-2" },
+      ],
+    },
+  ];
 </script>
 ```
 
 ## 功能
 
 ### 基础功能
+
 - ✅ 树形结构展示
 - ✅ 节点展开/折叠
 - ✅ 虚拟滚动（支持大量数据）
 - ✅ 节点点击事件
 
 ### 选择功能
+
 - ✅ 单选模式
 - ✅ 多选模式（复选框）
 - ✅ 节点选中状态管理
 - ✅ 父子节点关联选择
 
 ### 数据功能
+
 - ✅ 懒加载节点
 - ✅ 节点过滤/搜索
 - ✅ 默认展开节点
 - ✅ 默认选中节点
 
 ### 交互功能
+
 - ✅ 自定义节点内容（插槽）
 - ✅ 自定义节点类名
 - ✅ 节点拖拽排序
 - ✅ 手风琴模式（同级节点互斥展开）
 
 ### 高级功能
+
 - ✅ 节点禁用
 - ✅ 节点图标自定义
 - ✅ 节点加载状态
@@ -77,7 +82,7 @@ const treeData = [
 ### Props
 
 | 参数 | 说明 | 类型 | 默认值 |
-|------|------|------|--------|
+| --- | --- | --- | --- |
 | data | 树形数据 | `TreeNodeData[]` | `[]` |
 | props | 数据字段映射配置 | `TreePropsConfig` | `{}` |
 | show-checkbox | 是否显示复选框 | `boolean` | `false` |
@@ -96,49 +101,50 @@ const treeData = [
 | allow-drag | 拖拽时判断节点是否允许拖拽 | `Function` | - |
 | item-size | 节点高度（固定高度时使用） | `number` | `32` |
 | height | 虚拟滚动容器高度 | `number \| string` | `'100%'` |
+| indent | 每一级节点的缩进值，支持数字或函数（函数入参为 `node: FlatTreeNode`） | `number \| (node) => number` | `18` |
 
 ### Events
 
-| 事件名 | 说明 | 参数 |
-|--------|------|------|
-| node-click | 节点点击 | `(data, node, event)` |
-| node-check | 节点复选框点击 | `(data, checked)` |
-| node-expand | 节点展开 | `(data, node)` |
-| node-collapse | 节点折叠 | `(data, node)` |
-| current-change | 当前选中节点变化 | `(data, node)` |
-| node-drag-start | 拖拽开始 | `(node, event)` |
-| node-drag-enter | 拖拽进入 | `(draggingNode, event, node)` |
-| node-drag-leave | 拖拽离开 | `(draggingNode, event, node)` |
-| node-drag-over | 拖拽悬停 | `(draggingNode, event, node)` |
-| node-drag-end | 拖拽结束 | `(draggingNode, event)` |
-| node-drop | 拖拽放置 | `(draggingNode, dropNode, dropType, event)` |
+| 事件名          | 说明             | 参数                                        |
+| --------------- | ---------------- | ------------------------------------------- |
+| node-click      | 节点点击         | `(data, node, event)`                       |
+| node-check      | 节点复选框点击   | `(data, checked)`                           |
+| node-expand     | 节点展开         | `(data, node)`                              |
+| node-collapse   | 节点折叠         | `(data, node)`                              |
+| current-change  | 当前选中节点变化 | `(data, node)`                              |
+| node-drag-start | 拖拽开始         | `(node, event)`                             |
+| node-drag-enter | 拖拽进入         | `(draggingNode, event, node)`               |
+| node-drag-leave | 拖拽离开         | `(draggingNode, event, node)`               |
+| node-drag-over  | 拖拽悬停         | `(draggingNode, event, node)`               |
+| node-drag-end   | 拖拽结束         | `(draggingNode, event)`                     |
+| node-drop       | 拖拽放置         | `(draggingNode, dropNode, dropType, event)` |
 
 ### Methods
 
-| 方法名 | 说明 | 参数 |
-|--------|------|------|
-| getCheckedNodes | 获取选中的节点 | `(leafOnly?, includeHalfChecked?)` |
-| getCheckedKeys | 获取选中的节点 key | `(leafOnly?)` |
-| setCheckedNodes | 设置选中的节点 | `(nodes, leafOnly?)` |
-| setCheckedKeys | 设置选中的节点 key | `(keys, leafOnly?)` |
-| getCurrentNode | 获取当前选中节点 | - |
-| setCurrentNode | 设置当前选中节点 | `(node)` |
-| getCurrentKey | 获取当前选中节点的 key | - |
-| setCurrentKey | 设置当前选中节点的 key | `(key)` |
-| filter | 过滤节点 | `(value)` |
-| getNode | 根据 key 获取节点 | `(key)` |
-| remove | 删除节点 | `(key)` |
-| append | 追加节点 | `(data, parentKey?)` |
-| insertBefore | 在节点前插入 | `(data, key)` |
-| insertAfter | 在节点后插入 | `(data, key)` |
-| updateKeyChildren | 更新节点的子节点（懒加载） | `(key, data)` |
+| 方法名            | 说明                       | 参数                               |
+| ----------------- | -------------------------- | ---------------------------------- |
+| getCheckedNodes   | 获取选中的节点             | `(leafOnly?, includeHalfChecked?)` |
+| getCheckedKeys    | 获取选中的节点 key         | `(leafOnly?)`                      |
+| setCheckedNodes   | 设置选中的节点             | `(nodes, leafOnly?)`               |
+| setCheckedKeys    | 设置选中的节点 key         | `(keys, leafOnly?)`                |
+| getCurrentNode    | 获取当前选中节点           | -                                  |
+| setCurrentNode    | 设置当前选中节点           | `(node)`                           |
+| getCurrentKey     | 获取当前选中节点的 key     | -                                  |
+| setCurrentKey     | 设置当前选中节点的 key     | `(key)`                            |
+| filter            | 过滤节点                   | `(value)`                          |
+| getNode           | 根据 key 获取节点          | `(key)`                            |
+| remove            | 删除节点                   | `(key)`                            |
+| append            | 追加节点                   | `(data, parentKey?)`               |
+| insertBefore      | 在节点前插入               | `(data, key)`                      |
+| insertAfter       | 在节点后插入               | `(data, key)`                      |
+| updateKeyChildren | 更新节点的子节点（懒加载） | `(key, data)`                      |
 
 ### Slots
 
-| 插槽名 | 说明 | 参数 |
-|--------|------|------|
+| 插槽名  | 说明           | 参数             |
+| ------- | -------------- | ---------------- |
 | default | 自定义节点内容 | `{ node, data }` |
-| empty | 空状态内容 | - |
+| empty   | 空状态内容     | -                |
 
 ## 开发
 
@@ -164,4 +170,3 @@ pnpm build
 ## 许可证
 
 MIT
-

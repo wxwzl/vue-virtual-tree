@@ -101,6 +101,8 @@ export interface VirtualTreeProps {
   itemSize?: number
   /** 虚拟滚动容器高度 */
   height?: number | string
+  /** 每一层级的缩进距离 */
+  indent?: number | ((node: FlatTreeNode) => number)
 }
 
 /**

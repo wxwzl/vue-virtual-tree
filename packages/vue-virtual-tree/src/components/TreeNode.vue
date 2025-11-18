@@ -7,7 +7,7 @@
     'is-loading': node.isLoading,
     'is-dragging': isDragging,
     [`drop-${dropType}`]: dropType
-  }" :style="{ paddingLeft: `${node.level * 18}px` }" :draggable="draggable && !node.isDisabled"
+  }" :style="{ paddingLeft: `${node.level * indent}px` }" :draggable="draggable && !node.isDisabled"
     @dragstart="handleDragStart" @dragenter="handleDragEnter" @dragleave="handleDragLeave" @dragover="handleDragOver"
     @dragend="handleDragEnd" @drop="handleDrop">
     <div class="vue-virtual-tree-node__content" @click="handleClick">
@@ -66,6 +66,7 @@ interface TreeNodeProps {
   expandOnClickNode?: boolean
   draggable?: boolean
   dropType?: 'prev' | 'inner' | 'next' | null
+  indent?: number | ((node: FlatTreeNode) => number)
 }
 
 const props = defineProps<TreeNodeProps>()
@@ -87,6 +88,17 @@ const isDragging = ref(false)
 
 const label = computed(() => getNodeLabel(props.node.data, props.props))
 const isLeaf = computed(() => isLeafNode(props.node.data, props.props))
+const indent = computed(() => {
+  const indentProp = props.indent
+  if (typeof indentProp === 'function') {
+    try {
+      return indentProp(props.node) ?? 18
+    } catch {
+      return 18
+    }
+  }
+  return indentProp ?? 18
+})
 
 const handleClick = (event: MouseEvent) => {
   if (props.node.isDisabled) return

@@ -4,7 +4,7 @@
       class="vue-virtual-tree__scroller" v-slot="{ item, index, active }">
       <DynamicScrollerItem :item="item" :active="active" :data-index="index" class="vue-virtual-tree__item">
         <TreeNode :ref="(el) => setNodeRef(item.id, el)" :node="item" :key="item.id" :props="props.props" :show-checkbox="showCheckbox"
-          :expand-on-click-node="expandOnClickNode" :draggable="draggable"
+          :expand-on-click-node="expandOnClickNode" :draggable="draggable" :indent="props.indent"
           :drop-type="dragState.dropNode?.value?.id === item.id ? dragState.dropType?.value ?? null : null"
           @node-click="handleNodeClick" @node-expand="handleNodeExpand" @node-collapse="handleNodeCollapse"
           @node-check="handleNodeCheck" @drag-start="handleDragStart" @drag-enter="handleDragEnter"
@@ -78,7 +78,8 @@ const props = withDefaults(defineProps<VirtualTreeProps>(), {
   accordion: false,
   draggable: false,
   itemSize: 32,
-  height: '100%'
+  height: '100%',
+  indent: 18
 })
 
 const emit = defineEmits<VirtualTreeEmits>()
