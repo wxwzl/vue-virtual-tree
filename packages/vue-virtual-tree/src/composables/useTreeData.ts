@@ -9,10 +9,6 @@ export function useTreeData(props: VirtualTreeProps) {
   const expandedKeys = ref<Set<string | number>>(new Set())
   const flatTree = ref<FlatTreeNode[]>([])
   const rawData = ref<TreeNodeData[]>(props.data)
-
-  // 节点状态缓存，用于保存 isLoading 和 isLoaded 状态
-  const nodeStateCache = ref<Map<string | number, { isLoading?: boolean; isLoaded?: boolean }>>(new Map())
-
   // 防抖更新标记
   let updatePending = false
 
@@ -49,9 +45,6 @@ export function useTreeData(props: VirtualTreeProps) {
       const isExpanded = expandedKeys.value.has(id)
       const isLeaf = isLeafNode(node, config)
 
-      // 从缓存中恢复状态
-      const cachedState = nodeStateCache.value.get(id) || {}
-
       const flatNode: FlatTreeNode = {
         id,
         data: node,
@@ -63,8 +56,8 @@ export function useTreeData(props: VirtualTreeProps) {
         isVisible: visible,
         isDisabled: isNodeDisabled(node, config),
         isLeaf: isLeaf,
-        isLoading: cachedState.isLoading || false,
-        isLoaded: cachedState.isLoaded || false,
+        isLoading: false,
+        isLoaded: false,
         rawChildren: children.length > 0 ? children : undefined
       }
       result.push(flatNode);
@@ -96,9 +89,6 @@ export function useTreeData(props: VirtualTreeProps) {
   }
 
   const insertFlatTree = (node: FlatTreeNode, children: TreeNodeData[]) => {
-    const config = props.props || {}
-    const childrenKey = config.children || 'children'
-    node.data[childrenKey] = children
     let container: FlatTreeNode[] = [];
     let result = flattenTree(children, node.level + 1, node, node.index + 1, true, container, props.props);
     node.children = result;
@@ -124,12 +114,6 @@ export function useTreeData(props: VirtualTreeProps) {
   // 根据 key 获取扁平节点
   const getFlatNode = (id: string | number): FlatTreeNode | null => {
     return flatTree.value.find(n => n.id === id) || null
-  }
-
-  // 设置节点状态
-  const setNodeState = (id: string | number, state: { isLoading?: boolean; isLoaded?: boolean }) => {
-    const currentState = nodeStateCache.value.get(id) || {}
-    nodeStateCache.value.set(id, { ...currentState, ...state })
   }
 
   // 只在数据变化时重新生成flatTree
@@ -172,7 +156,6 @@ export function useTreeData(props: VirtualTreeProps) {
     getNodeData,
     getFlatNode,
     regenerateFlatTree,
-    setNodeState,
     flattenTree,
     insertFlatTree
   }

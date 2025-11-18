@@ -1,10 +1,11 @@
 <template>
   <div class="vue-virtual-tree" :style="{ height: typeof height === 'number' ? `${height}px` : height }">
-    <DynamicScroller ref="dynamicScrollerRef" v-if="visibleNodes.length > 0" :items="visibleNodes" :min-item-size="itemSize || 32"
-      class="vue-virtual-tree__scroller" v-slot="{ item, index, active }">
+    <DynamicScroller ref="dynamicScrollerRef" v-if="visibleNodes.length > 0" :items="visibleNodes"
+      :min-item-size="itemSize || 32" class="vue-virtual-tree__scroller" v-slot="{ item, index, active }">
       <DynamicScrollerItem :item="item" :active="active" :data-index="index" class="vue-virtual-tree__item">
-        <TreeNode :ref="(el) => setNodeRef(item.id, el)" :node="item" :key="item.id" :props="props.props" :show-checkbox="showCheckbox"
-          :expand-on-click-node="expandOnClickNode" :draggable="draggable" :indent="props.indent"
+        <TreeNode :ref="(el) => setNodeRef(item.id, el)" :node="item" :key="item.id" :props="props.props"
+          :show-checkbox="showCheckbox" :expand-on-click-node="expandOnClickNode" :draggable="draggable"
+          :indent="props.indent"
           :drop-type="dragState.dropNode?.value?.id === item.id ? dragState.dropType?.value ?? null : null"
           @node-click="handleNodeClick" @node-expand="handleNodeExpand" @node-collapse="handleNodeCollapse"
           @node-check="handleNodeCheck" @drag-start="handleDragStart" @drag-enter="handleDragEnter"
@@ -104,7 +105,6 @@ const {
   getNodeData,
   getFlatNode,
   regenerateFlatTree,
-  setNodeState,
   insertFlatTree
 } = useTreeData(props)
 
@@ -160,16 +160,19 @@ const handleNodeExpand = async (node: FlatTreeNode) => {
   // 懒加载
   if (props.lazy && !node.isLoaded && props.load) {
     // 设置loading状态到缓存和节点
-    setNodeState(node.id, { isLoading: true })
     node.isLoading = true
-
+    node.isLoaded = false
+    function resolveCallback() {
+      node.isLoading = false
+      node.isLoaded = true
+    }
     try {
       await new Promise<void>((resolve, reject) => {
         let resolved = false
         const timeout = setTimeout(() => {
           if (!resolved) {
             resolved = true
-            setNodeState(node.id, { isLoading: false })
+            resolveCallback()
             console.warn('Lazy load timeout: load function did not call resolve callback')
             reject(new Error('Lazy load timeout'))
           }
@@ -179,17 +182,16 @@ const handleNodeExpand = async (node: FlatTreeNode) => {
           if (resolved) return
           resolved = true
           clearTimeout(timeout)
-          setNodeState(node.id, { isLoading: false, isLoaded: true });
           // 更新节点的子节点
           if (children && children.length > 0) {
             insertFlatTree(node, children);
           }
+          resolveCallback()
           resolve()
         })
       })
     } catch (error) {
-      setNodeState(node.id, { isLoading: false });
-      node.isLoading = false
+      resolveCallback();
       console.error('Lazy load error:', error)
     }
   }
