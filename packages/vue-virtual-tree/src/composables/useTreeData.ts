@@ -1,6 +1,10 @@
-import { ref, computed, watch, nextTick, unref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { TreeNodeData, FlatTreeNode, TreePropsConfig, VirtualTreeProps } from '../types'
 import { getNodeId, getNodeChildren, isNodeDisabled, isLeafNode, getAllKeys } from '../utils/tree'
+import { useTreeSelection } from '../composables/useTreeSelection'
+import { useTreeExpand } from './useTreeExpand'
+import { useTreeFilter } from './useTreeFilter'
+import { useTreeDrag } from './useTreeDrag'
 
 /**
  * 扁平化树形数据
@@ -9,6 +13,43 @@ export function useTreeData(props: VirtualTreeProps) {
   const expandedKeys = ref<Set<string | number>>(new Set())
   const flatTree = ref<FlatTreeNode[]>([])
   const rawData = ref<TreeNodeData[]>(props.data)
+
+  // 根据 key 获取节点数据
+  const getNodeData = (id: string | number): TreeNodeData | null => {
+    const flatNode = flatTree.value.find(n => n.id === id)
+    return flatNode ? flatNode.data : null
+  }
+
+  // 根据 key 获取扁平节点
+  const getFlatNode = (id: string | number): FlatTreeNode | null => {
+    return flatTree.value.find(n => n.id === id) || null
+  }
+
+
+  // 选择逻辑
+  const {
+    checkedKeys,
+    halfCheckedKeys,
+    selectedKey,
+    currentNode,
+    toggleNodeChecked,
+    setCurrentNode: setSelectionCurrentNode,
+    getCheckedNodes,
+    getCheckedKeys,
+    setCheckedNodes,
+    setCheckedKeys,
+    initNodeChecked
+  } = useTreeSelection(props, flatTree, getNodeData)
+
+  // 展开/折叠逻辑
+  const { expandNode, collapseNode } = useTreeExpand(props, flatTree, expandedKeys)
+  
+  // 过滤逻辑
+  const { filter } = useTreeFilter(props, flatTree, expandedKeys)
+
+  // 拖拽逻辑
+  const dragState = useTreeDrag(props, getNodeData)
+
   // 防抖更新标记
   let updatePending = false
 
@@ -58,6 +99,7 @@ export function useTreeData(props: VirtualTreeProps) {
         isLeaf: isLeaf,
         isLoading: false,
         isLoaded: false,
+        isChecked: false,
         rawChildren: children.length > 0 ? children : undefined
       }
       result.push(flatNode);
@@ -76,16 +118,12 @@ export function useTreeData(props: VirtualTreeProps) {
   // 更新扁平化数据 - 优化大数据量的性能
   const updateFlatTree = () => {
     if (updatePending) return // 如果已经有更新在等待中，跳过
-
     updatePending = true
-
     // 使用nextTick合并多次调用，避免频繁重新计算
-    nextTick(() => {
-      let flatTreeResult: FlatTreeNode[] = [];
-      flattenTree(rawData.value, 0, null, 0, true, flatTreeResult, props.props);
-      flatTree.value = flatTreeResult;
-      updatePending = false
-    })
+    let flatTreeResult: FlatTreeNode[] = [];
+    flattenTree(rawData.value, 0, null, 0, true, flatTreeResult, props.props);
+    flatTree.value = flatTreeResult;
+    updatePending = false
   }
 
   const insertFlatTree = (node: FlatTreeNode, children: TreeNodeData[]) => {
@@ -97,23 +135,6 @@ export function useTreeData(props: VirtualTreeProps) {
       const child = flatTree.value[i]
       child.index = i
     }
-  }
-
-  // 更新原始数据
-  const updateRawData = (data: TreeNodeData[]) => {
-    rawData.value = data
-    updateFlatTree()
-  }
-
-  // 根据 key 获取节点数据
-  const getNodeData = (id: string | number): TreeNodeData | null => {
-    const flatNode = flatTree.value.find(n => n.id === id)
-    return flatNode ? flatNode.data : null
-  }
-
-  // 根据 key 获取扁平节点
-  const getFlatNode = (id: string | number): FlatTreeNode | null => {
-    return flatTree.value.find(n => n.id === id) || null
   }
 
   // 只在数据变化时重新生成flatTree
@@ -135,10 +156,20 @@ export function useTreeData(props: VirtualTreeProps) {
     { deep: true, immediate: false }
   )
 
+  // 监听 defaultCheckedKeys 变化时重新生成
+  watch(
+    () => props.defaultCheckedKeys,
+    () => {
+      regenerateFlatTree()
+    },
+    { deep: true, immediate: false }
+  )
+
   // 重新生成flatTree的函数（只在必要时调用）
   const regenerateFlatTree = () => {
     initExpandedKeys();
     updateFlatTree();
+    initNodeChecked();
   }
 
   // 可见节点（用于虚拟滚动）
@@ -151,13 +182,26 @@ export function useTreeData(props: VirtualTreeProps) {
     flatTree,
     visibleNodes,
     expandedKeys,
+    checkedKeys,
     rawData,
-    updateRawData,
     getNodeData,
     getFlatNode,
     regenerateFlatTree,
     flattenTree,
-    insertFlatTree
+    insertFlatTree,
+    halfCheckedKeys,
+    selectedKey,
+    currentNode,
+    toggleNodeChecked,
+    setCurrentNode: setSelectionCurrentNode,
+    getCheckedNodes,
+    getCheckedKeys,
+    setCheckedNodes,
+    setCheckedKeys,
+    expandNode,
+    collapseNode,
+    dragState,
+    filter
   }
 }
 

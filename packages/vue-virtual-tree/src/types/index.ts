@@ -1,5 +1,3 @@
-import type { VNode } from 'vue'
-
 /**
  * 树节点数据接口
  */

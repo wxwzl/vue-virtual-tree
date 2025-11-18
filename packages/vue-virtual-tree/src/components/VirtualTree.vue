@@ -57,11 +57,7 @@ import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import TreeNode from './TreeNode.vue'
 import type { VirtualTreeProps, VirtualTreeEmits, VirtualTreeMethods, FlatTreeNode, TreeNodeData, TreeNodeInstance } from '../types'
 import { useTreeData } from '../composables/useTreeData'
-import { useTreeExpand } from '../composables/useTreeExpand'
-import { useTreeSelection } from '../composables/useTreeSelection'
-import { useTreeFilter } from '../composables/useTreeFilter'
-import { useTreeDrag } from '../composables/useTreeDrag'
-import { getNodeId, findNodeByKey, getNodeChildren, isLeafNode, getNodeLabel, getAllKeys } from '../utils/tree'
+import { getNodeId, findNodeByKey, getNodeChildren, isLeafNode, getNodeLabel } from '../utils/tree'
 
 
 defineOptions({
@@ -102,21 +98,11 @@ const setNodeRef = (id: string | number, el: any) => {
 const {
   flatTree,
   visibleNodes,
-  expandedKeys,
   rawData,
   getNodeData,
   getFlatNode,
   regenerateFlatTree,
-  insertFlatTree
-} = useTreeData(props)
-
-// 展开/折叠逻辑
-const { expandNode, collapseNode } = useTreeExpand(props, flatTree, expandedKeys)
-
-const dynamicScrollerRef = ref<InstanceType<typeof DynamicScroller> | null>(null)
-
-// 选择逻辑
-const {
+  insertFlatTree,
   checkedKeys,
   halfCheckedKeys,
   selectedKey,
@@ -127,22 +113,21 @@ const {
   getCheckedKeys,
   setCheckedNodes,
   setCheckedKeys,
-} = useTreeSelection(props, flatTree, getNodeData)
+  expandNode,
+  collapseNode,
+  dragState,
+  filter: filterNodes,
+} = useTreeData(props)
 
-// 过滤逻辑
-const { filter: filterNodes } = useTreeFilter(props, flatTree, expandedKeys)
+const dynamicScrollerRef = ref<InstanceType<typeof DynamicScroller> | null>(null)
 
-// 拖拽逻辑
-const dragState = useTreeDrag(props, flatTree, getNodeData)
-
-// 选中状态由useTreeSelection管理，这里不需要额外的同步逻辑
 
 // 更新节点的选中状态到扁平树
-watch(selectedKey, () => {
-  flatTree.value.forEach(node => {
-    // 可以添加当前选中节点的样式类
-  })
-})
+// watch(selectedKey, () => {
+//   flatTree.value.forEach(node => {
+//     // 可以添加当前选中节点的样式类
+//   })
+// })
 
 // 节点点击
 const handleNodeClick = (node: FlatTreeNode, event: MouseEvent) => {
@@ -169,21 +154,8 @@ const handleNodeExpand = async (node: FlatTreeNode) => {
       node.isLoaded = true
     }
     try {
-      await new Promise<void>((resolve, reject) => {
-        let resolved = false
-        const timeout = setTimeout(() => {
-          if (!resolved) {
-            resolved = true
-            resolveCallback()
-            console.warn('Lazy load timeout: load function did not call resolve callback')
-            reject(new Error('Lazy load timeout'))
-          }
-        }, 30000) // 30秒超时
-
+      await new Promise<void>((resolve) => {
         props.load!(node.data, (children: TreeNodeData[]) => {
-          if (resolved) return
-          resolved = true
-          clearTimeout(timeout)
           // 更新节点的子节点
           if (children && children.length > 0) {
             insertFlatTree(node, children);

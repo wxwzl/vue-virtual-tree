@@ -1,5 +1,4 @@
 import { ref } from 'vue'
-import type { Ref } from 'vue'
 import type { VirtualTreeProps, FlatTreeNode, TreeNodeData } from '../types'
 import { getNodeId, getNodeChildren } from '../utils/tree'
 
@@ -13,7 +12,6 @@ export type DropType = 'prev' | 'inner' | 'next'
  */
 export function useTreeDrag(
   props: VirtualTreeProps,
-  flatTree: Ref<FlatTreeNode[]>,
   getNodeData: (id: string | number) => TreeNodeData | null
 ) {
   const draggingNode = ref<FlatTreeNode | null>(null)
@@ -21,7 +19,7 @@ export function useTreeDrag(
   const dropType = ref<DropType | null>(null)
 
   // 默认允许拖拽
-  const defaultAllowDrag = (node: TreeNodeData): boolean => {
+  const defaultAllowDrag = (_node: TreeNodeData): boolean => {
     return true
   }
 
@@ -144,14 +142,14 @@ export function useTreeDrag(
   }
 
   // 拖拽结束
-  const handleDragEnd = (node: FlatTreeNode, event: DragEvent) => {
+  const handleDragEnd = (_node: FlatTreeNode, _event: DragEvent) => {
     draggingNode.value = null
     dropNode.value = null
     dropType.value = null
   }
 
   // 放置
-  const handleDrop = (node: FlatTreeNode, event: DragEvent) => {
+  const handleDrop = (node: FlatTreeNode, _event: DragEvent) => {
     if (!draggingNode.value || !dropNode.value || dropType.value === null) {
       return
     }

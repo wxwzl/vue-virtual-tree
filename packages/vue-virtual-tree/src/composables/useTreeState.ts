@@ -1,5 +1,5 @@
-import { ref, computed } from 'vue'
-import type { TreeNodeData, FlatTreeNode } from '../types'
+import { ref } from 'vue'
+import type { TreeNodeData } from '../types'
 
 /**
  * 树组件状态管理

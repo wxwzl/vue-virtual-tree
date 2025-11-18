@@ -1,4 +1,4 @@
-import { ref, watch, nextTick, computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 import type { Ref } from 'vue'
 import type { VirtualTreeProps, FlatTreeNode, TreeNodeData } from '../types'
 import { getNodeId, getNodeChildren, isLeafNode } from '../utils/tree'
@@ -37,9 +37,16 @@ export function useTreeSelection(
   // 当前选中的节点数据
   const currentNode = ref<TreeNodeData | null>(null)
 
-  // 初始化选中的节点
-  const initCheckedKeys = () => {
-    if (props.defaultCheckedKeys && props.defaultCheckedKeys.length > 0) {
+  // 初始化选中的节点（处理父子关联和半选状态）
+  const initNodeChecked = () => {
+    // 先清除所有节点的选中状态和半选状态
+    flatTree.value.forEach(node => {
+      node.isChecked = false
+      node.isIndeterminate = false
+    })
+
+     // 如果有默认选中的节点，设置它们并处理父子关联
+     if (props.defaultCheckedKeys && props.defaultCheckedKeys.length > 0) {
       props.defaultCheckedKeys.forEach(key => {
         const node = flatTree.value.find(n => n.id === key)
         if (node) {
@@ -79,23 +86,6 @@ export function useTreeSelection(
     return keys
   }
 
-  // 获取节点的所有父节点 key
-  const getAllParentKeys = (nodeId: string | number): (string | number)[] => {
-    const keys: (string | number)[] = []
-    let currentId: string | number | null = nodeId
-
-    while (currentId !== null) {
-      const node = flatTree.value.find(n => n.id === currentId)
-      if (node && node.parentId !== null) {
-        keys.push(node.parentId)
-        currentId = node.parentId
-      } else {
-        break
-      }
-    }
-
-    return keys
-  }
 
   // 更新半选状态
   const updateHalfCheckedKeys = () => {
@@ -261,7 +251,6 @@ export function useTreeSelection(
   }
 
   // 初始化
-  initCheckedKeys()
   initCurrentNode()
 
   // 选中状态现在直接在flatTree中管理，不需要额外的监听器
@@ -281,6 +270,7 @@ export function useTreeSelection(
     halfCheckedKeys,
     selectedKey,
     currentNode,
+    initNodeChecked,
     setNodeChecked,
     toggleNodeChecked,
     setCurrentNode,

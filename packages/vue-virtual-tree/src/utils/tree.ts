@@ -1,4 +1,4 @@
-import type { TreeNodeData, FlatTreeNode, TreePropsConfig } from '../types'
+import type { TreeNodeData, TreePropsConfig } from '../types'
 
 /**
  * 默认字段映射配置
