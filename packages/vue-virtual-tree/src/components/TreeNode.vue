@@ -16,29 +16,10 @@
         <!-- 图标区域 -->
         <span v-if="node.isLoading">
           <slot name="loading" :node="node" :data="node.data">
-            <!-- 默认loading图标 -->
-            <svg class="vue-virtual-tree-node__loading-icon" viewBox="0 0 24 24" width="16" height="16">
-              <g transform="translate(12,12)">
-                <!-- 轨道圆环 -->
-                <circle cx="0" cy="0" r="8" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2" />
-                <!-- 旋转的3个点 -->
-                <g class="vue-virtual-tree-loading-dots">
-                  <circle cx="0" cy="-8" r="2" fill="currentColor" />
-                  <circle cx="6.928" cy="-4" r="2" fill="currentColor" opacity="0.7" />
-                  <circle cx="6.928" cy="4" r="2" fill="currentColor" opacity="0.4" />
-                </g>
-              </g>
-            </svg>
           </slot>
         </span>
 
         <slot v-else name="icon" :node="node" :data="node.data">
-          <span class="default-icon">
-            <!-- 默认图标 -->
-            <svg v-if="!node.isLeaf" viewBox="0 0 1024 1024" width="16" height="16">
-              <path d="M384 384l256 256-256 256z" fill="currentColor" />
-            </svg>
-          </span>
         </slot>
       </span>
       <span v-if="showCheckbox" class="vue-virtual-tree-node__checkbox">
@@ -160,87 +141,91 @@ const handleDrop = (event: DragEvent) => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .vue-virtual-tree-node {
   position: relative;
   user-select: none;
-}
 
-.vue-virtual-tree-node__content {
-  display: flex;
-  align-items: center;
-  height: 32px;
-  line-height: 32px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
+  &__content {
+    display: flex;
+    align-items: center;
+    height: 32px;
+    line-height: 32px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    padding-right: 8px;
 
-.vue-virtual-tree-node__content:hover {
-  background-color: #f5f7fa;
-}
+    &:hover {
+      background-color: #f5f7fa;
+    }
+  }
 
-.vue-virtual-tree-node.is-disabled .vue-virtual-tree-node__content {
-  cursor: not-allowed;
-  color: #c0c4cc;
-}
+  &.is-disabled {
+    .vue-virtual-tree-node__content {
+      cursor: not-allowed;
+      color: #c0c4cc;
+    }
+  }
 
-.vue-virtual-tree-node__expand-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  margin-right: 4px;
-  transition: transform 0.2s;
-  color: #606266;
-}
+  &__expand-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin-right: 4px;
+    transition: transform 0.2s;
+    color: #606266;
+    flex-shrink: 0;
 
-.vue-virtual-tree-node__expand-icon.is-leaf {
-  visibility: hidden;
-}
+    &.is-leaf {
+      visibility: hidden;
+    }
+  }
+  &__checkbox {
+    margin-right: 8px;
+    flex-shrink: 0;
 
-.vue-virtual-tree-node.is-expanded .vue-virtual-tree-node__expand-icon .default-icon {
-  transform: rotate(90deg);
-}
+    input[type='checkbox'] {
+      cursor: pointer;
+    }
+  }
 
-.vue-virtual-tree-node__checkbox {
-  margin-right: 8px;
-}
+  &__label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
-.vue-virtual-tree-node__label {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+  &.is-dragging {
+    opacity: 0.5;
+  }
 
-.vue-virtual-tree-node.is-dragging {
-  opacity: 0.5;
-}
+  &.drop-prev::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #409eff;
+    z-index: 1;
+  }
 
-.vue-virtual-tree-node.drop-prev::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background-color: #409eff;
-  z-index: 1;
-}
+  &.drop-next::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #409eff;
+    z-index: 1;
+  }
 
-.vue-virtual-tree-node.drop-next::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background-color: #409eff;
-  z-index: 1;
-}
-
-.vue-virtual-tree-node.drop-inner {
-  background-color: #ecf5ff;
+  &.drop-inner {
+    background-color: #ecf5ff;
+  }
 }
 </style>

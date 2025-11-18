@@ -33,9 +33,11 @@
           <template #icon="{ node, data }">
             <slot name="icon" :node="node" :data="data">
               <!-- 默认图标 -->
-              <svg v-if="!node.isLeaf" viewBox="0 0 1024 1024" width="16" height="16">
-                <path d="M384 384l256 256-256 256z" fill="currentColor" />
-              </svg>
+              <span class="default-icon">
+                <svg v-if="!node.isLeaf" viewBox="0 0 1024 1024" width="16" height="16">
+                  <path d="M384 384l256 256-256 256z" fill="currentColor" />
+                </svg>
+              </span>
             </slot>
           </template>
         </TreeNode>
@@ -60,7 +62,7 @@ import { useTreeSelection } from '../composables/useTreeSelection'
 import { useTreeFilter } from '../composables/useTreeFilter'
 import { useTreeDrag } from '../composables/useTreeDrag'
 import { getNodeId, findNodeByKey, getNodeChildren, isLeafNode, getNodeLabel, getAllKeys } from '../utils/tree'
-import '../style/index.scss'
+
 
 defineOptions({
   name: 'VirtualTree'
@@ -519,14 +521,21 @@ const methods: VirtualTreeMethods = {
 defineExpose(methods)
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .vue-virtual-tree {
   width: 100%;
-  overflow: hidden;
-}
-
-.vue-virtual-tree__scroller {
   height: 100%;
+  overflow: hidden;
+  font-size: 14px;
+  color: #606266;
+
+  &__scroller {
+    height: 100%;
+  }
+
+  &__item {
+    width: 100%;
+  }
 }
 
 .vue-virtual-tree__empty {
@@ -536,5 +545,45 @@ defineExpose(methods)
   height: 100%;
   color: #909399;
   font-size: 14px;
+}
+
+.vue-virtual-tree-node {
+  &.is-expanded .vue-virtual-tree-node__expand-icon .default-icon {
+    transform: rotate(90deg);
+  }
+
+  &.is-loading {
+    .vue-virtual-tree-node__expand-icon {
+      color: #409eff;
+    }
+  }
+
+  &__loading-icon {
+    animation: vue-virtual-tree-loading-rotate 1.5s linear infinite;
+  }
+
+  &__loading-dots {
+    animation: vue-virtual-tree-loading-dots-rotate 1.5s linear infinite;
+  }
+
+  @keyframes vue-virtual-tree-loading-rotate {
+    0% {
+      transform: rotate(0deg);
+    }
+
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes vue-virtual-tree-loading-dots-rotate {
+    0% {
+      transform: rotate(0deg);
+    }
+
+    100% {
+      transform: rotate(360deg);
+    }
+  }
 }
 </style>
