@@ -76,8 +76,8 @@ export function useTreeData(props: VirtualTreeProps) {
     startIndex: number = 0,
     visible: boolean = true,
     config?: TreePropsConfig
-  ): { nodes: FlatTreeNode[], flatNodes: FlatTreeNode[] } => {
-    flatNodeMap.value.clear();
+  ): { nodes: FlatTreeNode[], flatNodes: FlatTreeNode[], nodeMap: Map<string | number, FlatTreeNode> } => {
+    const map = new Map<string | number, FlatTreeNode>()
     function genenrateFlatNodes(nodes: TreeNodeData[],
       level: number = 0,
       parentNode: FlatTreeNode | null = null,
@@ -117,7 +117,7 @@ export function useTreeData(props: VirtualTreeProps) {
           const childNodes = genenrateFlatNodes(children, level + 1, flatNode, index, isExpanded && visible, container, config)
           flatNode.children = childNodes
         }
-        flatNodeMap.value.set(id, flatNode);
+        map.set(id, flatNode);
       }
 
       return result
@@ -125,7 +125,7 @@ export function useTreeData(props: VirtualTreeProps) {
 
     const container: FlatTreeNode[] = [];
     const result = genenrateFlatNodes(nodes, level, parentNode, startIndex, visible, container, config)
-    return { nodes: result, flatNodes: container };
+    return { nodes: result, flatNodes: container, nodeMap: map };
   }
 
   // 更新扁平化数据 - 优化大数据量的性能
@@ -133,8 +133,9 @@ export function useTreeData(props: VirtualTreeProps) {
     if (updatePending) return // 如果已经有更新在等待中，跳过
     updatePending = true
     // 使用nextTick合并多次调用，避免频繁重新计算
-    const { flatNodes } = flattenTree(rawData.value, 0, null, 0, true, props.props);
+    const { flatNodes, nodeMap } = flattenTree(rawData.value, 0, null, 0, true, props.props);
     flatTree.value = flatNodes;
+    flatNodeMap.value = nodeMap;
     updatePending = false
   }
 
