@@ -8,11 +8,11 @@
     'is-dragging': isDragging,
     [`drop-${dropType}`]: dropType
   }" :style="{ paddingLeft: `${node.level * indent}px` }" :draggable="draggable && !node.isDisabled"
+    :data-node-id="node.id"
     @dragstart="handleDragStart" @dragenter="handleDragEnter" @dragleave="handleDragLeave" @dragover="handleDragOver"
     @dragend="handleDragEnd" @drop="handleDrop">
-    <div class="vue-virtual-tree-node__content" @click="handleClick">
-      <span class="vue-virtual-tree-node__expand-icon" :class="{ 'is-leaf': isLeaf, 'is-loading': node.isLoading }"
-        @click.stop="handleExpandClick">
+    <div class="vue-virtual-tree-node__content">
+      <span class="vue-virtual-tree-node__expand-icon" :class="{ 'is-leaf': isLeaf, 'is-loading': node.isLoading }">
         <!-- 图标区域 -->
         <span v-if="node.isLoading">
           <slot name="loading" :node="node" :data="node.data">
@@ -24,7 +24,7 @@
       </span>
       <span v-if="showCheckbox" class="vue-virtual-tree-node__checkbox">
         <input type="checkbox" :checked="node.isChecked" :indeterminate="node.isIndeterminate"
-          :disabled="node.isDisabled" @click.stop="handleCheckboxClick" />
+          :disabled="node.isDisabled" />
       </span>
       <span class="vue-virtual-tree-node__label">
         <slot :node="node" :data="node.data">
@@ -53,10 +53,6 @@ interface TreeNodeProps {
 const props = defineProps<TreeNodeProps>()
 
 const emit = defineEmits<{
-  'node-click': [node: FlatTreeNode, event: MouseEvent]
-  'node-expand': [node: FlatTreeNode]
-  'node-collapse': [node: FlatTreeNode]
-  'node-check': [node: FlatTreeNode]
   'drag-start': [node: FlatTreeNode, event: DragEvent]
   'drag-enter': [node: FlatTreeNode, event: DragEvent]
   'drag-leave': [node: FlatTreeNode, event: DragEvent]
@@ -81,33 +77,7 @@ const indent = computed(() => {
   return indentProp ?? 18
 })
 
-const handleClick = (event: MouseEvent) => {
-  if (props.node.isDisabled) return
-  emit('node-click', props.node, event)
-  if (props.expandOnClickNode && !isLeaf.value) {
-    if (props.node.isExpanded) {
-      emit('node-collapse', props.node)
-    } else {
-      emit('node-expand', props.node)
-    }
-  }
-}
-
-const handleExpandClick = (event: MouseEvent) => {
-  if (props.node.isDisabled || isLeaf.value) return
-  event.stopPropagation()
-  if (props.node.isExpanded) {
-    emit('node-collapse', props.node)
-  } else {
-    emit('node-expand', props.node)
-  }
-}
-
-const handleCheckboxClick = (event: MouseEvent) => {
-  if (props.node.isDisabled) return
-  event.stopPropagation()
-  emit('node-check', props.node)
-}
+// click 事件已改为事件委托，在父组件 VirtualTree 中统一处理
 
 const handleDragStart = (event: DragEvent) => {
   if (props.node.isDisabled || !props.draggable) return

@@ -1,5 +1,6 @@
 <template>
-  <div class="vue-virtual-tree" :style="{ height: typeof height === 'number' ? `${height}px` : height }">
+  <div class="vue-virtual-tree" :style="{ height: typeof height === 'number' ? `${height}px` : height }"
+    @click="handleTreeClick">
     <DynamicScroller ref="dynamicScrollerRef" v-if="visibleNodes.length > 0" :items="visibleNodes"
       :min-item-size="itemSize || 32" class="vue-virtual-tree__scroller" v-slot="{ item, index, active }">
       <DynamicScrollerItem :item="item" :active="active" :data-index="index" class="vue-virtual-tree__item">
@@ -7,8 +8,7 @@
           :show-checkbox="showCheckbox" :expand-on-click-node="expandOnClickNode" :draggable="draggable"
           :indent="props.indent"
           :drop-type="dragState.dropNode?.value?.id === item.id ? dragState.dropType?.value ?? null : null"
-          @node-click="handleNodeClick" @node-expand="handleNodeExpand" @node-collapse="handleNodeCollapse"
-          @node-check="handleNodeCheck" @drag-start="handleDragStart" @drag-enter="handleDragEnter"
+          @drag-start="handleDragStart" @drag-enter="handleDragEnter"
           @drag-leave="handleDragLeave" @drag-over="handleDragOver" @drag-end="handleDragEnd" @drop="handleDrop">
           <template #default="{ node, data }">
             <slot :node="node" :data="data" />
@@ -52,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, ref } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import TreeNode from './TreeNode.vue'
 import type { VirtualTreeProps, VirtualTreeEmits, VirtualTreeMethods, FlatTreeNode, TreeNodeData, TreeNodeInstance } from '../types'
@@ -121,13 +121,58 @@ const {
 
 const dynamicScrollerRef = ref<InstanceType<typeof DynamicScroller> | null>(null)
 
+// 事件委托：从事件目标查找节点
+const getNodeFromEvent = (event: Event): FlatTreeNode | null => {
+  const target = event.target as HTMLElement
+  if (!target) return null
 
-// 更新节点的选中状态到扁平树
-// watch(selectedKey, () => {
-//   flatTree.value.forEach(node => {
-//     // 可以添加当前选中节点的样式类
-//   })
-// })
+  // 查找最近的带有 data-node-id 属性的元素
+  const nodeElement = target.closest('[data-node-id]')
+  if (!nodeElement) return null
+
+  const nodeId = nodeElement.getAttribute('data-node-id')
+  if (!nodeId) return null
+
+  // 尝试解析为 number 或 string
+  const id = isNaN(Number(nodeId)) ? nodeId : Number(nodeId)
+  return getFlatNode(id)
+}
+
+// 事件委托：树容器点击事件（只代理 click 事件）
+const handleTreeClick = (event: MouseEvent) => {
+  const node = getNodeFromEvent(event)
+  if (!node) return
+
+  const target = event.target as HTMLElement
+  if (!target) return
+
+  // 检查点击的是哪个区域
+  const expandIcon = target.closest('.vue-virtual-tree-node__expand-icon')
+  const checkbox = target.closest('.vue-virtual-tree-node__checkbox')
+  const content = target.closest('.vue-virtual-tree-node__content')
+
+  if (checkbox) {
+    // 点击复选框
+    handleNodeCheck(node)
+  } else if (expandIcon) {
+    // 点击展开图标
+    if (node.isExpanded) {
+      handleNodeCollapse(node)
+    } else {
+      handleNodeExpand(node)
+    }
+  } else if (content) {
+    // 点击节点内容
+    handleNodeClick(node, event)
+    if (props.expandOnClickNode && !isLeafNode(node.data, props.props)) {
+      if (node.isExpanded) {
+        handleNodeCollapse(node)
+      } else {
+        handleNodeExpand(node)
+      }
+    }
+  }
+}
 
 // 节点点击
 const handleNodeClick = (node: FlatTreeNode, event: MouseEvent) => {

@@ -174,12 +174,18 @@ export function useTreeData(props: VirtualTreeProps) {
     },
     { deep: true, immediate: false }
   )
-
+  let regenerateTimer: ReturnType<typeof setTimeout> | null = null
   // 重新生成flatTree的函数（只在必要时调用）
   const regenerateFlatTree = () => {
-    initExpandedKeys();
-    updateFlatTree();
-    initNodeChecked();
+    if (regenerateTimer) {
+      clearTimeout(regenerateTimer)
+    }
+    regenerateTimer = setTimeout(() => {
+      initExpandedKeys()
+      updateFlatTree()
+      initNodeChecked()
+      regenerateTimer = null
+    }, 5)
   }
 
   // 可见节点（用于虚拟滚动）
