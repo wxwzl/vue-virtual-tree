@@ -5,9 +5,22 @@
     "declaration": true,
     "declarationMap": false,
     "emitDeclarationOnly": true,
-    "noEmit": false
+    "noEmit": false,
+    "paths": {
+      "tools": [
+        "./lib/tools"
+      ]
+    }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue","src/vite-env.d.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "src/vite-env.d.ts",
+    "lib/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }
-

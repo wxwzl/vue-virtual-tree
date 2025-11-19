@@ -52,12 +52,13 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { nextTick, onBeforeMount, ref } from 'vue'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import TreeNode from './TreeNode.vue'
 import type { VirtualTreeProps, VirtualTreeEmits, VirtualTreeMethods, FlatTreeNode, TreeNodeData, TreeNodeInstance } from '../types'
 import { useTreeData } from '../composables/useTreeData'
 import { getNodeId, findNodeByKey, getNodeChildren, isLeafNode, getNodeLabel } from '../utils/tree'
+import { loadToolsWasm } from '../utils/wasmUtils'
 
 
 defineOptions({
@@ -83,6 +84,9 @@ const props = withDefaults(defineProps<VirtualTreeProps>(), {
 
 const emit = defineEmits<VirtualTreeEmits>()
 
+onBeforeMount(async () => {
+  await loadToolsWasm();
+})
 // 节点引用
 const nodeRefs = ref<Map<string | number, any>>(new Map())
 
@@ -96,13 +100,18 @@ const setNodeRef = (id: string | number, el: any) => {
 
 // 数据扁平化
 const {
-  flatTree,
   visibleNodes,
   rawData,
   getNodeData,
   getFlatNode,
+  getVisibleChildren,
+  getVisibleSiblings,
+  getVisibleDescendants,
+  getParentChain,
   regenerateFlatTree,
   insertFlatTree,
+  setNodeLoadingState,
+  markNodeLoaded,
   checkedKeys,
   halfCheckedKeys,
   selectedKey,
@@ -191,26 +200,24 @@ const handleNodeExpand = async (node: FlatTreeNode) => {
 
   // 懒加载
   if (props.lazy && !node.isLoaded && props.load) {
-    // 设置loading状态到缓存和节点
-    node.isLoading = true
-    node.isLoaded = false
-    function resolveCallback() {
-      node.isLoading = false
-      node.isLoaded = true
-    }
+    setNodeLoadingState(node.id, true)
     try {
-      await new Promise<void>((resolve) => {
+      await new Promise<void>((resolve, reject) => {
         props.load!(node.data, (children: TreeNodeData[]) => {
-          // 更新节点的子节点
-          if (children && children.length > 0) {
-            insertFlatTree(node, children);
+          try {
+            if (children && children.length > 0) {
+              insertFlatTree(node, children)
+            } else {
+              markNodeLoaded(node.id)
+            }
+            resolve()
+          } catch (err) {
+            reject(err)
           }
-          resolveCallback()
-          resolve()
         })
       })
     } catch (error) {
-      resolveCallback();
+      setNodeLoadingState(node.id, false)
       console.error('Lazy load error:', error)
     }
   }
@@ -325,50 +332,24 @@ const createNodeInstance = (flatNode: FlatTreeNode): TreeNodeInstance => {
 
   const getChildren = (): TreeNodeInstance[] => {
     if (childrenInstances !== null) return childrenInstances
-    const children = flatTree.value.filter(n => n.parentId === flatNode.id && n.isVisible)
+    const children = getVisibleChildren(flatNode.id)
     childrenInstances = children.map(child => createNodeInstance(child))
     return childrenInstances
   }
 
   const getSiblings = (): TreeNodeInstance[] => {
-    const siblings = flatTree.value.filter(
-      n => n.parentId === flatNode.parentId && n.id !== flatNode.id && n.isVisible
-    )
+    const siblings = getVisibleSiblings(flatNode.id)
     return siblings.map(sibling => createNodeInstance(sibling))
   }
 
   const getAllChildren = (): TreeNodeInstance[] => {
-    const result: TreeNodeInstance[] = []
-    const visited = new Set<string | number>()
-    const traverse = (parentId: string | number) => {
-      const children = flatTree.value.filter(n => n.parentId === parentId && n.isVisible)
-      children.forEach(child => {
-        if (visited.has(child.id)) return // 防止循环引用
-        visited.add(child.id)
-        result.push(createNodeInstance(child))
-        traverse(child.id)
-      })
-    }
-    traverse(flatNode.id)
-    return result
+    const descendants = getVisibleDescendants(flatNode.id)
+    return descendants.map(descendant => createNodeInstance(descendant))
   }
 
   const getAllParents = (): TreeNodeInstance[] => {
-    const result: TreeNodeInstance[] = []
-    const visited = new Set<string | number>()
-    let currentId: string | number | null = flatNode.parentId
-    while (currentId !== null) {
-      if (visited.has(currentId)) break // 防止循环引用
-      visited.add(currentId)
-      const parent = getFlatNode(currentId)
-      if (parent) {
-        result.push(createNodeInstance(parent))
-        currentId = parent.parentId
-      } else {
-        break
-      }
-    }
-    return result
+    const parents = getParentChain(flatNode.id)
+    return parents.map(parent => createNodeInstance(parent))
   }
 
   const instance: TreeNodeInstance = {
