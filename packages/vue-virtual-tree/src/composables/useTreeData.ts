@@ -43,7 +43,7 @@ export function useTreeData(props: VirtualTreeProps) {
 
   // 展开/折叠逻辑
   const { expandNode, collapseNode } = useTreeExpand(props, flatTree, expandedKeys)
-  
+
   // 过滤逻辑
   const { filter } = useTreeFilter(props, flatTree, expandedKeys)
 
@@ -73,46 +73,58 @@ export function useTreeData(props: VirtualTreeProps) {
     parentNode: FlatTreeNode | null = null,
     startIndex: number = 0,
     visible: boolean = true,
-    container: FlatTreeNode[] = [],
     config?: TreePropsConfig
-  ): FlatTreeNode[] => {
-    const result: FlatTreeNode[] = [];
-    let length = nodes.length;
-    for (let i = 0; i < length; i++) {
-      let index = startIndex + i;
-      const node: TreeNodeData = nodes[i]
-      const id = getNodeId(node, config)
-      const children = getNodeChildren(node, config)
-      const isExpanded = expandedKeys.value.has(id)
-      const isLeaf = isLeafNode(node, config)
+  ): { nodes: FlatTreeNode[], flatNodes: FlatTreeNode[] } => {
 
-      const flatNode: FlatTreeNode = {
-        id,
-        data: node,
-        level,
-        parentId: parentNode?.id || null,
-        parentNode: parentNode || null,
-        index,
-        isExpanded,
-        isVisible: visible,
-        isDisabled: isNodeDisabled(node, config),
-        isLeaf: isLeaf,
-        isLoading: false,
-        isLoaded: false,
-        isChecked: false,
-        rawChildren: children.length > 0 ? children : undefined
-      }
-      result.push(flatNode);
-      container.push(flatNode)
+    function genenrateFlatNodes(nodes: TreeNodeData[],
+      level: number = 0,
+      parentNode: FlatTreeNode | null = null,
+      startIndex: number = 0,
+      visible: boolean = true,
+      container: FlatTreeNode[] = [],
+      config?: TreePropsConfig) {
+      const result: FlatTreeNode[] = [];
+      let length = nodes.length;
+      for (let i = 0; i < length; i++) {
+        let index = startIndex + i;
+        const node: TreeNodeData = nodes[i]
+        const id = getNodeId(node, config)
+        const children = getNodeChildren(node, config)
+        const isExpanded = expandedKeys.value.has(id)
+        const isLeaf = isLeafNode(node, config)
 
-      // 如果节点展开且有子节点，递归处理子节点
-      if (children.length > 0) {
-        const childNodes = flattenTree(children, level + 1, flatNode, index, isExpanded && visible, container, config)
-        flatNode.children = childNodes
+        const flatNode: FlatTreeNode = {
+          id,
+          data: node,
+          level,
+          parentId: parentNode?.id || null,
+          parentNode: parentNode || null,
+          index,
+          isExpanded,
+          isVisible: visible,
+          isDisabled: isNodeDisabled(node, config),
+          isLeaf: isLeaf,
+          isLoading: false,
+          isLoaded: false,
+          isChecked: false,
+          rawChildren: children.length > 0 ? children : undefined
+        }
+        result.push(flatNode);
+        container.push(flatNode)
+
+        // 如果节点展开且有子节点，递归处理子节点
+        if (children.length > 0) {
+          const childNodes = genenrateFlatNodes(children, level + 1, flatNode, index, isExpanded && visible, container, config)
+          flatNode.children = childNodes
+        }
       }
+
+      return result
     }
 
-    return result
+    const container: FlatTreeNode[] = [];
+    const result = genenrateFlatNodes(nodes, level, parentNode, startIndex, visible, container, config)
+    return { nodes: result, flatNodes: container };
   }
 
   // 更新扁平化数据 - 优化大数据量的性能
@@ -120,15 +132,13 @@ export function useTreeData(props: VirtualTreeProps) {
     if (updatePending) return // 如果已经有更新在等待中，跳过
     updatePending = true
     // 使用nextTick合并多次调用，避免频繁重新计算
-    let flatTreeResult: FlatTreeNode[] = [];
-    flattenTree(rawData.value, 0, null, 0, true, flatTreeResult, props.props);
-    flatTree.value = flatTreeResult;
+    const { flatNodes } = flattenTree(rawData.value, 0, null, 0, true, props.props);
+    flatTree.value = flatNodes;
     updatePending = false
   }
 
   const insertFlatTree = (node: FlatTreeNode, children: TreeNodeData[]) => {
-    let container: FlatTreeNode[] = [];
-    let result = flattenTree(children, node.level + 1, node, node.index + 1, true, container, props.props);
+    let { nodes: result, flatNodes: container } = flattenTree(children, node.level + 1, node, node.index + 1, true, props.props);
     node.children = result;
     flatTree.value.splice(node.index + 1, 0, ...container);
     for (let i = node.index + container.length; i < flatTree.value.length; i++) {
