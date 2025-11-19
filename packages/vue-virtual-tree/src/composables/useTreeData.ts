@@ -13,16 +13,18 @@ export function useTreeData(props: VirtualTreeProps) {
   const expandedKeys = ref<Set<string | number>>(new Set())
   const flatTree = ref<FlatTreeNode[]>([])
   const rawData = ref<TreeNodeData[]>(props.data)
+  // 使用 Map 建立索引，O(1) 查找
+  const flatNodeMap = ref<Map<string | number, FlatTreeNode>>(new Map())
 
   // 根据 key 获取节点数据
   const getNodeData = (id: string | number): TreeNodeData | null => {
-    const flatNode = flatTree.value.find(n => n.id === id)
+    const flatNode = flatNodeMap.value.get(id)
     return flatNode ? flatNode.data : null
   }
 
   // 根据 key 获取扁平节点
   const getFlatNode = (id: string | number): FlatTreeNode | null => {
-    return flatTree.value.find(n => n.id === id) || null
+    return flatNodeMap.value.get(id) || null
   }
 
 
@@ -45,7 +47,7 @@ export function useTreeData(props: VirtualTreeProps) {
   const { expandNode, collapseNode } = useTreeExpand(props, flatTree, expandedKeys)
 
   // 过滤逻辑
-  const { filter } = useTreeFilter(props, flatTree, expandedKeys)
+  const { filter } = useTreeFilter(props, flatTree, flatNodeMap, expandedKeys)
 
   // 拖拽逻辑
   const dragState = useTreeDrag(props, getNodeData)
@@ -75,7 +77,7 @@ export function useTreeData(props: VirtualTreeProps) {
     visible: boolean = true,
     config?: TreePropsConfig
   ): { nodes: FlatTreeNode[], flatNodes: FlatTreeNode[] } => {
-
+    flatNodeMap.value.clear();
     function genenrateFlatNodes(nodes: TreeNodeData[],
       level: number = 0,
       parentNode: FlatTreeNode | null = null,
@@ -98,7 +100,6 @@ export function useTreeData(props: VirtualTreeProps) {
           data: node,
           level,
           parentId: parentNode?.id || null,
-          parentNode: parentNode || null,
           index,
           isExpanded,
           isVisible: visible,
@@ -110,13 +111,13 @@ export function useTreeData(props: VirtualTreeProps) {
           rawChildren: children.length > 0 ? children : undefined
         }
         result.push(flatNode);
-        container.push(flatNode)
-
+        container.push(flatNode);
         // 如果节点展开且有子节点，递归处理子节点
         if (children.length > 0) {
           const childNodes = genenrateFlatNodes(children, level + 1, flatNode, index, isExpanded && visible, container, config)
           flatNode.children = childNodes
         }
+        flatNodeMap.value.set(id, flatNode);
       }
 
       return result
@@ -190,7 +191,10 @@ export function useTreeData(props: VirtualTreeProps) {
 
   // 可见节点（用于虚拟滚动）
   const visibleNodes = computed(() => {
-    return flatTree.value.filter(node => node.isVisible)
+    console.time('visibleNodes');
+    const result = flatTree.value.filter(node => node.isVisible)
+    console.timeEnd('visibleNodes');
+    return result;
   })
   // 初始化
   regenerateFlatTree()

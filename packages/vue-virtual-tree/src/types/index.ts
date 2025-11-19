@@ -40,7 +40,6 @@ export interface FlatTreeNode {
   children?: FlatTreeNode[]
   /** 原始子节点数据 */
   rawChildren?: TreeNodeData[],
-  parentNode?: FlatTreeNode | null
 }
 
 /**

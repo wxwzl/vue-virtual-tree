@@ -79,7 +79,7 @@ const handleFilter = () => {
 }
 
 onMounted(async () => {
-  const data = await generateTreeDataAsync(1000)
+  const data = await generateTreeDataAsync(10000)
   treeData.value = data
   isLoading.value = false
 })

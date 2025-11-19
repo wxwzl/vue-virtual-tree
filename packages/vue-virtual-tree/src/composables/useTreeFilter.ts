@@ -8,6 +8,7 @@ import { getNodeLabel } from '../utils/tree'
 export function useTreeFilter(
   props: VirtualTreeProps,
   flatTree: Ref<FlatTreeNode[]>,
+  flatNodeMap: Ref<Map<string | number, FlatTreeNode>>,
   expandedKeys: Ref<Set<string | number>>
 ) {
 
@@ -39,12 +40,17 @@ export function useTreeFilter(
           node.isVisible = true
 
           // 标记所有父节点为可见并展开
-          let parentNode: FlatTreeNode | null = node.parentNode || null
-          while (parentNode) {
-            parentNode.isVisible = true
-            parentNode.isExpanded = true
-            expandedKeys.value.add(parentNode.id)
-            parentNode = parentNode.parentNode || null
+          let parentId: string | number | null = node.parentId
+          while (parentId) {
+            const parentNode: FlatTreeNode | undefined = flatNodeMap.value.get(parentId)
+            if (parentNode) {
+              parentNode.isVisible = true
+              parentNode.isExpanded = true
+              expandedKeys.value.add(parentNode.id)
+              parentId = parentNode.parentId
+            } else {
+              parentId = null
+            }
           }
         }
       })
