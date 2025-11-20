@@ -4,6 +4,13 @@
     <div class="info-box">
       <p><strong>说明：</strong>使用插槽自定义节点渲染，展示节点ID和标签，并添加简单的图标</p>
     </div>
+    <div class="control-panel">
+      <label class="control-label">
+        节点数量：
+        <input type="number" min="1000" step="1000" v-model.number="nodeCount" @change="handleCountChange" />
+      </label>
+      <button class="btn" @click="regenerateData">重新生成</button>
+    </div>
     <div class="tree-container">
       <VirtualTree v-if="!isLoading" :data="treeData" :height="400">
         <template #default="{ node, data }">
@@ -23,64 +30,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
 import { VirtualTree } from '@wxwzl/vue-virtual-tree'
-import type { TreeNodeData } from '@wxwzl/vue-virtual-tree'
+import { useDemoTree } from '../composables/useDemoTree'
 
-const treeData = ref<TreeNodeData[]>([])
-const isLoading = ref(true)
-
-const generateTreeDataAsync = (number: number): Promise<TreeNodeData[]> => {
-  return new Promise((resolve) => {
-    const data: TreeNodeData[] = []
-    let currentIndex = 1
-    const chunkSize = 50
-
-    const generateChunk = () => {
-      const endIndex = Math.min(currentIndex + chunkSize, number + 1)
-
-      for (let i = currentIndex; i < endIndex; i++) {
-        const node: TreeNodeData = {
-          id: `node-${i}`,
-          label: `节点 ${i}`
-        }
-        const children: TreeNodeData[] = []
-        for (let j = 1; j <= 5; j++) {
-          const child: TreeNodeData = {
-            id: `node-${i}-${j}`,
-            label: `节点 ${i}-${j}`
-          }
-          const grandchildren: TreeNodeData[] = []
-          for (let k = 1; k <= 5; k++) {
-            grandchildren.push({
-              id: `node-${i}-${j}-${k}`,
-              label: `节点 ${i}-${j}-${k}`
-            })
-          }
-          child.children = grandchildren
-          children.push(child)
-        }
-        node.children = children
-        data.push(node)
-      }
-
-      currentIndex = endIndex
-
-      if (currentIndex <= number) {
-        requestAnimationFrame(generateChunk)
-      } else {
-        resolve(data)
-      }
-    }
-
-    requestAnimationFrame(generateChunk)
-  })
-}
-
-onMounted(async () => {
-  const data = await generateTreeDataAsync(1000)
-  treeData.value = data
-  isLoading.value = false
+const { treeData, isLoading, nodeCount, regenerateData, handleCountChange } = useDemoTree({
+  initialCount: 5000
 })
 </script>
 
@@ -112,6 +66,50 @@ onMounted(async () => {
 .info-box p {
   margin-bottom: 8px;
   font-weight: 500;
+}
+
+.control-panel {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.control-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #606266;
+}
+
+.control-label input {
+  width: 140px;
+  padding: 6px 10px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.control-label input:focus {
+  border-color: #409eff;
+}
+
+.btn {
+  padding: 6px 14px;
+  background-color: #409eff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn:hover {
+  background-color: #66b1ff;
 }
 
 .tree-container {

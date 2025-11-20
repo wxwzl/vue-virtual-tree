@@ -9,6 +9,13 @@
         <li>验证：展开的节点应该显示，选中的节点应该有复选框标记</li>
       </ul>
     </div>
+    <div class="control-panel control-panel--spacing">
+      <label class="control-label">
+        节点数量：
+        <input type="number" min="1000" step="1000" v-model.number="nodeCount" @change="handleCountChange" />
+      </label>
+      <button class="btn" @click="regenerateData">重新生成</button>
+    </div>
     <div class="tree-container">
       <VirtualTree v-if="!isLoading" :data="treeData" :height="400"
         :default-expanded-keys="defaultExpandedKeys" :default-checked-keys="defaultCheckedKeys" show-checkbox
@@ -25,12 +32,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { VirtualTree } from '@wxwzl/vue-virtual-tree'
 import type { TreeNodeData } from '@wxwzl/vue-virtual-tree'
+import { useDemoTree } from '../composables/useDemoTree'
 
-const treeData = ref<TreeNodeData[]>([])
-const isLoading = ref(true)
+const { treeData, isLoading, nodeCount, regenerateData, handleCountChange } = useDemoTree({
+  initialCount: 5000
+})
 const defaultExpandedKeys = ref<(string | number)[]>([
   'node-1',
   'node-2',
@@ -43,53 +52,6 @@ const defaultCheckedKeys = ref<(string | number)[]>([
   'node-2-2',
   'node-3'
 ])
-
-const generateTreeDataAsync = (number: number): Promise<TreeNodeData[]> => {
-  return new Promise((resolve) => {
-    const data: TreeNodeData[] = []
-    let currentIndex = 1
-    const chunkSize = 50
-
-    const generateChunk = () => {
-      const endIndex = Math.min(currentIndex + chunkSize, number + 1)
-
-      for (let i = currentIndex; i < endIndex; i++) {
-        const node: TreeNodeData = {
-          id: `node-${i}`,
-          label: `节点 ${i}`
-        }
-        const children: TreeNodeData[] = []
-        for (let j = 1; j <= 5; j++) {
-          const child: TreeNodeData = {
-            id: `node-${i}-${j}`,
-            label: `节点 ${i}-${j}`
-          }
-          const grandchildren: TreeNodeData[] = []
-          for (let k = 1; k <= 5; k++) {
-            grandchildren.push({
-              id: `node-${i}-${j}-${k}`,
-              label: `节点 ${i}-${j}-${k}`
-            })
-          }
-          child.children = grandchildren
-          children.push(child)
-        }
-        node.children = children
-        data.push(node)
-      }
-
-      currentIndex = endIndex
-
-      if (currentIndex <= number) {
-        requestAnimationFrame(generateChunk)
-      } else {
-        resolve(data)
-      }
-    }
-
-    requestAnimationFrame(generateChunk)
-  })
-}
 
 const handleNodeCheck = (data: TreeNodeData, info: any) => {
   console.log('Node checked:', data, info)
@@ -110,12 +72,6 @@ const updateExpandedKeys = () => {
 const updateCheckedKeys = () => {
   defaultCheckedKeys.value = ['node-1', 'node-2', 'node-3', 'node-1-1', 'node-1-2']
 }
-
-onMounted(async () => {
-  const data = await generateTreeDataAsync(1000)
-  treeData.value = data
-  isLoading.value = false
-})
 </script>
 
 <style scoped>
@@ -157,17 +113,45 @@ onMounted(async () => {
   margin-bottom: 4px;
 }
 
-.tree-container {
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
 .control-panel {
   margin-top: 15px;
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.control-panel--spacing {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.control-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #606266;
+}
+
+.control-label input {
+  width: 140px;
+  padding: 6px 10px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.control-label input:focus {
+  border-color: #409eff;
+}
+
+.tree-container {
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 .btn {
