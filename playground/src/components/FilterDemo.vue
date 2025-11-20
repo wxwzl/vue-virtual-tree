@@ -9,9 +9,11 @@
       <button class="btn" @click="handleRegenerate">重新生成</button>
     </div>
     <div class="tree-container">
+      <div class="tree-shell">
       <input v-model="filterText" placeholder="输入关键字过滤" @input="handleFilter" class="filter-input" />
-      <VirtualTree v-show="!isLoading && !searching" ref="treeRef" :data="treeData" :height="400" />
+      <VirtualTree v-show="!isLoading && !searching" ref="treeRef" :data="treeData" class="tree-scroll" />
       <div v-show="isLoading || searching" class="loading">数据加载中...</div>
+      </div>
     </div>
   </div>
 </template>
@@ -81,11 +83,15 @@ const handleRegenerate = async () => {
 
 <style scoped>
 .demo-section {
-  margin-bottom: 40px;
   background: white;
   padding: 20px;
   border-radius: 4px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
 }
 
 .demo-section h2 {
@@ -139,15 +145,30 @@ const handleRegenerate = async () => {
 }
 
 .tree-container {
+  flex: 1;
+  display: flex;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   overflow: hidden;
+  min-height: 0;
+}
+
+.tree-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px;
+  gap: 10px;
+}
+
+.tree-scroll {
+  flex: 1;
 }
 
 .filter-input {
   width: 100%;
   padding: 8px 12px;
-  margin-bottom: 10px;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   font-size: 14px;
@@ -159,8 +180,10 @@ const handleRegenerate = async () => {
 }
 
 .loading {
-  padding: 40px;
-  text-align: center;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #909399;
   font-size: 14px;
 }

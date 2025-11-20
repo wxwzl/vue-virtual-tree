@@ -10,7 +10,9 @@
       </ul>
     </div>
     <div class="tree-container">
-      <VirtualTree :data="lazyTreeData" :height="400" lazy :load="handleLazyLoad" />
+      <div class="tree-shell">
+        <VirtualTree :data="lazyTreeData" class="tree-scroll" lazy :load="handleLazyLoad" />
+      </div>
     </div>
     <div class="control-panel">
       <button @click="resetLazyData" class="btn">重置懒加载数据</button>
@@ -140,11 +142,15 @@ const resetLazyData = () => {
 
 <style scoped>
 .demo-section {
-  margin-bottom: 40px;
   background: white;
   padding: 20px;
   border-radius: 4px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
 }
 
 .demo-section h2 {
@@ -178,11 +184,24 @@ const resetLazyData = () => {
 }
 
 .tree-container {
+  flex: 1;
+  display: flex;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   overflow: hidden;
+  min-height: 0;
 }
 
+.tree-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tree-scroll {
+  flex: 1;
+}
 .control-panel {
   margin-top: 15px;
   display: flex;

@@ -5,9 +5,11 @@
       <p><strong>说明：</strong>拖拽节点可以重新排序，支持拖拽到节点前、节点内、节点后三种位置</p>
     </div>
     <div class="tree-container">
-      <VirtualTree :data="dragTreeData" :height="400" draggable @node-drag-start="handleDragStart"
+      <div class="tree-shell">
+        <VirtualTree :data="dragTreeData" class="tree-scroll" draggable @node-drag-start="handleDragStart"
         @node-drag-enter="handleDragEnter" @node-drag-leave="handleDragLeave" @node-drag-over="handleDragOver"
         @node-drag-end="handleDragEnd" @node-drop="handleNodeDrop" />
+      </div>
     </div>
     <div class="control-panel">
       <button @click="resetDragTreeData" class="btn">重置拖拽数据</button>
@@ -197,11 +199,15 @@ const handleNodeDrop = (
 
 <style scoped>
 .demo-section {
-  margin-bottom: 40px;
   background: white;
   padding: 20px;
   border-radius: 4px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
 }
 
 .demo-section h2 {
@@ -226,9 +232,23 @@ const handleNodeDrop = (
 }
 
 .tree-container {
+  flex: 1;
+  display: flex;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   overflow: hidden;
+  min-height: 0;
+}
+
+.tree-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tree-scroll {
+  flex: 1;
 }
 
 .control-panel {
@@ -264,12 +284,11 @@ const handleNodeDrop = (
 }
 
 .drag-log {
-  margin-top: 15px;
   padding: 12px;
   background-color: #f5f7fa;
   border: 1px solid #e4e7ed;
   border-radius: 4px;
-  max-height: 300px;
+  max-height: 100px;
   overflow-y: auto;
 }
 

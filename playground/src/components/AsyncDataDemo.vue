@@ -5,9 +5,11 @@
       <p><strong>说明：</strong>模拟异步加载数据，验证在数据加载后 defaultExpandedKeys 和 defaultCheckedKeys 是否正常工作</p>
     </div>
     <div class="tree-container">
-      <VirtualTree v-if="asyncTreeData.length > 0" :data="asyncTreeData" :height="400"
+      <div class="tree-shell">
+        <VirtualTree v-if="asyncTreeData.length > 0" :data="asyncTreeData" class="tree-scroll"
         :default-expanded-keys="asyncExpandedKeys" :default-checked-keys="asyncCheckedKeys" show-checkbox />
       <div v-else class="loading">加载中...</div>
+      </div>
     </div>
     <div class="control-panel">
       <button @click="loadAsyncData" class="btn">重新加载数据</button>
@@ -38,11 +40,15 @@ onMounted(() => {
 
 <style scoped>
 .demo-section {
-  margin-bottom: 40px;
   background: white;
   padding: 20px;
   border-radius: 4px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
 }
 
 .demo-section h2 {
@@ -67,11 +73,24 @@ onMounted(() => {
 }
 
 .tree-container {
+  flex: 1;
+  display: flex;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   overflow: hidden;
+  min-height: 0;
 }
 
+.tree-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tree-scroll {
+  flex: 1;
+}
 .control-panel {
   margin-top: 15px;
   display: flex;
@@ -99,8 +118,10 @@ onMounted(() => {
 }
 
 .loading {
-  padding: 40px;
-  text-align: center;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #909399;
   font-size: 14px;
 }

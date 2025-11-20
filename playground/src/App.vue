@@ -32,27 +32,42 @@ const menuItems = demoRoutes
 </script>
 
 <style>
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+html,
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  height: 100%;
+}
+
+body {
+  overflow: hidden;
   background-color: #f5f5f5;
 }
 
+#app {
+  height: 100%;
+}
+
 .app {
-  min-height: 100vh;
-  padding: 20px;
+  height: 100%;
+  padding: 0 20px 12px 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  padding: 12px 0;
 }
 
 h1 {
@@ -90,6 +105,8 @@ h1 {
   display: flex;
   gap: 16px;
   margin-top: 16px;
+  flex: 1;
+  min-height: 0;
 }
 
 .sidebar {
@@ -101,6 +118,7 @@ h1 {
   flex-direction: column;
   gap: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  overflow-y: auto;
 }
 
 .menu-link {
@@ -125,11 +143,11 @@ h1 {
 
 .content {
   flex: 1;
-  min-height: calc(100vh - 140px);
   background: #fff;
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
   overflow-y: auto;
+  min-height: 0;
 }
 </style>

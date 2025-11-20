@@ -10,14 +10,16 @@
       </ul>
     </div>
     <div class="tree-container">
-      <VirtualTree :data="customLoadingTreeData" :height="400" lazy :load="handleLazyLoad">
+      <div class="tree-shell">
+        <VirtualTree :data="customLoadingTreeData" class="tree-scroll" lazy :load="handleLazyLoad">
         <template #loading="{ node, data }">
           <div class="custom-loading">
             <div class="loading-spinner"></div>
             <span class="loading-text">正在加载 {{ data.label }}...</span>
           </div>
         </template>
-      </VirtualTree>
+        </VirtualTree>
+      </div>
     </div>
     <div class="control-panel">
       <button @click="resetCustomLoadingData" class="btn">重置自定义loading数据</button>
@@ -82,11 +84,15 @@ const resetCustomLoadingData = () => {
 
 <style scoped>
 .demo-section {
-  margin-bottom: 40px;
   background: white;
   padding: 20px;
   border-radius: 4px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
 }
 
 .demo-section h2 {
@@ -120,11 +126,24 @@ const resetCustomLoadingData = () => {
 }
 
 .tree-container {
+  flex: 1;
+  display: flex;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   overflow: hidden;
+  min-height: 0;
 }
 
+.tree-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tree-scroll {
+  flex: 1;
+}
 .control-panel {
   margin-top: 15px;
   display: flex;

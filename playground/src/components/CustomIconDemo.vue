@@ -18,19 +18,22 @@
       <button @click="resetIconData" class="btn btn-secondary">重置图标数据</button>
     </div>
     <div class="tree-container">
-      <VirtualTree :data="iconTreeData" :height="400">
+      <div class="tree-shell">
+        <VirtualTree v-if="!isLoading" :data="iconTreeData" class="tree-scroll">
         <template #icon="{ node, data }">
           <div class="custom-icon">
             <span v-if="node.isExpanded">📂</span>
             <span v-else-if="data.type === 'folder'">📁</span>
             <span v-else-if="data.type === 'image'">🖼️</span>
             <span v-else-if="data.type === 'video'">🎥</span>
-            <span v-else-if (data.type === 'audio')>🎵</span>
+            <span v-else-if="data.type === 'audio'">🎵</span>
             <span v-else-if="data.type === 'document'">📄</span>
             <span v-else>📄</span>
           </div>
         </template>
-      </VirtualTree>
+        </VirtualTree>
+        <div v-else class="loading">数据加载中...</div>
+      </div>
     </div>
   </div>
 </template>
@@ -61,12 +64,74 @@ const resetIconData = () => {
   regenerateData()
 }
 </script>
-.control-panel {
-  margin-bottom: 16px;
+
+<style scoped>
+.demo-section {
+  background: white;
+  padding: 20px;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+}
+
+.demo-section h2 {
+  margin-bottom: 20px;
+  color: #606266;
+  font-size: 18px;
+}
+
+.info-box {
+  background-color: #f0f9ff;
+  border: 1px solid #b3d8ff;
+  border-radius: 4px;
+  padding: 12px;
+  font-size: 14px;
+  color: #606266;
+}
+
+.info-box p {
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.info-box ul {
+  margin-left: 20px;
+  margin-top: 8px;
+}
+
+.info-box li {
+  margin-bottom: 4px;
+}
+
+.tree-container {
+  flex: 1;
+  display: flex;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.tree-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tree-scroll {
+  flex: 1;
+}
+
+.control-panel {
+  display: flex;
+  gap: 10px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .control-label {
@@ -99,6 +164,7 @@ const resetIconData = () => {
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
+  transition: background-color 0.3s;
 }
 
 .btn:hover {
@@ -113,81 +179,18 @@ const resetIconData = () => {
   background-color: #85ce61;
 }
 
-<style scoped>
-.demo-section {
-  margin-bottom: 40px;
-  background: white;
-  padding: 20px;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-}
-
-.demo-section h2 {
-  margin-bottom: 20px;
-  color: #606266;
-  font-size: 18px;
-}
-
-.info-box {
-  background-color: #f0f9ff;
-  border: 1px solid #b3d8ff;
-  border-radius: 4px;
-  padding: 12px;
-  margin-bottom: 15px;
-  font-size: 14px;
-  color: #606266;
-}
-
-.info-box p {
-  margin-bottom: 8px;
-  font-weight: 500;
-}
-
-.info-box ul {
-  margin-left: 20px;
-  margin-top: 8px;
-}
-
-.info-box li {
-  margin-bottom: 4px;
-}
-
-.tree-container {
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.control-panel {
-  margin-top: 15px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.btn {
-  padding: 8px 16px;
-  background-color: #409eff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s;
-}
-
-.btn:hover {
-  background-color: #66b1ff;
-}
-
-.btn:active {
-  background-color: #3a8ee6;
-}
-
 .custom-icon {
   display: inline-flex;
   align-items: center;
   font-size: 16px;
 }
-</style>
 
+.loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  font-size: 14px;
+}
+</style>

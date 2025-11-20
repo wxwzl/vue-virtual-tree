@@ -9,8 +9,10 @@
       <button class="btn" @click="regenerateData">重新生成</button>
     </div>
     <div class="tree-container">
-      <VirtualTree v-if="!isLoading" :data="treeData" :height="400" />
-      <div v-else class="loading">数据加载中...</div>
+      <div class="tree-shell">
+        <VirtualTree v-if="!isLoading" :data="treeData" class="tree-scroll" />
+        <div v-else class="loading">数据加载中...</div>
+      </div>
     </div>
   </div>
 </template>
@@ -26,11 +28,15 @@ const { treeData, isLoading, nodeCount, regenerateData, handleCountChange } = us
 
 <style scoped>
 .demo-section {
-  margin-bottom: 40px;
   background: white;
   padding: 20px;
   border-radius: 4px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
 }
 
 .demo-section h2 {
@@ -84,14 +90,30 @@ const { treeData, isLoading, nodeCount, regenerateData, handleCountChange } = us
 }
 
 .tree-container {
+  flex: 1;
+  display: flex;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   overflow: hidden;
+  min-height: 0;
+}
+
+.tree-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tree-scroll {
+  flex: 1;
 }
 
 .loading {
-  padding: 40px;
-  text-align: center;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #909399;
   font-size: 14px;
 }
