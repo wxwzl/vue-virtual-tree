@@ -15,6 +15,7 @@
         <DynamicScrollerItem :item="item" :active="active" :data-index="index" class="vue-virtual-tree__item">
           <TreeNode :node="item" :key="item.id" :props="props.props" :show-checkbox="showCheckbox"
             :expand-on-click-node="expandOnClickNode" :draggable="draggable" :indent="props.indent"
+            :current-key="selectedKey"
             :drop-type="dragState.dropNode?.value?.id === item.id ? dragState.dropType?.value ?? null : null"
             @drag-start="handleDragStart" @drag-enter="handleDragEnter" @drag-leave="handleDragLeave"
             @drag-over="handleDragOver" @drag-end="handleDragEnd" @drop="handleDrop">

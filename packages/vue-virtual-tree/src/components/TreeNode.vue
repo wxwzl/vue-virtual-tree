@@ -6,6 +6,7 @@
     'is-leaf': isLeaf,
     'is-loading': node.isLoading,
     'is-dragging': isDragging,
+    'is-current': isCurrent,
     [`drop-${dropType}`]: dropType
   }" :style="{ paddingLeft: `${node.level * indent}px` }" :draggable="draggable && !node.isDisabled"
     :data-node-id="node.id" @dragstart="handleDragStart" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
@@ -45,6 +46,7 @@ interface TreeNodeProps {
   showCheckbox?: boolean
   expandOnClickNode?: boolean
   draggable?: boolean
+  currentKey?: string | number | null
   dropType?: 'prev' | 'inner' | 'next' | null
   indent?: number | ((node: FlatTreeNode) => number)
 }
@@ -64,6 +66,7 @@ const isDragging = ref(false)
 
 const label = computed(() => getNodeLabel(props.node.data, props.props))
 const isLeaf = computed(() => isLeafNode(props.node.data, props.props))
+const isCurrent = computed(() => props.currentKey !== null && props.currentKey !== undefined && props.currentKey === props.node.id)
 const indent = computed(() => {
   const indentProp = props.indent
   if (typeof indentProp === 'function') {
@@ -196,6 +199,14 @@ const handleDrop = (event: DragEvent) => {
 
   &.drop-inner {
     background-color: #ecf5ff;
+  }
+
+  &.is-current {
+    .vue-virtual-tree-node__content {
+      background-color: #ecf5ff;
+      color: #409eff;
+      font-weight: 500;
+    }
   }
 }
 </style>

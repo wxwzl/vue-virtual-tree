@@ -1,6 +1,6 @@
 {
   "name": "@wxwzl/vue-virtual-tree",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "A high-performance virtual tree component for Vue 3",
   "type": "module",
   "main": "./dist/index.cjs",
