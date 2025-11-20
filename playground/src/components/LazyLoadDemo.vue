@@ -240,6 +240,8 @@ const resetLazyData = () => {
   background-color: #f0f9ff;
   border: 1px solid #b3d8ff;
   border-radius: 4px;
+  max-height: 100px;
+  overflow-y: auto;
 }
 
 .lazy-log h3 {

@@ -18,10 +18,9 @@
     </div>
     <div class="tree-container">
       <div class="tree-shell">
-        <VirtualTree v-if="!isLoading" :data="treeData" class="tree-scroll"
+        <VirtualTree :data="treeData" :loading="isLoading" class="tree-scroll"
         :default-expanded-keys="defaultExpandedKeys" :default-checked-keys="defaultCheckedKeys" show-checkbox
-        @node-check="handleNodeCheck" />
-      <div v-else class="loading">数据加载中...</div>
+        @node-check="handleNodeCheck" @node-generated="handleDataGenerated" />
       </div>
     </div>
     <div class="control-panel">
@@ -39,7 +38,7 @@ import { VirtualTree } from '@wxwzl/vue-virtual-tree'
 import type { TreeNodeData } from '@wxwzl/vue-virtual-tree'
 import { useDemoTree } from '../composables/useDemoTree'
 
-const { treeData, isLoading, nodeCount, regenerateData, handleCountChange } = useDemoTree({
+const { treeData, isLoading, nodeCount, regenerateData, handleCountChange, handleDataGenerated } = useDemoTree({
   initialCount: 5000
 })
 const defaultExpandedKeys = ref<(string | number)[]>([
@@ -190,15 +189,6 @@ const updateCheckedKeys = () => {
 
 .btn:active {
   background-color: #3a8ee6;
-}
-
-.loading {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #909399;
-  font-size: 14px;
 }
 </style>
 

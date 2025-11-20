@@ -42,6 +42,39 @@ pnpm add @wxwzl/vue-virtual-tree vue-virtual-scroller@next
 </script>
 ```
 
+### 加载状态
+
+```vue
+<template>
+  <!-- 使用默认加载状态 -->
+  <VirtualTree :data="treeData" :loading="isLoading" :height="400" />
+
+  <!-- 自定义加载状态 -->
+  <VirtualTree :data="treeData" :loading="isLoading" :height="400">
+    <template #tree-loading>
+      <div class="custom-loading">数据加载中...</div>
+    </template>
+  </VirtualTree>
+</template>
+
+<script setup lang="ts">
+  import { ref } from "vue";
+  import { VirtualTree } from "vue-virtual-tree";
+
+  const isLoading = ref(true);
+  const treeData = ref([]);
+
+  // 模拟数据加载
+  setTimeout(() => {
+    treeData.value = [
+      { id: 1, label: "节点 1" },
+      { id: 2, label: "节点 2" },
+    ];
+    isLoading.value = false;
+  }, 2000);
+</script>
+```
+
 ## 功能
 
 ### 基础功能
@@ -104,6 +137,7 @@ pnpm add @wxwzl/vue-virtual-tree vue-virtual-scroller@next
 | item-size | 节点高度（固定高度时使用） | `number` | `32` |
 | height | 虚拟滚动容器高度 | `number \| string` | `'100%'` |
 | indent | 每一级节点的缩进值，支持数字或函数（函数入参为 `node: FlatTreeNode`） | `number \| (node) => number` | `18` |
+| loading | 是否显示加载状态 | `boolean` | `false` |
 
 ### Events
 
@@ -143,10 +177,13 @@ pnpm add @wxwzl/vue-virtual-tree vue-virtual-scroller@next
 
 ### Slots
 
-| 插槽名  | 说明           | 参数             |
-| ------- | -------------- | ---------------- |
-| default | 自定义节点内容 | `{ node, data }` |
-| empty   | 空状态内容     | -                |
+| 插槽名       | 说明               | 参数             |
+| ------------ | ------------------ | ---------------- |
+| default      | 自定义节点内容     | `{ node, data }` |
+| empty        | 空状态内容         | -                |
+| tree-loading | 整个树的加载状态   | -                |
+| loading      | 节点懒加载时的状态 | `{ node, data }` |
+| icon         | 自定义节点图标     | `{ node, data }` |
 
 ## 开发
 

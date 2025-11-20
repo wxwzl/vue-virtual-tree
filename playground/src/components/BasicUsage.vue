@@ -10,8 +10,7 @@
     </div>
     <div class="tree-container">
       <div class="tree-shell">
-        <VirtualTree v-if="!isLoading" :data="treeData" class="tree-scroll" />
-        <div v-else class="loading">数据加载中...</div>
+        <VirtualTree :data="treeData" :loading="isLoading" class="tree-scroll" @node-generated="handleDataGenerated" />
       </div>
     </div>
   </div>
@@ -21,7 +20,7 @@
 import { VirtualTree } from '@wxwzl/vue-virtual-tree'
 import { useDemoTree } from '../composables/useDemoTree'
 
-const { treeData, isLoading, nodeCount, regenerateData, handleCountChange } = useDemoTree({
+const { treeData, isLoading, nodeCount, regenerateData, handleCountChange, handleDataGenerated } = useDemoTree({
   initialCount: 5000
 })
 </script>
@@ -107,15 +106,6 @@ const { treeData, isLoading, nodeCount, regenerateData, handleCountChange } = us
 
 .tree-scroll {
   flex: 1;
-}
-
-.loading {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #909399;
-  font-size: 14px;
 }
 </style>
 

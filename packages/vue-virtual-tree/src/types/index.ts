@@ -100,6 +100,8 @@ export interface VirtualTreeProps {
   height?: number | string
   /** 每一层级的缩进距离 */
   indent?: number | ((node: FlatTreeNode) => number)
+  /** 是否显示加载状态 */
+  loading?: boolean
 }
 
 /**
@@ -143,7 +145,7 @@ export interface TreeNodeInstance {
 /**
  * 树组件事件
  */
-export interface VirtualTreeEmits {
+export type VirtualTreeEmits = {
   /** 节点点击事件 */
   'node-click': [data: TreeNodeData, node: TreeNodeInstance, event: MouseEvent]
   /** 节点复选框点击事件 */
@@ -166,6 +168,8 @@ export interface VirtualTreeEmits {
   'node-drag-end': [draggingNode: TreeNodeData, event: DragEvent]
   /** 拖拽放置 */
   'node-drop': [draggingNode: TreeNodeData, dropNode: TreeNodeData, dropType: 'prev' | 'inner' | 'next', event: DragEvent]
+  /** 数据处理完成 */
+  'node-generated': []
 }
 
 /**
@@ -202,5 +206,7 @@ export interface VirtualTreeMethods {
   insertAfter: (data: TreeNodeData, key: string | number) => void
   /** 更新节点的子节点（懒加载） */
   updateKeyChildren: (key: string | number, data: TreeNodeData[]) => void
+  /** 数据处理完成 */
+  nodeGenerated: () => void
 }
 

@@ -1,52 +1,62 @@
 <template>
   <div class="vue-virtual-tree" :style="{ height: typeof height === 'number' ? `${height}px` : height }"
     @click="handleTreeClick">
-    <DynamicScroller ref="dynamicScrollerRef" v-if="data.length > 0" :items="visibleNodes"
-      :min-item-size="itemSize || 32" class="vue-virtual-tree__scroller" v-slot="{ item, index, active }">
-      <DynamicScrollerItem :item="item" :active="active" :data-index="index" class="vue-virtual-tree__item">
-        <TreeNode :node="item" :key="item.id" :props="props.props" :show-checkbox="showCheckbox"
-          :expand-on-click-node="expandOnClickNode" :draggable="draggable" :indent="props.indent"
-          :drop-type="dragState.dropNode?.value?.id === item.id ? dragState.dropType?.value ?? null : null"
-          @drag-start="handleDragStart" @drag-enter="handleDragEnter" @drag-leave="handleDragLeave"
-          @drag-over="handleDragOver" @drag-end="handleDragEnd" @drop="handleDrop">
-          <template #default="{ node, data }">
-            <slot :node="node" :data="data" />
-          </template>
-          <template #loading="{ node, data }">
-            <slot name="loading" :node="node" :data="data">
-              <!-- 默认loading图标 -->
-              <svg class="vue-virtual-tree-node__loading-icon" viewBox="0 0 24 24" width="16" height="16">
-                <g transform="translate(12,12)">
-                  <!-- 轨道圆环 -->
-                  <circle cx="0" cy="0" r="8" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2" />
-                  <!-- 旋转的3个点 -->
-                  <g class="vue-virtual-tree-loading-dots">
-                    <circle cx="0" cy="-8" r="2" fill="currentColor" />
-                    <circle cx="6.928" cy="-4" r="2" fill="currentColor" opacity="0.7" />
-                    <circle cx="6.928" cy="4" r="2" fill="currentColor" opacity="0.4" />
-                  </g>
-                </g>
-              </svg>
-            </slot>
-          </template>
-          <template #icon="{ node, data }">
-            <slot name="icon" :node="node" :data="data">
-              <!-- 默认图标 -->
-              <span class="default-icon">
-                <svg v-if="!node.isLeaf" viewBox="0 0 1024 1024" width="16" height="16">
-                  <path d="M384 384l256 256-256 256z" fill="currentColor" />
-                </svg>
-              </span>
-            </slot>
-          </template>
-        </TreeNode>
-      </DynamicScrollerItem>
-    </DynamicScroller>
-    <div v-else class="vue-virtual-tree__empty">
-      <slot name="empty">
-        <span>暂无数据</span>
+    <template v-if="loading">
+      <slot name="tree-loading">
+        <div v-if="loading" class="vue-virtual-tree__loading">
+          <!-- 默认loading -->
+          <span class="vue-virtual-tree-loading-text">加载中...</span>
+        </div>
       </slot>
-    </div>
+    </template>
+    <template v-else>
+      <DynamicScroller ref="dynamicScrollerRef" v-if="data.length > 0" :items="visibleNodes"
+        :min-item-size="itemSize || 32" class="vue-virtual-tree__scroller" v-slot="{ item, index, active }">
+        <DynamicScrollerItem :item="item" :active="active" :data-index="index" class="vue-virtual-tree__item">
+          <TreeNode :node="item" :key="item.id" :props="props.props" :show-checkbox="showCheckbox"
+            :expand-on-click-node="expandOnClickNode" :draggable="draggable" :indent="props.indent"
+            :drop-type="dragState.dropNode?.value?.id === item.id ? dragState.dropType?.value ?? null : null"
+            @drag-start="handleDragStart" @drag-enter="handleDragEnter" @drag-leave="handleDragLeave"
+            @drag-over="handleDragOver" @drag-end="handleDragEnd" @drop="handleDrop">
+            <template #default="{ node, data }">
+              <slot :node="node" :data="data" />
+            </template>
+            <template #loading="{ node, data }">
+              <slot name="loading" :node="node" :data="data">
+                <!-- 默认loading图标 -->
+                <svg class="vue-virtual-tree-node__loading-icon" viewBox="0 0 24 24" width="16" height="16">
+                  <g transform="translate(12,12)">
+                    <!-- 轨道圆环 -->
+                    <circle cx="0" cy="0" r="8" fill="none" stroke="currentColor" stroke-width="1" opacity="0.2" />
+                    <!-- 旋转的3个点 -->
+                    <g class="vue-virtual-tree-loading-dots">
+                      <circle cx="0" cy="-8" r="2" fill="currentColor" />
+                      <circle cx="6.928" cy="-4" r="2" fill="currentColor" opacity="0.7" />
+                      <circle cx="6.928" cy="4" r="2" fill="currentColor" opacity="0.4" />
+                    </g>
+                  </g>
+                </svg>
+              </slot>
+            </template>
+            <template #icon="{ node, data }">
+              <slot name="icon" :node="node" :data="data">
+                <!-- 默认图标 -->
+                <span class="default-icon">
+                  <svg v-if="!node.isLeaf" viewBox="0 0 1024 1024" width="16" height="16">
+                    <path d="M384 384l256 256-256 256z" fill="currentColor" />
+                  </svg>
+                </span>
+              </slot>
+            </template>
+          </TreeNode>
+        </DynamicScrollerItem>
+      </DynamicScroller>
+      <div v-else class="vue-virtual-tree__empty">
+        <slot name="empty">
+          <span>暂无数据</span>
+        </slot>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -77,7 +87,8 @@ const props = withDefaults(defineProps<VirtualTreeProps>(), {
   draggable: false,
   itemSize: 32,
   height: '100%',
-  indent: 18
+  indent: 18,
+  loading: false
 })
 
 const emit = defineEmits<VirtualTreeEmits>()
@@ -104,7 +115,7 @@ const {
   collapseNode,
   dragState,
   filter: filterNodes,
-} = useTreeData(props)
+} = useTreeData(props, emit)
 
 const dynamicScrollerRef = ref<InstanceType<typeof DynamicScroller> | null>(null)
 
@@ -189,7 +200,7 @@ const handleNodeExpand = async (node: FlatTreeNode) => {
         props.load!(node.data, (children: TreeNodeData[]) => {
           // 更新节点的子节点
           if (children && children.length > 0) {
-            insertFlatTree(node, children, true);
+            insertFlatTree(node, children);
           }
           resolveCallback()
           resolve()
@@ -517,6 +528,9 @@ const methods: VirtualTreeMethods = {
       node[childrenKey] = data
       regenerateFlatTree()
     }
+  },
+  nodeGenerated: () => {
+    emit('node-generated')
   }
 }
 
@@ -548,6 +562,24 @@ defineExpose(methods)
   height: 100%;
   color: #909399;
   font-size: 14px;
+}
+
+.vue-virtual-tree__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #909399;
+}
+
+.vue-virtual-tree-loading-arc {
+  animation: vue-virtual-tree-loading-rotate 1s linear infinite;
+  transform-origin: center;
+}
+
+.vue-virtual-tree-loading-text {
+  font-size: 14px;
+  color: #909399;
 }
 
 .vue-virtual-tree-node {

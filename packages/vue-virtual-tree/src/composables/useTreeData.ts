@@ -1,5 +1,5 @@
-import { ref, watch } from 'vue'
-import type { TreeNodeData, FlatTreeNode, TreePropsConfig, VirtualTreeProps } from '../types'
+import { nextTick, ref, watch } from 'vue'
+import type { TreeNodeData, FlatTreeNode, TreePropsConfig, VirtualTreeProps, VirtualTreeEmits } from '../types'
 import { getNodeId, getNodeChildren, isNodeDisabled, isLeafNode } from '../utils/tree'
 import { useTreeSelection } from '../composables/useTreeSelection'
 import { useTreeExpand } from './useTreeExpand'
@@ -7,9 +7,15 @@ import { useTreeFilter } from './useTreeFilter'
 import { useTreeDrag } from './useTreeDrag'
 
 /**
+ * Emit function type helper
+ */
+type EmitFn<T> = <K extends keyof T>(event: K, ...args: T[K] extends any[] ? T[K] : never) => void
+
+/**
  * 扁平化树形数据
  */
-export function useTreeData(props: VirtualTreeProps) {
+export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmits>) {
+
   const flatTree = ref<FlatTreeNode[]>([])
   const visibleNodes = ref<FlatTreeNode[]>([])
   const refreshVisibleIndexes = () => {
@@ -142,7 +148,7 @@ export function useTreeData(props: VirtualTreeProps) {
   }
 
   const insertFlatTree = (node: FlatTreeNode, children: TreeNodeData[]) => {
-    const { nodes: result, flatNodes: container,nodeMap } = flattenTree(
+    const { nodes: result, flatNodes: container, nodeMap } = flattenTree(
       children,
       node.level + 1,
       node,
@@ -162,12 +168,17 @@ export function useTreeData(props: VirtualTreeProps) {
       }
     })
   }
-
+  const regenerateState: RegenerateOptions = {
+    needEmit: true,
+    resetExpanded: true,
+    resetChecked: true
+  }
   // 只在数据变化时重新生成flatTree
   watch(
     () => props.data,
     (newData) => {
       rawData.value = newData
+      regenerateState.needEmit = true
       regenerateFlatTree()
     },
     { deep: true }
@@ -177,7 +188,8 @@ export function useTreeData(props: VirtualTreeProps) {
   watch(
     () => [props.defaultExpandedKeys, props.defaultExpandAll],
     () => {
-      regenerateFlatTree({ resetExpanded: true })
+      regenerateState.resetExpanded = true
+      regenerateFlatTree()
     },
     { deep: true, immediate: false }
   )
@@ -186,36 +198,47 @@ export function useTreeData(props: VirtualTreeProps) {
   watch(
     () => props.defaultCheckedKeys,
     () => {
-      regenerateFlatTree({ resetChecked: true })
+      regenerateState.resetChecked = true
+      regenerateFlatTree()
     },
     { deep: true, immediate: false }
   )
   let regenerateTimer: ReturnType<typeof setTimeout> | null = null
+
+
   type RegenerateOptions = {
     resetExpanded?: boolean
     resetChecked?: boolean
+    needEmit?: boolean
   }
 
   // 重新生成flatTree的函数（只在必要时调用）
-  const regenerateFlatTree = (options: RegenerateOptions = {}) => {
-    const { resetExpanded = false, resetChecked = false } = options
+  const regenerateFlatTree = () => {
     if (regenerateTimer) {
       clearTimeout(regenerateTimer)
     }
     regenerateTimer = setTimeout(() => {
-      if (resetExpanded) {
+      if (regenerateState.resetExpanded) {
         initExpandedKeys()
       }
       updateFlatTree()
-      if (resetChecked) {
+      if (regenerateState.resetChecked) {
         initNodeChecked()
       }
+      if (regenerateState.needEmit) {
+        nextTick(() => {
+          emit('node-generated')
+        })
+      }
+      regenerateState.needEmit = false
+      regenerateState.resetExpanded = false
+      regenerateState.resetChecked = false
       regenerateTimer = null
     }, 5)
   }
 
   // 初始化
-  regenerateFlatTree({ resetExpanded: true, resetChecked: true })
+  regenerateFlatTree()
   return {
     flatTree,
     visibleNodes,

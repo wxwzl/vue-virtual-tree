@@ -11,8 +11,7 @@
     <div class="tree-container">
       <div class="tree-shell">
       <input v-model="filterText" placeholder="输入关键字过滤" @input="handleFilter" class="filter-input" />
-      <VirtualTree v-show="!isLoading && !searching" ref="treeRef" :data="treeData" class="tree-scroll" />
-      <div v-show="isLoading || searching" class="loading">数据加载中...</div>
+      <VirtualTree :loading="isLoading || searching" ref="treeRef" :data="treeData" class="tree-scroll" @node-generated="handleDataGenerated" />
       </div>
     </div>
   </div>
@@ -30,7 +29,7 @@ const searching = ref(false)
 let filterTimer: ReturnType<typeof setTimeout> | null = null
 let filterTaskId = 0
 
-const { treeData, isLoading, nodeCount, regenerateData, handleCountChange } = useDemoTree({
+const { treeData, isLoading, nodeCount, regenerateData, handleCountChange, handleDataGenerated } = useDemoTree({
   initialCount: 5000
 })
 
@@ -177,15 +176,6 @@ const handleRegenerate = async () => {
 .filter-input:focus {
   outline: none;
   border-color: #409eff;
-}
-
-.loading {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #909399;
-  font-size: 14px;
 }
 </style>
 

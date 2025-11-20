@@ -19,7 +19,7 @@
     </div>
     <div class="tree-container">
       <div class="tree-shell">
-        <VirtualTree v-if="!isLoading" :data="iconTreeData" class="tree-scroll">
+        <VirtualTree :data="iconTreeData" :loading="isLoading" class="tree-scroll" @node-generated="handleDataGenerated">
         <template #icon="{ node, data }">
           <div class="custom-icon">
             <span v-if="node.isExpanded">📂</span>
@@ -32,7 +32,6 @@
           </div>
         </template>
         </VirtualTree>
-        <div v-else class="loading">数据加载中...</div>
       </div>
     </div>
   </div>
@@ -44,7 +43,7 @@ import { useDemoTree } from '../composables/useDemoTree'
 
 const typePool = ['folder', 'image', 'video', 'audio', 'document']
 
-const { treeData: iconTreeData, isLoading, nodeCount, regenerateData, handleCountChange } = useDemoTree({
+const { treeData: iconTreeData, isLoading, nodeCount, regenerateData, handleCountChange, handleDataGenerated } = useDemoTree({
   initialCount: 5000,
   generatorOptions: {
     decorator: (node, { level, index }) => {
@@ -183,14 +182,5 @@ const resetIconData = () => {
   display: inline-flex;
   align-items: center;
   font-size: 16px;
-}
-
-.loading {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #909399;
-  font-size: 14px;
 }
 </style>

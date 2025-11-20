@@ -66,6 +66,12 @@ export const demoRoutes: RouteRecordRaw[] = [
     name: 'CustomIconDemo',
     component: () => import('../components/CustomIconDemo.vue'),
     meta: { title: '自定义图标' }
+  },
+  {
+    path: '/tree-loading',
+    name: 'TreeLoadingDemo',
+    component: () => import('../components/TreeLoadingDemo.vue'),
+    meta: { title: '自定义树加载状态' }
   }
 ]
 
