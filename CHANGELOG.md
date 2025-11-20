@@ -1,5 +1,9 @@
 # [1.0.0](https://github.com/wxwzl/vue-virtual-tree/compare/0.1.6...1.0.0) (2025-11-20)
 
+### Features
+
+- 增加数据加载中的状态prop和插槽 ([973f18a](https://github.com/wxwzl/vue-virtual-tree/commit/973f18ae697f8dd38b4ba6adac7cae4c27b69a5d))
+
 ## [0.1.6](https://github.com/wxwzl/vue-virtual-tree/compare/6ed73595f63c36478254a6f5c4e94e7f96a71e33...0.1.6) (2025-11-20)
 
 ### Bug Fixes
