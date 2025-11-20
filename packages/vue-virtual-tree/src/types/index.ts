@@ -18,12 +18,12 @@ export interface FlatTreeNode {
   level: number
   /** 节点索引，从 0 开始 */
   index: number
+  /** 在虚拟列表中的索引 */
+  visibleIndex?: number
   /** 父节点 ID */
   parentId: string | number | null
   /** 是否展开 */
   isExpanded: boolean
-  /** 是否可见 */
-  isVisible: boolean
   /** 是否选中 */
   isChecked?: boolean
   /** 是否半选（部分子节点选中） */

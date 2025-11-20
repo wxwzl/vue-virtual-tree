@@ -9,8 +9,22 @@ export function useTreeFilter(
   props: VirtualTreeProps,
   flatTree: Ref<FlatTreeNode[]>,
   flatNodeMap: Ref<Map<string | number, FlatTreeNode>>,
-  expandedKeys: Ref<Set<string | number>>
+  expandedKeys: Ref<Set<string | number>>,
+  setVisibleNodes: (nodes: FlatTreeNode[]) => void
 ) {
+
+  const rebuildVisibleNodes = () => {
+    const roots = flatTree.value.filter(node => node.parentId === null)
+    const result: FlatTreeNode[] = []
+    const traverse = (node: FlatTreeNode) => {
+      result.push(node)
+      if (node.isExpanded && node.children) {
+        node.children.forEach(child => traverse(child))
+      }
+    }
+    roots.forEach(root => traverse(root))
+    setVisibleNodes(result)
+  }
 
   // 默认过滤方法
   const defaultFilterMethod = (value: string, data: any): boolean => {
@@ -23,28 +37,27 @@ export function useTreeFilter(
   const filter = (value: string) => {
 
     if (!value) {
-      // 清空过滤，恢复所有节点可见
       flatTree.value.forEach(node => {
-        node.isVisible = true
+        if (!node.isLeaf) {
+          node.isExpanded = true
+          expandedKeys.value.add(node.id)
+        }
       })
+      rebuildVisibleNodes()
       return Promise.resolve()
     }
     return new Promise(async (resolve) => {
       const filterMethod = props.filterNodeMethod || defaultFilterMethod
-
-      // 先标记所有节点为不可见
+      const matchedNodes = new Set<FlatTreeNode>()
       flatTree.value.forEach(node => {
-        node.isVisible = false
         if (filterMethod(value, node.data)) {
-          // 标记当前节点为可见
-          node.isVisible = true
-
+          matchedNodes.add(node)
           // 标记所有父节点为可见并展开
           let parentId: string | number | null = node.parentId
           while (parentId) {
             const parentNode: FlatTreeNode | undefined = flatNodeMap.value.get(parentId)
             if (parentNode) {
-              parentNode.isVisible = true
+              matchedNodes.add(parentNode)
               parentNode.isExpanded = true
               expandedKeys.value.add(parentNode.id)
               parentId = parentNode.parentId
@@ -54,6 +67,7 @@ export function useTreeFilter(
           }
         }
       })
+      setVisibleNodes(flatTree.value.filter(node => matchedNodes.has(node)))
       resolve(void 0)
     })
   }

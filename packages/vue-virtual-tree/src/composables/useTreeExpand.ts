@@ -1,5 +1,6 @@
-import type { Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import type { VirtualTreeProps, FlatTreeNode } from '../types'
+import { getAllKeys } from '../utils/tree'
 
 /**
  * 树节点展开/折叠逻辑
@@ -7,22 +8,50 @@ import type { VirtualTreeProps, FlatTreeNode } from '../types'
 export function useTreeExpand(
   props: VirtualTreeProps,
   flatTree: Ref<FlatTreeNode[]>,
-  expandedKeys: Ref<Set<string | number>>
+  visibleNodes: Ref<FlatTreeNode[]>,
+  refreshVisibleIndexes: () => void
 ) {
-  /**
-   * 更新节点及其子孙节点的可见性
-   */
-  const updateNodeVisibility = (node: FlatTreeNode, isVisible: boolean) => {
-    if (node.children) {
-      node.children.forEach(child => {
-        child.isVisible = isVisible
-        // 如果子节点未展开，则递归隐藏其子孙节点
-        // if (!isVisible) {
-        //   // 如果子节点已展开，则确保其子孙节点可见
-        //   updateNodeVisibility(child, false)
-        // }
-      })
+
+  const expandedKeys = ref<Set<string | number>>(new Set())
+
+  // 初始化展开的节点
+  const initExpandedKeys = () => {
+    // 重置展开状态
+    if (props.defaultExpandAll) {
+      const allKeys = getAllKeys(props.data, props.props)
+      expandedKeys.value = new Set(allKeys)
+    } else if (props.defaultExpandedKeys && props.defaultExpandedKeys.length > 0) {
+      expandedKeys.value = new Set(props.defaultExpandedKeys)
+    } else {
+      expandedKeys.value = new Set()
     }
+  }
+
+  const collectVisibleDescendants = (parent: FlatTreeNode): FlatTreeNode[] => {
+    const result: FlatTreeNode[] = []
+    if (!parent.children) return result
+    parent.children.forEach(child => {
+      result.push(child)
+      if (child.isExpanded) {
+        result.push(...collectVisibleDescendants(child))
+      }
+    })
+    return result
+  }
+
+  const expandVisibleNode = (node: FlatTreeNode) => {
+    if (typeof node.visibleIndex !== 'number') return
+    const descendants = collectVisibleDescendants(node)
+    if (descendants.length === 0) return
+    visibleNodes.value.splice(node.visibleIndex + 1, 0, ...descendants)
+    refreshVisibleIndexes()
+  }
+  const collapseVisibleNode = (node: FlatTreeNode) => {
+    if (typeof node.visibleIndex !== 'number') return
+    const children = collectVisibleDescendants(node)
+    if (children.length === 0) return
+    visibleNodes.value.splice(node.visibleIndex + 1, children.length)
+    refreshVisibleIndexes()
   }
 
   /**
@@ -33,35 +62,40 @@ export function useTreeExpand(
       // 手风琴模式：折叠同级其他节点
       // 查找兄弟节点（需要从flatTree中查找，因为node.parentId可能为null）
       const siblings = flatTree.value.filter(
-        n => n.parentId === node.parentId && n.id !== node.id && n.isVisible
+        n => n.parentId === node.parentId && n.id !== node.id && n.isExpanded
       )
       siblings.forEach(sibling => {
-        if (sibling.isExpanded) {
-          sibling.isExpanded = false
-          expandedKeys.value.delete(sibling.id)
-          updateNodeVisibility(sibling, false)
-        }
+        sibling.isExpanded = false
+        expandedKeys.value.delete(sibling.id)
+        collapseVisibleNode(sibling)
       })
     }
 
     // 展开当前节点
     node.isExpanded = true
     expandedKeys.value.add(node.id)
-    updateNodeVisibility(node, true)
+    expandVisibleNode(node)
   }
 
+  const setRecursionExpanded = (node: FlatTreeNode, isExpanded: boolean) => {
+    node.isExpanded = isExpanded
+    if (isExpanded) {
+      expandedKeys.value.add(node.id)
+    } else {
+      expandedKeys.value.delete(node.id)
+    }
+    if (node.children) {
+      node.children.forEach(child => {
+        setRecursionExpanded(child, isExpanded)
+      })
+    }
+  }
   /**
    * 折叠节点
    */
   const collapseNode = (node: FlatTreeNode) => {
-    node.isExpanded = false
-    expandedKeys.value.delete(node.id)
-    if (node.children) {
-      node.children.forEach(child => {
-        collapseNode(child);
-      })
-    }
-    updateNodeVisibility(node, false)
+    collapseVisibleNode(node)
+    setRecursionExpanded(node, false)
   }
 
   /**
@@ -76,6 +110,8 @@ export function useTreeExpand(
   }
 
   return {
+    expandedKeys,
+    initExpandedKeys,
     expandNode,
     collapseNode,
     toggleNode

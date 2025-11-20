@@ -8,9 +8,8 @@
     'is-dragging': isDragging,
     [`drop-${dropType}`]: dropType
   }" :style="{ paddingLeft: `${node.level * indent}px` }" :draggable="draggable && !node.isDisabled"
-    :data-node-id="node.id"
-    @dragstart="handleDragStart" @dragenter="handleDragEnter" @dragleave="handleDragLeave" @dragover="handleDragOver"
-    @dragend="handleDragEnd" @drop="handleDrop">
+    :data-node-id="node.id" @dragstart="handleDragStart" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
+    @dragover="handleDragOver" @dragend="handleDragEnd" @drop="handleDrop">
     <div class="vue-virtual-tree-node__content">
       <span class="vue-virtual-tree-node__expand-icon" :class="{ 'is-leaf': isLeaf, 'is-loading': node.isLoading }">
         <!-- 图标区域 -->
@@ -152,6 +151,7 @@ const handleDrop = (event: DragEvent) => {
       visibility: hidden;
     }
   }
+
   &__checkbox {
     margin-right: 8px;
     flex-shrink: 0;

@@ -4,12 +4,11 @@
     <DynamicScroller ref="dynamicScrollerRef" v-if="visibleNodes.length > 0" :items="visibleNodes"
       :min-item-size="itemSize || 32" class="vue-virtual-tree__scroller" v-slot="{ item, index, active }">
       <DynamicScrollerItem :item="item" :active="active" :data-index="index" class="vue-virtual-tree__item">
-        <TreeNode :ref="(el) => setNodeRef(item.id, el)" :node="item" :key="item.id" :props="props.props"
-          :show-checkbox="showCheckbox" :expand-on-click-node="expandOnClickNode" :draggable="draggable"
-          :indent="props.indent"
+        <TreeNode :node="item" :key="item.id" :props="props.props" :show-checkbox="showCheckbox"
+          :expand-on-click-node="expandOnClickNode" :draggable="draggable" :indent="props.indent"
           :drop-type="dragState.dropNode?.value?.id === item.id ? dragState.dropType?.value ?? null : null"
-          @drag-start="handleDragStart" @drag-enter="handleDragEnter"
-          @drag-leave="handleDragLeave" @drag-over="handleDragOver" @drag-end="handleDragEnd" @drop="handleDrop">
+          @drag-start="handleDragStart" @drag-enter="handleDragEnter" @drag-leave="handleDragLeave"
+          @drag-over="handleDragOver" @drag-end="handleDragEnd" @drop="handleDrop">
           <template #default="{ node, data }">
             <slot :node="node" :data="data" />
           </template>
@@ -83,20 +82,8 @@ const props = withDefaults(defineProps<VirtualTreeProps>(), {
 
 const emit = defineEmits<VirtualTreeEmits>()
 
-// 节点引用
-const nodeRefs = ref<Map<string | number, any>>(new Map())
-
-const setNodeRef = (id: string | number, el: any) => {
-  if (el) {
-    nodeRefs.value.set(id, el)
-  } else {
-    nodeRefs.value.delete(id)
-  }
-}
-
 // 数据扁平化
 const {
-  flatTree,
   visibleNodes,
   rawData,
   getNodeData,
@@ -132,7 +119,6 @@ const getNodeFromEvent = (event: Event): FlatTreeNode | null => {
 
   const nodeId = nodeElement.getAttribute('data-node-id')
   if (!nodeId) return null
-
   // 尝试解析为 number 或 string
   const id = isNaN(Number(nodeId)) ? nodeId : Number(nodeId)
   return getFlatNode(id)
@@ -203,7 +189,7 @@ const handleNodeExpand = async (node: FlatTreeNode) => {
         props.load!(node.data, (children: TreeNodeData[]) => {
           // 更新节点的子节点
           if (children && children.length > 0) {
-            insertFlatTree(node, children);
+            insertFlatTree(node, children, true);
           }
           resolveCallback()
           resolve()
@@ -325,14 +311,14 @@ const createNodeInstance = (flatNode: FlatTreeNode): TreeNodeInstance => {
 
   const getChildren = (): TreeNodeInstance[] => {
     if (childrenInstances !== null) return childrenInstances
-    const children = flatTree.value.filter(n => n.parentId === flatNode.id && n.isVisible)
+    const children = visibleNodes.value.filter(n => n.parentId === flatNode.id)
     childrenInstances = children.map(child => createNodeInstance(child))
     return childrenInstances
   }
 
   const getSiblings = (): TreeNodeInstance[] => {
-    const siblings = flatTree.value.filter(
-      n => n.parentId === flatNode.parentId && n.id !== flatNode.id && n.isVisible
+    const siblings = visibleNodes.value.filter(
+      n => n.parentId === flatNode.parentId && n.id !== flatNode.id
     )
     return siblings.map(sibling => createNodeInstance(sibling))
   }
@@ -341,7 +327,7 @@ const createNodeInstance = (flatNode: FlatTreeNode): TreeNodeInstance => {
     const result: TreeNodeInstance[] = []
     const visited = new Set<string | number>()
     const traverse = (parentId: string | number) => {
-      const children = flatTree.value.filter(n => n.parentId === parentId && n.isVisible)
+      const children = visibleNodes.value.filter(n => n.parentId === parentId)
       children.forEach(child => {
         if (visited.has(child.id)) return // 防止循环引用
         visited.add(child.id)

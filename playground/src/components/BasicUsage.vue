@@ -65,7 +65,7 @@ const generateTreeDataAsync = (number: number): Promise<TreeNodeData[]> => {
 }
 
 onMounted(async () => {
-  const data = await generateTreeDataAsync(10000)
+  const data = await generateTreeDataAsync(20000)
   treeData.value = data
   isLoading.value = false
 })
