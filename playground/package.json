@@ -10,8 +10,9 @@
   },
   "dependencies": {
     "vue": "^3.4.0",
+    "vue-router": "^4.4.0",
     "vue-virtual-scroller": "^2.0.0-beta.8",
-    "vue-virtual-tree": "workspace:*"
+    "@wxwzl/vue-virtual-tree": "workspace:*"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",

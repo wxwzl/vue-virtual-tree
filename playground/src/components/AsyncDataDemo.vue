@@ -20,47 +20,15 @@ import { ref, onMounted } from 'vue'
 import { VirtualTree } from '@wxwzl/vue-virtual-tree'
 import type { TreeNodeData } from '@wxwzl/vue-virtual-tree'
 
+import { generateTreeDataAsync } from '../utils/treeData'
+
 const asyncTreeData = ref<TreeNodeData[]>([])
 const asyncExpandedKeys = ref<(string | number)[]>(['async-1', 'async-1-1'])
 const asyncCheckedKeys = ref<(string | number)[]>(['async-1', 'async-2', 'async-1-1'])
 
-const generateAsyncData = (): TreeNodeData[] => {
-  return [
-    {
-      id: 'async-1',
-      label: '异步节点 1',
-      children: [
-        {
-          id: 'async-1-1',
-          label: '异步节点 1-1',
-          children: [
-            { id: 'async-1-1-1', label: '异步节点 1-1-1' },
-            { id: 'async-1-1-2', label: '异步节点 1-1-2' }
-          ]
-        },
-        { id: 'async-1-2', label: '异步节点 1-2' }
-      ]
-    },
-    {
-      id: 'async-2',
-      label: '异步节点 2',
-      children: [
-        { id: 'async-2-1', label: '异步节点 2-1' },
-        { id: 'async-2-2', label: '异步节点 2-2' }
-      ]
-    },
-    {
-      id: 'async-3',
-      label: '异步节点 3'
-    }
-  ]
-}
-
-const loadAsyncData = () => {
+const loadAsyncData = async () => {
   asyncTreeData.value = []
-  setTimeout(() => {
-    asyncTreeData.value = generateAsyncData()
-  }, 1000)
+  asyncTreeData.value = await generateTreeDataAsync()
 }
 
 onMounted(() => {

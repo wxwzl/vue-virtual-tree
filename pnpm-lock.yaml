@@ -62,15 +62,18 @@ importers:
 
   playground:
     dependencies:
+      "@wxwzl/vue-virtual-tree":
+        specifier: workspace:*
+        version: link:../packages/vue-virtual-tree
       vue:
         specifier: ^3.4.0
         version: 3.5.24(typescript@5.9.3)
+      vue-router:
+        specifier: ^4.4.0
+        version: 4.6.3(vue@3.5.24)
       vue-virtual-scroller:
         specifier: ^2.0.0-beta.8
         version: 2.0.0-beta.8(vue@3.5.24)
-      vue-virtual-tree:
-        specifier: workspace:*
-        version: link:../packages/vue-virtual-tree
     devDependencies:
       "@vitejs/plugin-vue":
         specifier: ^5.0.0
@@ -1379,6 +1382,13 @@ packages:
       de-indent: 1.0.2
       he: 1.2.0
     dev: true
+
+  /@vue/devtools-api@6.6.4:
+    resolution:
+      {
+        integrity: sha512-sGhTPMuXqZ1rVOk32RylztWkfXTRhuS7vgAKv0zjqk8gbsHkJ7xfFf+jbySxt7tWObEJwyKaHMikV/WGDiQm8g==,
+      }
+    dev: false
 
   /@vue/language-core@2.2.0(typescript@5.9.3):
     resolution:
@@ -4667,6 +4677,18 @@ packages:
       vue: ^3.0.0
     dependencies:
       vue: 3.5.24(typescript@5.9.3)
+
+  /vue-router@4.6.3(vue@3.5.24):
+    resolution:
+      {
+        integrity: sha512-ARBedLm9YlbvQomnmq91Os7ck6efydTSpRP3nuOKCvgJOHNrhRoJDSKtee8kcL1Vf7nz6U+PMBL+hTvR3bTVQg==,
+      }
+    peerDependencies:
+      vue: ^3.5.0
+    dependencies:
+      "@vue/devtools-api": 6.6.4
+      vue: 3.5.24(typescript@5.9.3)
+    dev: false
 
   /vue-virtual-scroller@2.0.0-beta.8(vue@3.5.24):
     resolution:

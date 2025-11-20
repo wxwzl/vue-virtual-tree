@@ -10,33 +10,25 @@
         </svg>
       </a>
     </header>
-
-    <BasicUsage />
-    <CheckboxDemo />
-    <DefaultExpandAllDemo />
-    <DraggableDemo />
-    <FilterDemo />
-    <DefaultKeysDemo />
-    <CustomNodeDemo />
-    <AsyncDataDemo />
-    <LazyLoadDemo />
-    <CustomLoadingDemo />
-    <CustomIconDemo />
+    <div class="app-body">
+      <aside class="sidebar">
+        <RouterLink v-for="route in menuItems" :key="route.path" :to="route.path" class="menu-link"
+          active-class="is-active">
+          {{ route.meta?.title }}
+        </RouterLink>
+      </aside>
+      <main class="content">
+        <RouterView />
+      </main>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import BasicUsage from './components/BasicUsage.vue'
-import CheckboxDemo from './components/CheckboxDemo.vue'
-import DefaultExpandAllDemo from './components/DefaultExpandAllDemo.vue'
-import DraggableDemo from './components/DraggableDemo.vue'
-import FilterDemo from './components/FilterDemo.vue'
-import DefaultKeysDemo from './components/DefaultKeysDemo.vue'
-import CustomNodeDemo from './components/CustomNodeDemo.vue'
-import AsyncDataDemo from './components/AsyncDataDemo.vue'
-import LazyLoadDemo from './components/LazyLoadDemo.vue'
-import CustomLoadingDemo from './components/CustomLoadingDemo.vue'
-import CustomIconDemo from './components/CustomIconDemo.vue'
+import { RouterLink, RouterView } from 'vue-router'
+import { demoRoutes } from './router'
+
+const menuItems = demoRoutes
 </script>
 
 <style>
@@ -48,13 +40,12 @@ import CustomIconDemo from './components/CustomIconDemo.vue'
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  padding: 20px;
   background-color: #f5f5f5;
 }
 
 .app {
-  max-width: 1200px;
-  margin: 0 auto;
+  min-height: 100vh;
+  padding: 20px;
 }
 
 .app-header {
@@ -93,5 +84,52 @@ h1 {
   border-color: #409eff;
   color: #409eff;
   background-color: #ecf5ff;
+}
+
+.app-body {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.sidebar {
+  width: 220px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+.menu-link {
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: #606266;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.menu-link:hover {
+  background-color: #f5f7fa;
+  color: #409eff;
+}
+
+.menu-link.is-active {
+  background-color: #ecf5ff;
+  color: #409eff;
+  font-weight: 600;
+}
+
+.content {
+  flex: 1;
+  min-height: calc(100vh - 140px);
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  overflow-y: auto;
 }
 </style>
