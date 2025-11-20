@@ -1,7 +1,7 @@
 <template>
   <div class="vue-virtual-tree" :style="{ height: typeof height === 'number' ? `${height}px` : height }"
     @click="handleTreeClick">
-    <DynamicScroller ref="dynamicScrollerRef" v-if="visibleNodes.length > 0" :items="visibleNodes"
+    <DynamicScroller ref="dynamicScrollerRef" v-if="data.length > 0" :items="visibleNodes"
       :min-item-size="itemSize || 32" class="vue-virtual-tree__scroller" v-slot="{ item, index, active }">
       <DynamicScrollerItem :item="item" :active="active" :data-index="index" class="vue-virtual-tree__item">
         <TreeNode :node="item" :key="item.id" :props="props.props" :show-checkbox="showCheckbox"
