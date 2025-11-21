@@ -9,7 +9,7 @@ interface UseDemoTreeOptions {
 }
 
 export function useDemoTree(options: UseDemoTreeOptions = {}) {
-  const { initialCount = 5000, minCount = 1000, generatorOptions } = options
+  const { initialCount = 5000, minCount = 100, generatorOptions } = options
   const nodeCount = ref(initialCount)
   const treeData = ref<TreeNodeData[]>([])
   const totalNodeCount = ref(0)

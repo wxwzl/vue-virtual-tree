@@ -15,9 +15,33 @@
     </div>
     <div class="tree-container">
       <div class="tree-shell">
-        <VirtualTree :data="dragTreeData" :loading="isLoading" class="tree-scroll" draggable @node-drag-start="handleDragStart"
-        @node-drag-enter="handleDragEnter" @node-drag-leave="handleDragLeave" @node-drag-over="handleDragOver"
-        @node-drag-end="handleDragEnd" @node-drop="handleNodeDrop" @node-generated="handleDataGenerated" />
+        <VirtualTree :data="dragTreeData" :loading="isLoading || isDragReorganizing" class="tree-scroll" draggable
+          @node-drag-start="handleDragStart" @node-drag-enter="handleDragEnter" @node-drag-leave="handleDragLeave"
+          @node-drag-over="handleDragOver" @node-drag-end="handleDragEnd" @node-drop="handleNodeDrop"
+          @node-generated="handleDataGenerated">
+          <template #tree-loading>
+            <div class="custom-tree-loading">
+              <div v-if="isDragReorganizing" class="drag-loading-content">
+                <div class="loading-spinner">
+                  <div class="spinner-dot"></div>
+                  <div class="spinner-dot"></div>
+                  <div class="spinner-dot"></div>
+                </div>
+                <p class="loading-text">正在重组节点数据...</p>
+                <p class="loading-subtitle">拖拽操作处理中</p>
+              </div>
+              <div v-else class="initial-loading-content">
+                <div class="loading-spinner">
+                  <div class="spinner-dot"></div>
+                  <div class="spinner-dot"></div>
+                  <div class="spinner-dot"></div>
+                </div>
+                <p class="loading-text">正在加载树形数据...</p>
+                <p class="loading-subtitle">请稍候</p>
+              </div>
+            </div>
+          </template>
+        </VirtualTree>
       </div>
     </div>
     <div class="drag-log" v-if="dragLogs.length > 0">
@@ -31,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import { VirtualTree } from '@wxwzl/vue-virtual-tree'
 import type { TreeNodeData } from '@wxwzl/vue-virtual-tree'
 import { useDemoTree } from '../composables/useDemoTree'
@@ -42,6 +66,7 @@ const { treeData, isLoading, nodeCount, totalNodeCount, regenerateData, handleCo
 
 const dragTreeData = ref<TreeNodeData[]>([])
 const dragLogs = ref<string[]>([])
+const isDragReorganizing = ref(false)
 
 // 同步 treeData 到 dragTreeData
 watch(treeData, (newData) => {
@@ -127,60 +152,86 @@ const isDescendant = (root: TreeNodeData, targetId: string | number): boolean =>
   return false
 }
 
-const handleNodeDrop = (
+const handleNodeDrop = async (
   draggingNode: TreeNodeData,
   dropNode: TreeNodeData,
   dropType: 'prev' | 'inner' | 'next',
   event: DragEvent
 ) => {
-  const typeMap: Record<'prev' | 'inner' | 'next', string> = {
-    prev: '之前',
-    inner: '内部',
-    next: '之后'
-  }
-  addDragLog(`放置节点: ${draggingNode.label || draggingNode.id} -> ${dropNode.label || dropNode.id} (${typeMap[dropType]})`)
-  console.log('Node dropped:', { draggingNode, dropNode, dropType })
+  // 设置拖动重组 loading 状态
+  isDragReorganizing.value = true
+  
+  // 第一步：等待 Vue 更新队列
+  await nextTick()
 
-  if (draggingNode.id === dropNode.id) return
-  if (isDescendant(draggingNode, dropNode.id)) {
-    addDragLog('无法将节点放置到其自身的子节点位置')
-    return
-  }
+  // 第二步：等待浏览器实际渲染 loading（关键！）
+  await new Promise(resolve => setTimeout(resolve, 0))
 
-  const workingData = [...dragTreeData.value]
-  const removedMeta = removeNodeById(workingData, draggingNode.id)
-  if (!removedMeta) return
-
-  const targetMeta = findNodeMeta(workingData, dropNode.id)
-  if (!targetMeta) {
-    return
-  }
-
-  const insertIntoParent = (parent: TreeNodeData | null, index: number) => {
-    const siblings = parent ? (parent.children = parent.children || []) : workingData
-    if (
-      removedMeta.parent &&
-      parent &&
-      removedMeta.parent.id === parent.id &&
-      removedMeta.index < index
-    ) {
-      index -= 1
+  try {
+    const typeMap: Record<'prev' | 'inner' | 'next', string> = {
+      prev: '之前',
+      inner: '内部',
+      next: '之后'
     }
-    siblings.splice(index, 0, removedMeta.node)
-  }
+    addDragLog(`放置节点: ${draggingNode.label || draggingNode.id} -> ${dropNode.label || dropNode.id} (${typeMap[dropType]})`)
+    console.log('Node dropped:', { draggingNode, dropNode, dropType })
 
-  if (dropType === 'inner') {
-    targetMeta.node.children = targetMeta.node.children || []
-    targetMeta.node.children.push(removedMeta.node)
-  } else if (dropType === 'prev') {
-    insertIntoParent(targetMeta.parent, targetMeta.index)
-  } else if (dropType === 'next') {
-    insertIntoParent(targetMeta.parent, targetMeta.index + 1)
-  }
+    if (draggingNode.id === dropNode.id) {
+      isDragReorganizing.value = false
+      return
+    }
+    if (isDescendant(draggingNode, dropNode.id)) {
+      addDragLog('无法将节点放置到其自身的子节点位置')
+      isDragReorganizing.value = false
+      return
+    }
 
-  dragTreeData.value = [...workingData]
-  // 同步回 treeData 以保持一致性
-  treeData.value = [...workingData]
+    const workingData = [...dragTreeData.value]
+    const removedMeta = removeNodeById(workingData, draggingNode.id)
+    if (!removedMeta) {
+      isDragReorganizing.value = false
+      return
+    }
+
+    const targetMeta = findNodeMeta(workingData, dropNode.id)
+    if (!targetMeta) {
+      isDragReorganizing.value = false
+      return
+    }
+
+    const insertIntoParent = (parent: TreeNodeData | null, index: number) => {
+      const siblings = parent ? (parent.children = parent.children || []) : workingData
+      if (
+        removedMeta.parent &&
+        parent &&
+        removedMeta.parent.id === parent.id &&
+        removedMeta.index < index
+      ) {
+        index -= 1
+      }
+      siblings.splice(index, 0, removedMeta.node)
+    }
+
+    if (dropType === 'inner') {
+      targetMeta.node.children = targetMeta.node.children || []
+      targetMeta.node.children.push(removedMeta.node)
+    } else if (dropType === 'prev') {
+      insertIntoParent(targetMeta.parent, targetMeta.index)
+    } else if (dropType === 'next') {
+      insertIntoParent(targetMeta.parent, targetMeta.index + 1)
+    }
+
+    dragTreeData.value = [...workingData]
+    // 同步回 treeData 以保持一致性
+    treeData.value = [...workingData]
+    
+    // 等待 VirtualTree 处理完成
+    await nextTick()
+  } finally {
+    // 等待一小段时间确保 UI 更新完成
+    await new Promise(resolve => setTimeout(resolve, 50))
+    isDragReorganizing.value = false
+  }
 }
 </script>
 
@@ -333,5 +384,70 @@ const handleNodeDrop = (
 .log-item:last-child {
   border-bottom: none;
 }
-</style>
 
+.custom-tree-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+}
+
+.loading-spinner {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.spinner-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #409eff;
+  animation: loading-bounce 1.4s ease-in-out infinite both;
+}
+
+.spinner-dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.spinner-dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+.loading-text {
+  font-size: 16px;
+  color: #606266;
+  font-weight: 500;
+  margin: 0;
+}
+
+.loading-subtitle {
+  font-size: 14px;
+  color: #909399;
+  margin: 0;
+}
+
+.drag-loading-content .spinner-dot {
+  background-color: #67c23a;
+}
+
+.initial-loading-content .spinner-dot {
+  background-color: #409eff;
+}
+
+@keyframes loading-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+</style>
