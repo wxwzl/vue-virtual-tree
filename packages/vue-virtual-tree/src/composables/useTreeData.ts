@@ -1,4 +1,4 @@
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import type { TreeNodeData, FlatTreeNode, TreePropsConfig, VirtualTreeProps, VirtualTreeEmits } from '../types'
 import { getNodeId, getNodeChildren, isNodeDisabled, isLeafNode } from '../utils/tree'
 import { useTreeSelection } from '../composables/useTreeSelection'
@@ -17,7 +17,19 @@ type EmitFn<T> = <K extends keyof T>(event: K, ...args: T[K] extends any[] ? T[K
 export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmits>) {
 
   const flatTree = ref<FlatTreeNode[]>([])
+  const rawData = ref<TreeNodeData[]>(props.data)
+  // 使用 Map 建立索引，O(1) 查找
+  const flatNodeMap = ref<Map<string | number, FlatTreeNode>>(new Map())
   const visibleNodes = ref<FlatTreeNode[]>([])
+  const filteredFlatTree = ref<FlatTreeNode[]>([])
+  const filteredFlatNodeMap = ref<Map<string | number, FlatTreeNode>>(new Map())
+  const isFiltered = ref(false)
+  const treeDataWrapper = computed(() => {
+    return isFiltered.value ? filteredFlatTree.value : flatTree.value
+  })
+  const treeDataMapWrapper = computed(() => {
+    return isFiltered.value ? filteredFlatNodeMap.value : flatNodeMap.value
+  })
   const refreshVisibleIndexes = () => {
     visibleNodes.value.forEach((node, index) => {
       node.visibleIndex = index
@@ -27,19 +39,16 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
     visibleNodes.value = nodes
     refreshVisibleIndexes()
   }
-  const rawData = ref<TreeNodeData[]>(props.data)
-  // 使用 Map 建立索引，O(1) 查找
-  const flatNodeMap = ref<Map<string | number, FlatTreeNode>>(new Map())
 
   // 根据 key 获取节点数据
   const getNodeData = (id: string | number): TreeNodeData | null => {
-    const flatNode = flatNodeMap.value.get(id)
+    const flatNode = treeDataMapWrapper.value.get(id)
     return flatNode ? flatNode.data : null
   }
 
   // 根据 key 获取扁平节点
   const getFlatNode = (id: string | number): FlatTreeNode | null => {
-    return flatNodeMap.value.get(id) || null
+    return treeDataMapWrapper.value.get(id) || null
   }
 
   // 选择逻辑
@@ -55,18 +64,18 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
     setCheckedNodes,
     setCheckedKeys,
     initNodeChecked
-  } = useTreeSelection(props, flatTree, getNodeData)
+  } = useTreeSelection(props, flatTree, getNodeData, getFlatNode)
 
   // 展开/折叠逻辑
   const { expandNode, collapseNode, expandedKeys, initExpandedKeys } = useTreeExpand(
     props,
-    flatTree,
+    treeDataWrapper,
     visibleNodes,
     refreshVisibleIndexes
   )
 
   // 过滤逻辑
-  const { filter } = useTreeFilter(props, flatTree, flatNodeMap, expandedKeys, setVisibleNodes)
+  const { filter } = useTreeFilter(props, flatTree, flatNodeMap,filteredFlatTree,filteredFlatNodeMap, isFiltered, expandedKeys, setVisibleNodes)
 
   // 拖拽逻辑
   const dragState = useTreeDrag(props, getNodeData)
@@ -92,7 +101,7 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
       const result: FlatTreeNode[] = [];
       let length = nodes.length;
       for (let i = 0; i < length; i++) {
-        let index = startIndex + i;
+        startIndex++;
         const node: TreeNodeData = nodes[i]
         const id = getNodeId(node, config)
         const children = getNodeChildren(node, config)
@@ -104,7 +113,7 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
           data: node,
           level,
           parentId: parentNode?.id || null,
-          index,
+          index: startIndex,
           isExpanded,
           isDisabled: isNodeDisabled(node, config),
           isLeaf: isLeaf,
@@ -120,17 +129,18 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
         }
         // 如果节点展开且有子节点，递归处理子节点
         if (children.length > 0) {
-          const childNodes = genenrateFlatNodes(children, level + 1, flatNode, index, isExpanded && visible, container, config)
+          const { nodes: childNodes, index } = genenrateFlatNodes(children, level + 1, flatNode, startIndex, isExpanded && visible, container, config)
           flatNode.children = childNodes
+          startIndex = index
         }
         map.set(id, flatNode);
       }
 
-      return result
+      return { nodes: result, index: startIndex }
     }
 
     const container: FlatTreeNode[] = []
-    const result = genenrateFlatNodes(nodes, level, parentNode, startIndex, visible, container, config)
+    const { nodes: result } = genenrateFlatNodes(nodes, level, parentNode, startIndex, visible, container, config)
     return { nodes: result, flatNodes: container, nodeMap: map, visibleNodes: visibleList }
   }
 

@@ -13,6 +13,7 @@
     </div>
     <div class="control-panel">
       <button @click="loadAsyncData" class="btn">重新加载数据</button>
+      <span class="node-count-info" v-if="totalNodeCount > 0">总节点数：{{ totalNodeCount.toLocaleString() }}</span>
     </div>
   </div>
 </template>
@@ -25,6 +26,7 @@ import type { TreeNodeData } from '@wxwzl/vue-virtual-tree'
 import { generateTreeDataAsync } from '../utils/treeData'
 
 const asyncTreeData = ref<TreeNodeData[]>([])
+const totalNodeCount = ref(0)
 const isLoading = ref(false)
 const asyncExpandedKeys = ref<(string | number)[]>(['async-1', 'async-1-1'])
 const asyncCheckedKeys = ref<(string | number)[]>(['async-1', 'async-2', 'async-1-1'])
@@ -36,7 +38,9 @@ const handleDataGenerated = () => {
 const loadAsyncData = async () => {
   isLoading.value = true
   asyncTreeData.value = []
-  asyncTreeData.value = await generateTreeDataAsync()
+  const result = await generateTreeDataAsync()
+  asyncTreeData.value = result.data
+  totalNodeCount.value = result.totalCount
   // 不在这里关闭 loading，等待 VirtualTree 的 node-generated 事件
 }
 
@@ -122,6 +126,12 @@ onMounted(() => {
 
 .btn:active {
   background-color: #3a8ee6;
+}
+
+.node-count-info {
+  font-size: 14px;
+  color: #909399;
+  margin-left: auto;
 }
 </style>
 

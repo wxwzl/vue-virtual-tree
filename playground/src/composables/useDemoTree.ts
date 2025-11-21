@@ -12,13 +12,16 @@ export function useDemoTree(options: UseDemoTreeOptions = {}) {
   const { initialCount = 5000, minCount = 1000, generatorOptions } = options
   const nodeCount = ref(initialCount)
   const treeData = ref<TreeNodeData[]>([])
+  const totalNodeCount = ref(0)
   const isLoading = ref(true)
   const dataLoaded = ref(false)
 
   const regenerateData = async () => {
     isLoading.value = true
     dataLoaded.value = false
-    treeData.value = await generateVirtualTreeData(nodeCount.value, generatorOptions)
+    const result = await generateVirtualTreeData(nodeCount.value, generatorOptions)
+    treeData.value = result.data
+    totalNodeCount.value = result.totalCount
     dataLoaded.value = true
     // 不在这里关闭 loading，等待 VirtualTree 的 node-generated 事件
   }
@@ -45,6 +48,7 @@ export function useDemoTree(options: UseDemoTreeOptions = {}) {
     treeData,
     isLoading,
     nodeCount,
+    totalNodeCount,
     regenerateData,
     handleCountChange,
     handleDataGenerated

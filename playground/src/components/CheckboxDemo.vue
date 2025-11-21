@@ -7,6 +7,7 @@
         <input type="number" min="1000" step="1000" v-model.number="nodeCount" @change="handleCountChange" />
       </label>
       <button class="btn" @click="regenerateData">重新生成</button>
+      <span class="node-count-info" v-if="totalNodeCount > 0">总节点数：{{ totalNodeCount.toLocaleString() }}</span>
     </div>
     <div class="tree-container">
       <div class="tree-shell">
@@ -21,7 +22,7 @@ import { VirtualTree } from '@wxwzl/vue-virtual-tree'
 import type { TreeNodeData } from '@wxwzl/vue-virtual-tree'
 import { useDemoTree } from '../composables/useDemoTree'
 
-const { treeData, isLoading, nodeCount, regenerateData, handleCountChange, handleDataGenerated } = useDemoTree({
+const { treeData, isLoading, nodeCount, totalNodeCount, regenerateData, handleCountChange, handleDataGenerated } = useDemoTree({
   initialCount: 5000
 })
 
@@ -91,6 +92,12 @@ const handleNodeCheck = (data: TreeNodeData, info: any) => {
 
 .btn:hover {
   background-color: #66b1ff;
+}
+
+.node-count-info {
+  font-size: 14px;
+  color: #909399;
+  margin-left: auto;
 }
 
 .tree-container {

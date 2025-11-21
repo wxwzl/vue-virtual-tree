@@ -18,10 +18,15 @@ const ensurePositiveInt = (value: number, fallback: number) => {
   return Math.floor(value)
 }
 
+export interface GenerateTreeDataResult {
+  data: TreeNodeData[]
+  totalCount: number
+}
+
 export const generateVirtualTreeData = (
   rootCount = 5000,
   options: VirtualTreeOptions = {}
-): Promise<TreeNodeData[]> => {
+): Promise<GenerateTreeDataResult> => {
   const safeRootCount = ensurePositiveInt(rootCount, 1)
   const chunkSize = ensurePositiveInt(options.chunkSize ?? 50, 50)
   const childCount = ensurePositiveInt(options.childCount ?? 5, 5)
@@ -31,6 +36,7 @@ export const generateVirtualTreeData = (
   return new Promise(resolve => {
     const data: TreeNodeData[] = []
     let currentIndex = 1
+    let totalCount = 0 // 统计总节点数
 
     const generateChunk = () => {
       const endIndex = Math.min(currentIndex + chunkSize, safeRootCount + 1)
@@ -41,6 +47,7 @@ export const generateVirtualTreeData = (
           label: `节点 ${i}`
         }
         decorator?.(node, { level: 0, parentId: null, index: i })
+        totalCount++ // 根节点
 
         const children: TreeNodeData[] = []
         for (let j = 1; j <= childCount; j++) {
@@ -49,6 +56,7 @@ export const generateVirtualTreeData = (
             label: `节点 ${i}-${j}`
           }
           decorator?.(child, { level: 1, parentId: node.id, index: j })
+          totalCount++ // 子节点
 
           const grandchildren: TreeNodeData[] = []
           for (let k = 1; k <= grandChildCount; k++) {
@@ -57,6 +65,7 @@ export const generateVirtualTreeData = (
               label: `节点 ${i}-${j}-${k}`
             }
             decorator?.(grandChild, { level: 2, parentId: child.id, index: k })
+            totalCount++ // 孙节点
             grandchildren.push(grandChild)
           }
           child.children = grandchildren
@@ -71,7 +80,7 @@ export const generateVirtualTreeData = (
       if (currentIndex <= safeRootCount) {
         requestAnimationFrame(generateChunk)
       } else {
-        resolve(data)
+        resolve({ data, totalCount })
       }
     }
 
@@ -86,12 +95,12 @@ export interface AsyncTreeOptions extends VirtualTreeOptions {
 export const generateTreeDataAsync = (
   count = 5000,
   options: AsyncTreeOptions = {}
-): Promise<TreeNodeData[]> => {
+): Promise<GenerateTreeDataResult> => {
   const delay = options.delay ?? 1000
   return new Promise(resolve => {
     setTimeout(async () => {
-      const data = await generateVirtualTreeData(count, options)
-      resolve(data)
+      const result = await generateVirtualTreeData(count, options)
+      resolve(result)
     }, delay)
   })
 }

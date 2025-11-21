@@ -16,6 +16,7 @@
       </label>
       <button class="btn" @click="regenerateData">重新生成</button>
       <button @click="resetIconData" class="btn btn-secondary">重置图标数据</button>
+      <span class="node-count-info" v-if="totalNodeCount > 0">总节点数：{{ totalNodeCount.toLocaleString() }}</span>
     </div>
     <div class="tree-container">
       <div class="tree-shell">
@@ -43,7 +44,7 @@ import { useDemoTree } from '../composables/useDemoTree'
 
 const typePool = ['folder', 'image', 'video', 'audio', 'document']
 
-const { treeData: iconTreeData, isLoading, nodeCount, regenerateData, handleCountChange, handleDataGenerated } = useDemoTree({
+const { treeData: iconTreeData, isLoading, nodeCount, totalNodeCount, regenerateData, handleCountChange, handleDataGenerated } = useDemoTree({
   initialCount: 5000,
   generatorOptions: {
     decorator: (node, { level, index }) => {
@@ -176,6 +177,12 @@ const resetIconData = () => {
 
 .btn-secondary:hover {
   background-color: #85ce61;
+}
+
+.node-count-info {
+  font-size: 14px;
+  color: #909399;
+  margin-left: auto;
 }
 
 .custom-icon {

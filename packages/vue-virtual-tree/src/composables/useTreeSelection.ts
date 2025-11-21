@@ -9,7 +9,8 @@ import { getNodeId, getNodeChildren, isLeafNode } from '../utils/tree'
 export function useTreeSelection(
   props: VirtualTreeProps,
   flatTree: Ref<FlatTreeNode[]>,
-  getNodeData: (id: string | number) => TreeNodeData | null
+  getNodeData: (id: string | number) => TreeNodeData | null,
+  getFlatNode: (id: string | number) => FlatTreeNode | null
 ) {
   // 从flatTree计算选中的节点key集合
   const checkedKeys = computed(() => {
@@ -48,7 +49,7 @@ export function useTreeSelection(
      // 如果有默认选中的节点，设置它们并处理父子关联
      if (props.defaultCheckedKeys && props.defaultCheckedKeys.length > 0) {
       props.defaultCheckedKeys.forEach(key => {
-        const node = flatTree.value.find(n => n.id === key)
+        const node = getFlatNode(key)
         if (node) {
           setNodeChecked(key, true)
         }
@@ -124,9 +125,9 @@ export function useTreeSelection(
     const updateParentChecked = (childNode: FlatTreeNode) => {
       const parentId = childNode.parentId
       if (parentId !== null) {
-        const parent = flatTree.value.find(n => n.id === parentId)
+        const parent = getFlatNode(parentId)
         if (parent) {
-          const siblings = flatTree.value.filter(n => n.parentId === parentId)
+          const siblings = parent.children || []
           const checkedCount = siblings.filter(n => n.isChecked).length
           const indeterminateCount = siblings.filter(n => n.isIndeterminate).length
 
@@ -154,7 +155,7 @@ export function useTreeSelection(
 
   // 设置节点选中状态（考虑父子关联）
   const setNodeChecked = (nodeId: string | number, checked: boolean, checkStrictly?: boolean) => {
-    const node = flatTree.value.find(n => n.id === nodeId)
+    const node = getFlatNode(nodeId)
     if (!node) return
 
     const isStrictly = checkStrictly ?? props.checkStrictly ?? false

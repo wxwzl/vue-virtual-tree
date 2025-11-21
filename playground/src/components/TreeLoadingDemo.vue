@@ -12,6 +12,7 @@
     <div class="control-panel">
       <button @click="toggleLoading" class="btn">{{ isLoading ? '停止加载' : '开始加载' }}</button>
       <button @click="loadData" class="btn btn-secondary">模拟加载数据</button>
+      <span class="node-count-info" v-if="totalNodeCount > 0">总节点数：{{ totalNodeCount.toLocaleString() }}</span>
     </div>
     <div class="tree-container">
       <div class="tree-shell">
@@ -38,7 +39,7 @@ import { ref } from 'vue'
 import { VirtualTree } from '@wxwzl/vue-virtual-tree'
 import { useDemoTree } from '../composables/useDemoTree'
 
-const { treeData, regenerateData, isLoading, handleDataGenerated } = useDemoTree({
+const { treeData, regenerateData, isLoading, totalNodeCount, handleDataGenerated } = useDemoTree({
   initialCount: 5000
 })
 
@@ -132,6 +133,12 @@ const loadData = async () => {
 
 .btn-secondary:hover {
   background-color: #85ce61;
+}
+
+.node-count-info {
+  font-size: 14px;
+  color: #909399;
+  margin-left: auto;
 }
 
 .tree-container {

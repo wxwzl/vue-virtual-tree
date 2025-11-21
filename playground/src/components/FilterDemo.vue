@@ -7,6 +7,7 @@
         <input type="number" min="1000" step="1000" v-model.number="nodeCount" @change="handleNodeCountChange" />
       </label>
       <button class="btn" @click="handleRegenerate">重新生成</button>
+      <span class="node-count-info" v-if="totalNodeCount > 0">总节点数：{{ totalNodeCount.toLocaleString() }}</span>
     </div>
     <div class="tree-container">
       <div class="tree-shell">
@@ -29,8 +30,8 @@ const searching = ref(false)
 let filterTimer: ReturnType<typeof setTimeout> | null = null
 let filterTaskId = 0
 
-const { treeData, isLoading, nodeCount, regenerateData, handleCountChange, handleDataGenerated } = useDemoTree({
-  initialCount: 5000
+const { treeData, isLoading, nodeCount, totalNodeCount, regenerateData, handleCountChange, handleDataGenerated } = useDemoTree({
+  initialCount: 1000
 })
 
 const runFilter = async (taskId: number) => {
@@ -141,6 +142,12 @@ const handleRegenerate = async () => {
 
 .btn:hover {
   background-color: #66b1ff;
+}
+
+.node-count-info {
+  font-size: 14px;
+  color: #909399;
+  margin-left: auto;
 }
 
 .tree-container {
