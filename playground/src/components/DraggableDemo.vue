@@ -4,15 +4,21 @@
     <div class="info-box">
       <p><strong>说明：</strong>拖拽节点可以重新排序，支持拖拽到节点前、节点内、节点后三种位置</p>
     </div>
+    <div class="control-panel">
+      <label class="control-label">
+        节点数量：
+        <input type="number" min="1000" step="1000" v-model.number="nodeCount" @change="handleCountChange" />
+      </label>
+      <button class="btn" @click="regenerateData">重新生成</button>
+      <button @click="resetDragTreeData" class="btn btn-secondary">重置拖拽数据</button>
+      <span class="node-count-info" v-if="totalNodeCount > 0">总节点数：{{ totalNodeCount.toLocaleString() }}</span>
+    </div>
     <div class="tree-container">
       <div class="tree-shell">
-        <VirtualTree :data="dragTreeData" class="tree-scroll" draggable @node-drag-start="handleDragStart"
+        <VirtualTree :data="dragTreeData" :loading="isLoading" class="tree-scroll" draggable @node-drag-start="handleDragStart"
         @node-drag-enter="handleDragEnter" @node-drag-leave="handleDragLeave" @node-drag-over="handleDragOver"
-        @node-drag-end="handleDragEnd" @node-drop="handleNodeDrop" />
+        @node-drag-end="handleDragEnd" @node-drop="handleNodeDrop" @node-generated="handleDataGenerated" />
       </div>
-    </div>
-    <div class="control-panel">
-      <button @click="resetDragTreeData" class="btn">重置拖拽数据</button>
     </div>
     <div class="drag-log" v-if="dragLogs.length > 0">
       <h3>拖拽日志：</h3>
@@ -25,42 +31,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { VirtualTree } from '@wxwzl/vue-virtual-tree'
 import type { TreeNodeData } from '@wxwzl/vue-virtual-tree'
+import { useDemoTree } from '../composables/useDemoTree'
 
-const generateDraggableTreeData = (): TreeNodeData[] => [
-  {
-    id: 'drag-1',
-    label: '拖拽节点 1',
-    children: [
-      { id: 'drag-1-1', label: '拖拽节点 1-1' },
-      { id: 'drag-1-2', label: '拖拽节点 1-2' }
-    ]
-  },
-  {
-    id: 'drag-2',
-    label: '拖拽节点 2',
-    children: [
-      {
-        id: 'drag-2-1',
-        label: '拖拽节点 2-1',
-        children: [
-          { id: 'drag-2-1-1', label: '拖拽节点 2-1-1' },
-          { id: 'drag-2-1-2', label: '拖拽节点 2-1-2' }
-        ]
-      },
-      { id: 'drag-2-2', label: '拖拽节点 2-2' }
-    ]
-  },
-  {
-    id: 'drag-3',
-    label: '拖拽节点 3'
-  }
-]
+const { treeData, isLoading, nodeCount, totalNodeCount, regenerateData, handleCountChange, handleDataGenerated } = useDemoTree({
+  initialCount: 5000
+})
 
-const dragTreeData = ref<TreeNodeData[]>(generateDraggableTreeData())
+const dragTreeData = ref<TreeNodeData[]>([])
 const dragLogs = ref<string[]>([])
+
+// 同步 treeData 到 dragTreeData
+watch(treeData, (newData) => {
+  dragTreeData.value = JSON.parse(JSON.stringify(newData))
+}, { immediate: true, deep: true })
 
 const addDragLog = (message: string) => {
   const timestamp = new Date().toLocaleTimeString()
@@ -75,7 +61,7 @@ const clearDragLogs = () => {
 }
 
 const resetDragTreeData = () => {
-  dragTreeData.value = generateDraggableTreeData()
+  regenerateData()
   dragLogs.value = []
 }
 
@@ -167,7 +153,6 @@ const handleNodeDrop = (
 
   const targetMeta = findNodeMeta(workingData, dropNode.id)
   if (!targetMeta) {
-    dragTreeData.value = [...generateDraggableTreeData()]
     return
   }
 
@@ -194,6 +179,8 @@ const handleNodeDrop = (
   }
 
   dragTreeData.value = [...workingData]
+  // 同步回 treeData 以保持一致性
+  treeData.value = [...workingData]
 }
 </script>
 
@@ -256,6 +243,35 @@ const handleNodeDrop = (
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.control-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #606266;
+}
+
+.control-label input {
+  width: 140px;
+  padding: 6px 10px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.control-label input:focus {
+  border-color: #409eff;
+}
+
+.node-count-info {
+  font-size: 14px;
+  color: #909399;
+  margin-left: auto;
 }
 
 .btn {
@@ -275,6 +291,14 @@ const handleNodeDrop = (
 
 .btn:active {
   background-color: #3a8ee6;
+}
+
+.btn-secondary {
+  background-color: #67c23a;
+}
+
+.btn-secondary:hover {
+  background-color: #85ce61;
 }
 
 .btn-small {
