@@ -72,6 +72,12 @@ export const demoRoutes: RouteRecordRaw[] = [
     name: 'TreeLoadingDemo',
     component: () => import('../components/TreeLoadingDemo.vue'),
     meta: { title: '自定义树加载状态' }
+  },
+  {
+    path: '/custom-checkbox',
+    name: 'CustomCheckboxDemo',
+    component: () => import('../components/CustomCheckboxDemo.vue'),
+    meta: { title: '定制复选框样式' }
   }
 ]
 
