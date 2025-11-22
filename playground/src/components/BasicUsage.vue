@@ -40,7 +40,6 @@ const { treeData, isLoading, nodeCount, totalNodeCount, regenerateData, handleCo
 }
 
 .demo-section h2 {
-  margin-bottom: 20px;
   color: #606266;
   font-size: 18px;
 }
