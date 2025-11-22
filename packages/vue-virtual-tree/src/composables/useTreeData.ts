@@ -1,4 +1,4 @@
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import type { TreeNodeData, FlatTreeNode, TreePropsConfig, VirtualTreeProps, VirtualTreeEmits } from '../types'
 import { getNodeId, getNodeChildren, isNodeDisabled, isLeafNode } from '../utils/tree'
 import { useTreeSelection } from '../composables/useTreeSelection'
@@ -75,7 +75,7 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
   )
 
   // 过滤逻辑
-  const { filter } = useTreeFilter(props, flatTree, flatNodeMap,filteredFlatTree,filteredFlatNodeMap, isFiltered, expandedKeys, setVisibleNodes)
+  const { filter } = useTreeFilter(props, flatTree, flatNodeMap, filteredFlatTree, filteredFlatNodeMap, isFiltered, expandedKeys, setVisibleNodes)
 
   // 拖拽逻辑
   const dragState = useTreeDrag(props, getNodeData)
@@ -189,6 +189,7 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
     (newData) => {
       rawData.value = newData
       regenerateState.needEmit = true
+      regenerateState.resetChecked = true
       regenerateFlatTree()
     },
     { deep: true }
@@ -249,6 +250,15 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
 
   // 初始化
   regenerateFlatTree()
+
+  // 组件卸载时清理定时器
+  onUnmounted(() => {
+    if (regenerateTimer) {
+      clearTimeout(regenerateTimer)
+      regenerateTimer = null
+    }
+  })
+
   return {
     flatTree,
     visibleNodes,

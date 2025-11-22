@@ -12,7 +12,12 @@
     <template v-else>
       <DynamicScroller ref="dynamicScrollerRef" v-if="data.length > 0" :items="visibleNodes"
         :min-item-size="itemSize || 32" class="vue-virtual-tree__scroller" v-slot="{ item, index, active }">
-        <DynamicScrollerItem :item="item" :active="active" :data-index="index" class="vue-virtual-tree__item">
+        <DynamicScrollerItem 
+          :item="item" 
+          :active="active" 
+          :data-index="index" 
+          :size-dependencies="getNodeSizeDependencies(item)"
+          class="vue-virtual-tree__item">
           <TreeNode :node="item" :key="item.id" :props="props.props" :show-checkbox="showCheckbox"
             :expand-on-click-node="expandOnClickNode" :draggable="draggable" :indent="props.indent"
             :current-key="selectedKey"
@@ -119,6 +124,21 @@ const {
 } = useTreeData(props, emit)
 
 const dynamicScrollerRef = ref<InstanceType<typeof DynamicScroller> | null>(null)
+
+// 计算节点高度依赖项，用于 DynamicScroller 重新计算高度
+const getNodeSizeDependencies = (item: FlatTreeNode) => {
+  // 包含所有可能影响节点高度的状态和数据
+  return [
+    item.data,
+    item.isExpanded,
+    item.isChecked,
+    item.isLoading,
+    item.isDisabled,
+    item.level,
+    // 如果节点数据中有 label，也包含进来，因为长文本可能换行
+    getNodeLabel(item.data, props.props)
+  ]
+}
 
 // 事件委托：从事件目标查找节点
 const getNodeFromEvent = (event: Event): FlatTreeNode | null => {

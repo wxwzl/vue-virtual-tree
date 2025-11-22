@@ -121,11 +121,10 @@ const handleDrop = (event: DragEvent) => {
   &__content {
     display: flex;
     align-items: center;
-    height: 32px;
-    line-height: 32px;
+    min-height: 32px;
+    padding: 4px 8px 4px 0;
     cursor: pointer;
     transition: background-color 0.2s;
-    padding-right: 8px;
 
     &:hover {
       background-color: #f5f7fa;
@@ -166,9 +165,10 @@ const handleDrop = (event: DragEvent) => {
 
   &__label {
     flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.5;
+    min-width: 0; // 允许 flex 项目收缩
   }
 
   &.is-dragging {
