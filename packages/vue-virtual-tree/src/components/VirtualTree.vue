@@ -11,7 +11,8 @@
     </template>
     <template v-else>
       <DynamicScroller ref="dynamicScrollerRef" v-if="data.length > 0" :items="visibleNodes"
-        :min-item-size="itemSize || 32" class="vue-virtual-tree__scroller" v-slot="{ item, index, active }">
+        :min-item-size="itemSize || 32" class="vue-virtual-tree__scroller">
+        <template #default="{ item, index, active }">
         <DynamicScrollerItem 
           :item="item" 
           :active="active" 
@@ -56,6 +57,7 @@
             </template>
           </TreeNode>
         </DynamicScrollerItem>
+        </template>
       </DynamicScroller>
       <div v-else class="vue-virtual-tree__empty">
         <slot name="empty">
@@ -549,6 +551,88 @@ const methods: VirtualTreeMethods = {
       node[childrenKey] = data
       regenerateFlatTree()
     }
+  },
+  scrollToNode: (key: string | number | TreeNodeData, options?: { align?: 'top' | 'center' | 'bottom', offset?: number }) => {
+    // 获取节点的 key
+    let targetKey: string | number
+    if (typeof key === 'string' || typeof key === 'number') {
+      targetKey = key
+    } else {
+      targetKey = getNodeId(key, props.props)
+    }
+
+    // 查找对应的 FlatTreeNode
+    const flatNode = getFlatNode(targetKey)
+    if (!flatNode) {
+      console.warn(`[VirtualTree] Node with key "${targetKey}" not found`)
+      return
+    }
+
+    // 如果节点不在可见列表中，需要展开所有父节点
+    const ensureNodeVisible = async (node: FlatTreeNode) => {
+      if (node.parentId !== null) {
+        const parent = getFlatNode(node.parentId)
+        if (parent && !parent.isExpanded) {
+          // 展开父节点
+          await handleNodeExpand(parent)
+          // 等待 DOM 更新
+          await nextTick()
+          // 递归确保所有父节点都展开
+          await ensureNodeVisible(parent)
+        }
+      }
+    }
+
+    // 执行滚动
+    const performScroll = async () => {
+      // 确保节点可见
+      await ensureNodeVisible(flatNode)
+      
+      // 等待 DOM 更新完成
+      await nextTick()
+      
+      // 查找节点在 visibleNodes 中的索引
+      const index = visibleNodes.value.findIndex(node => node.id === targetKey)
+      if (index === -1) {
+        console.warn(`[VirtualTree] Node with key "${targetKey}" is not visible`)
+        return
+      }
+
+      // 调用 DynamicScroller 的 scrollToItem 方法
+      if (dynamicScrollerRef.value) {
+        const align = options?.align || 'top'
+        const offset = options?.offset || 0
+        
+        // DynamicScroller 的 scrollToItem 方法签名: scrollToItem(index, align?, offset?)
+        // align: 'start' | 'center' | 'end'
+        const alignMap: Record<'top' | 'center' | 'bottom', 'start' | 'center' | 'end'> = {
+          top: 'start',
+          center: 'center',
+          bottom: 'end'
+        }
+        
+        const scroller = dynamicScrollerRef.value
+        if (scroller && typeof scroller.scrollToItem === 'function') {
+          if (offset !== 0) {
+            // 如果提供了 offset，使用三个参数
+            scroller.scrollToItem(index, alignMap[align], offset)
+          } else if (align !== 'top') {
+            // 如果提供了 align，使用两个参数
+            scroller.scrollToItem(index, alignMap[align])
+          } else {
+            // 只使用 index
+            scroller.scrollToItem(index)
+          }
+        }
+        
+        // 强制更新以确保滚动生效
+        if (typeof scroller.forceUpdate === 'function') {
+          scroller.forceUpdate()
+        }
+      }
+    }
+
+    performScroll()
   },
   nodeGenerated: () => {
     emit('node-generated')

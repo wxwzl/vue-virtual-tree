@@ -78,6 +78,12 @@ export const demoRoutes: RouteRecordRaw[] = [
     name: 'CustomCheckboxDemo',
     component: () => import('../components/CustomCheckboxDemo.vue'),
     meta: { title: '定制复选框样式' }
+  },
+  {
+    path: '/scroll-to-node',
+    name: 'ScrollToNodeDemo',
+    component: () => import('../components/ScrollToNodeDemo.vue'),
+    meta: { title: '滚动到指定节点' }
   }
 ]
 
