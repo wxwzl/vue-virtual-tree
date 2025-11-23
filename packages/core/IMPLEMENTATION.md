@@ -17,19 +17,33 @@
 ## 概述
 
 ### 目标
-将树形数据的核心处理逻辑（扁平化、可见节点计算、状态管理）迁移到 Rust + WASM，以提升百万级节点的处理性能。
+将树形数据的核心处理逻辑（扁平化、可见节点计算、状态管理）从 Vue composables 中抽离到独立的引擎层，先实现纯 JS 引擎（js-engine），后续再考虑迁移到 Rust + WASM 以提升百万级节点的处理性能。
 
-### 性能目标
+### 开发优先级
+**Phase 0: JS Engine 实现（优先）**
+- 将 `packages/vue-virtual-tree` 中的数据处理相关代码抽离到 `packages/core` 的 JS 引擎中
+- 实现统一的 `ITreeEngine` 接口
+- 实现 `JsTreeEngine` 类，封装所有数据处理逻辑
+- 重构 `useTreeData`、`useTreeExpand`、`useTreeSelection`、`useTreeFilter` 等 composables，使其通过引擎接口操作数据
+- 确保 js-engine 完全顶替现有的所有数据处理功能代码
+
+**Phase 1: Rust WASM 实现（后续）**
+- 在 js-engine 完全稳定后，再开始开发 Rust WASM 相关代码
+- 实现 `WasmTreeEngine` 类，提供与 `JsTreeEngine` 相同的接口
+- 通过 `useWasm` prop 控制使用哪个引擎
+
+### 性能目标（WASM 阶段）
 - **方案 A**：百万节点扁平化时间 < 200ms，可见节点更新 < 20ms
 - **方案 B**：在方案 A 基础上，序列化开销 < 0.1ms
 
 ### 核心原则
-1. **数据分离**：Rust 只处理结构信息，JS 存储完整数据
+1. **数据分离**：引擎只处理结构信息，JS 存储完整数据
 2. **最小传输**：只传递可见节点的精简信息
 3. **按需获取**：完整数据按需从 JS Map 中获取
 4. **增量更新**：只返回变化的部分
 5. **向后兼容**：保留纯 JS 版本，通过 prop 控制使用哪个版本
 6. **模块解耦**：清晰的模块边界，低耦合高内聚
+7. **分阶段实现**：先完成 JS 引擎，再考虑 WASM 优化
 
 ---
 
@@ -37,7 +51,40 @@
 
 ### 模块划分
 
-#### 1. Rust 核心模块（packages/core）
+#### 1. JS Engine 核心模块（packages/vue-virtual-tree/src/js-engine - Phase 0 优先实现）
+
+```
+packages/vue-virtual-tree/src/
+├── js-engine/
+│   ├── index.ts            # 模块导出入口
+│   ├── engine/
+│   │   ├── interface.ts    # ITreeEngine 接口定义
+│   │   ├── js-engine.ts     # JsTreeEngine 实现（抽离自 composables）
+│   │   └── factory.ts       # 引擎工厂函数
+│   ├── flatten/            # 扁平化模块
+│   │   └── flatten-tree.ts # 扁平化算法（抽离自 useTreeData）
+│   ├── visible/            # 可见节点计算模块
+│   │   └── visible-nodes.ts # 可见节点计算（抽离自 useTreeData）
+│   ├── state/              # 状态管理模块
+│   │   ├── expand.ts       # 展开/折叠状态（抽离自 useTreeExpand）
+│   │   └── check.ts        # 选中状态（抽离自 useTreeSelection）
+│   ├── filter/             # 过滤模块
+│   │   └── filter-tree.ts  # 过滤逻辑（抽离自 useTreeFilter）
+│   └── utils/              # 工具模块
+│       ├── tree.ts         # 树工具函数（抽离自 utils/tree.ts）
+│       └── config.ts       # 配置处理
+└── ...
+```
+
+**模块职责（Phase 0）：**
+- `engine/`: 树引擎核心逻辑，纯 JS 实现
+- `flatten/`: 独立的扁平化算法（从 `useTreeData.flattenTree` 抽离）
+- `visible/`: 独立的可见节点计算（从 `useTreeData` 抽离）
+- `state/`: 独立的状态管理（从 `useTreeExpand` 和 `useTreeSelection` 抽离）
+- `filter/`: 独立的过滤逻辑（从 `useTreeFilter` 抽离）
+- `utils/`: 工具函数（从 `utils/tree.ts` 抽离）
+
+#### 1.1 Rust WASM 核心模块（packages/core - Phase 1 后续实现）
 
 ```
 packages/core/
@@ -67,11 +114,12 @@ packages/core/
 │   └── wasm/               # WASM 绑定层
 │       ├── mod.rs
 │       └── bindings.rs     # wasm-bindgen 导出
+├── Cargo.toml              # Rust 项目配置
 └── tests/
     └── integration/
 ```
 
-**模块职责：**
+**模块职责（Phase 1）：**
 - `engine/`: 树引擎核心逻辑，不依赖 WASM
 - `flatten/`: 独立的扁平化算法
 - `visible/`: 独立的可见节点计算
@@ -79,27 +127,56 @@ packages/core/
 - `filter/`: 独立的过滤逻辑
 - `wasm/`: WASM 绑定层，隔离 WASM 相关代码
 
-#### 2. JS 桥接层（packages/vue-virtual-tree/src/wasm）
+**构建输出：**
+- 使用 `wasm-pack build --target web --out-dir ../vue-virtual-tree/lib --out-name lib` 命令
+- 打包产物输出到 `packages/vue-virtual-tree/lib/` 目录
+
+#### 2. JS Engine 集成层（packages/vue-virtual-tree/src/wasm - Phase 0）
 
 ```
 packages/vue-virtual-tree/src/
 ├── wasm/
-│   ├── index.ts            # WASM 模块导出
-│   ├── loader.ts           # WASM 加载器
+│   ├── index.ts            # 模块导出
 │   ├── engine/
-│   │   ├── interface.ts    # ITreeEngine 接口定义
-│   │   ├── js-engine.ts    # JsTreeEngine 实现
-│   │   └── wasm-engine.ts  # WasmTreeEngine 实现
-│   ├── bridge/
-│   │   ├── id-converter.ts # ID 类型转换
-│   │   └── data-mapper.ts  # 数据映射
-│   └── types.ts            # WASM 相关类型定义
+│   │   ├── interface.ts    # ITreeEngine 接口定义（从 js-engine 导入）
+│   │   └── factory.ts       # 引擎工厂函数（从 js-engine 导入）
+│   └── types.ts            # 类型定义
 ```
 
-**模块职责：**
-- `loader.ts`: 只负责 WASM 模块加载，不涉及业务逻辑
-- `engine/`: 引擎实现，通过接口隔离
+**模块职责（Phase 0）：**
+- `engine/interface.ts`: 从 `../js-engine` 重新导出接口
+- `engine/factory.ts`: 从 `../js-engine` 重新导出工厂函数
+- `index.ts`: 统一导出，供 composables 使用
+
+#### 2.1 WASM 桥接层（packages/vue-virtual-tree/src/wasm - Phase 1）
+
+```
+packages/vue-virtual-tree/src/
+├── wasm/
+│   ├── index.ts            # 模块导出
+│   ├── loader.ts           # WASM 加载器（Phase 1 新增）
+│   ├── engine/
+│   │   ├── interface.ts    # ITreeEngine 接口定义（从 js-engine 导入）
+│   │   ├── js-engine.ts    # JsTreeEngine 实现（从 js-engine 导入）
+│   │   └── wasm-engine.ts  # WasmTreeEngine 实现（Phase 1 新增）
+│   ├── bridge/
+│   │   ├── id-converter.ts # ID 类型转换（Phase 1 新增）
+│   │   └── data-mapper.ts  # 数据映射（Phase 1 新增）
+│   └── types.ts            # 类型定义
+├── lib/                    # wasm-pack 打包产物（Phase 1）
+│   ├── lib.js              # WASM 绑定 JS 文件
+│   ├── lib_bg.wasm         # WASM 二进制文件
+│   ├── lib.d.ts            # TypeScript 类型定义
+│   └── package.json        # WASM 包配置
+└── ...
+```
+
+**模块职责（Phase 1）：**
+- `loader.ts`: 只负责 WASM 模块加载，从 `lib/` 目录加载 WASM 文件
+- `engine/js-engine.ts`: 从 `../js-engine` 导入
+- `engine/wasm-engine.ts`: WASM 引擎实现，通过接口隔离
 - `bridge/`: 数据转换桥接，隔离 Rust 和 JS 的数据格式差异
+- `lib/`: wasm-pack 打包产物，由 `build:core` 命令生成
 
 #### 3. Composables 层（packages/vue-virtual-tree/src/composables）
 
@@ -672,8 +749,6 @@ Rust Modules (flatten, visible, state, filter)
 ```
 
 #### ❌ 禁止的依赖方向
-
-- Composables 不能直接依赖 Engine 实现
 - Engine 实现不能互相依赖
 - Bridge 模块不能依赖 Composables
 - Rust 模块不能依赖 WASM 绑定层
@@ -1240,10 +1315,196 @@ impl TreeEngine {
 
 ## 集成步骤
 
-### 步骤 1：Rust 核心实现（方案 A）
+### 步骤 0：JS Engine 实现（优先）
+
+**目标**：将 `packages/vue-virtual-tree` 中的数据处理相关代码全部抽离到 `packages/core` 的 JS 引擎中。
+
+#### 0.1 创建 JS Engine 项目结构
+
+1. **创建目录结构**
+   ```
+   packages/vue-virtual-tree/src/js-engine/
+   ├── index.ts
+   ├── engine/
+   │   ├── interface.ts
+   │   ├── js-engine.ts
+   │   └── factory.ts
+   ├── flatten/
+   │   └── flatten-tree.ts
+   ├── visible/
+   │   └── visible-nodes.ts
+   ├── state/
+   │   ├── expand.ts
+   │   └── check.ts
+   ├── filter/
+   │   └── filter-tree.ts
+   └── utils/
+       ├── tree.ts
+       └── config.ts
+   ```
+
+2. **说明**
+   - JS Engine 代码直接放在 `packages/vue-virtual-tree/src/js-engine/` 目录下
+   - 不需要单独的 TypeScript 配置，使用 `packages/vue-virtual-tree` 的 tsconfig.json
+   - 不需要单独的打包配置，由 `packages/vue-virtual-tree` 的构建流程统一处理
+
+#### 0.2 定义 ITreeEngine 接口
+
+```typescript
+// packages/vue-virtual-tree/src/js-engine/engine/interface.ts
+export interface ITreeEngine {
+  // 初始化
+  loadTree(data: TreeNodeData[], config?: TreeConfig): Promise<void>
+  
+  // 可见节点
+  getVisibleNodes(): FlatTreeNode[]
+  getVisibleNodesCount(): number
+  
+  // 展开/折叠
+  expandNode(id: string | number): void
+  collapseNode(id: string | number): void
+  setExpanded(id: string | number, expanded: boolean): void
+  expandAll(): void
+  collapseAll(): void
+  
+  // 选中
+  setChecked(id: string | number, checked: boolean): void
+  toggleChecked(id: string | number): void
+  getCheckedKeys(): (string | number)[]
+  getHalfCheckedKeys(): (string | number)[]
+  
+  // 过滤
+  filterNodes(filterFn: (node: TreeNodeData) => boolean): void
+  clearFilter(): void
+  
+  // 查询
+  getNodeById(id: string | number): FlatTreeNode | null
+  getNodeData(id: string | number): TreeNodeData | null
+  getChildrenIds(id: string | number): (string | number)[]
+  getAllDescendantIds(id: string | number): (string | number)[]
+}
+```
+
+#### 0.3 抽离代码到各模块
+
+**重要原则**：每抽离一个方法，立即编写单元测试，确保抽离后的方法输出与原代码完全一致。测试通过后才能继续下一个方法的抽离。
+
+**测试策略**：
+1. 使用相同的输入数据，分别调用原代码和抽离后的代码
+2. 对比输出结果，确保完全一致（包括数据结构、顺序、状态等）
+3. 覆盖各种边界情况（空数据、单节点、深层嵌套、大数据量等）
+4. 每个方法都要有对应的测试用例
+
+1. **抽离扁平化逻辑**
+   - 从 `useTreeData.ts` 的 `flattenTree` 函数抽离到 `flatten/flatten-tree.ts`
+   - **立即测试**：编写 `flattenTree` 的单元测试，对比原代码和抽离后的输出
+   - 从 `useTreeData.ts` 的 `insertFlatTree` 函数抽离
+   - **立即测试**：编写 `insertFlatTree` 的单元测试，对比原代码和抽离后的输出
+
+2. **抽离可见节点计算**
+   - 从 `useTreeData.ts` 的可见节点相关逻辑抽离到 `visible/visible-nodes.ts`
+   - **立即测试**：编写可见节点计算的单元测试，对比原代码和抽离后的输出
+
+3. **抽离展开/折叠逻辑**
+   - 从 `useTreeExpand.ts` 抽离到 `state/expand.ts`
+   - **立即测试**：为每个方法（`initExpandedKeys`、`expandNode`、`collapseNode` 等）编写单元测试
+
+4. **抽离选中状态管理**
+   - 从 `useTreeSelection.ts` 抽离到 `state/check.ts`
+   - **立即测试**：为每个方法（`setNodeChecked`、`updateHalfCheckedKeys` 等）编写单元测试
+
+5. **抽离过滤逻辑**
+   - 从 `useTreeFilter.ts` 抽离到 `filter/filter-tree.ts`
+   - **立即测试**：为每个方法（`filter`、`clearFilter`、`mergeSort` 等）编写单元测试
+
+6. **抽离工具函数**
+   - 从 `utils/tree.ts` 抽离到 `utils/tree.ts`（复制到 js-engine）
+   - **立即测试**：为每个工具函数编写单元测试，确保输出一致
+
+#### 0.4 实现 JsTreeEngine
+
+```typescript
+// packages/vue-virtual-tree/src/js-engine/engine/js-engine.ts
+import type { ITreeEngine } from './interface'
+import { flattenTree } from '../flatten/flatten-tree'
+import { calculateVisibleNodes } from '../visible/visible-nodes'
+import { ExpandState } from '../state/expand'
+import { CheckState } from '../state/check'
+import { FilterState } from '../filter/filter-tree'
+
+export class JsTreeEngine implements ITreeEngine {
+  private flatTree: FlatTreeNode[] = []
+  private flatNodeMap: Map<string | number, FlatTreeNode> = new Map()
+  private visibleNodes: FlatTreeNode[] = []
+  private expandState: ExpandState
+  private checkState: CheckState
+  private filterState: FilterState
+  private config: TreeConfig
+
+  constructor(config?: TreeConfig) {
+    this.config = config || {}
+    this.expandState = new ExpandState()
+    this.checkState = new CheckState()
+    this.filterState = new FilterState()
+  }
+
+  async loadTree(data: TreeNodeData[], config?: TreeConfig): Promise<void> {
+    // 实现数据加载和扁平化
+    const result = flattenTree(data, 0, null, 0, true, config || this.config)
+    this.flatTree = result.flatNodes
+    this.flatNodeMap = result.nodeMap
+    this.visibleNodes = calculateVisibleNodes(this.flatTree, this.expandState)
+  }
+
+  getVisibleNodes(): FlatTreeNode[] {
+    return this.visibleNodes
+  }
+
+  expandNode(id: string | number): void {
+    this.expandState.expand(id)
+    this.visibleNodes = calculateVisibleNodes(this.flatTree, this.expandState)
+  }
+
+  // ... 实现其他接口方法
+}
+```
+
+#### 0.5 重构 Composables
+
+```typescript
+// packages/vue-virtual-tree/src/composables/useTreeData.ts
+import { createEngine } from '../js-engine/engine/factory'
+import type { ITreeEngine } from '../js-engine/engine/interface'
+
+export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmits>) {
+  const engine = createEngine(false) // 使用 JS 引擎
+
+  // 使用引擎接口操作数据
+  watch(() => props.data, async (newData) => {
+    await engine.loadTree(newData, props.props)
+    // ...
+  })
+
+  // ...
+}
+```
+
+#### 0.6 测试验证
+
+**注意**：单元测试应在每个模块抽离时完成（见 0.3），这里主要是集成测试和整体验证。
+
+1. [ ] 运行所有单元测试，确保 100% 通过
+2. [ ] 集成测试（composables 与引擎）
+3. [ ] 对比测试：使用相同的测试数据，对比使用原 composables 和使用引擎后的输出
+4. [ ] 功能完整性测试（确保所有现有功能正常工作）
+5. [ ] 性能测试（确保性能不下降）
+6. [ ] 边界情况测试（空数据、大数据量、深层嵌套等）
+
+### 步骤 1：Rust WASM 核心实现（Phase 1，后续实现）
 
 1. **添加依赖**
    ```toml
+   // packages/core/Cargo.toml
    [dependencies]
    wasm-bindgen = "0.2"
    serde = { version = "1.0", features = ["derive"] }
@@ -1266,33 +1527,54 @@ impl TreeEngine {
    - [ ] 导出核心方法
    - [ ] 实现错误处理
 
-5. **测试**
+5. **构建 WASM**
+   ```bash
+   # 使用根目录的 build:core 命令
+   pnpm run build:core
+   # 或直接执行
+   cd packages/core && wasm-pack build --target web --out-dir ../vue-virtual-tree/lib --out-name lib
+   ```
+   - 打包产物输出到 `packages/vue-virtual-tree/lib/` 目录
+   - 生成 `lib.js`、`lib_bg.wasm`、`lib.d.ts` 等文件
+
+6. **测试**
    - [ ] 单元测试（Rust）
    - [ ] WASM 测试（wasm-bindgen-test）
    - [ ] 性能测试
 
-### 步骤 2：JS 端集成（方案 A）
+### 步骤 2：WASM 桥接层实现（Phase 1）
 
-1. **构建 WASM**
-   ```bash
-   cd packages/core
-   wasm-pack build --target web --out-dir pkg
+1. **创建 WASM 加载器**
+   - [ ] `wasm/loader.ts`: WASM 模块加载，从 `lib/` 目录加载
+   ```typescript
+   // packages/vue-virtual-tree/src/wasm/loader.ts
+   import init, { TreeEngine } from '../lib/lib.js'
+   
+   let wasmInitialized = false
+   
+   export async function initWasm() {
+     if (!wasmInitialized) {
+       await init()
+       wasmInitialized = true
+     }
+   }
+   
+   export function createWasmEngine() {
+     return new TreeEngine()
+   }
    ```
 
-2. **安装依赖**
-   ```bash
-   cd packages/vue-virtual-tree
-   npm install ../core/pkg
-   ```
-
-3. **创建桥接层（按模块隔离）**
-   - [ ] `wasm/loader.ts`: WASM 模块加载（独立模块）
+2. **创建桥接层（按模块隔离）**
    - [ ] `wasm/bridge/id-converter.ts`: ID 类型转换（独立模块）
    - [ ] `wasm/bridge/data-mapper.ts`: 数据格式映射（独立模块）
-   - [ ] `wasm/engine/interface.ts`: 定义 `ITreeEngine` 接口
-   - [ ] `wasm/engine/js-engine.ts`: 实现 `JsTreeEngine`（封装现有 JS 代码）
    - [ ] `wasm/engine/wasm-engine.ts`: 实现 `WasmTreeEngine`（WASM 桥接）
+   - [ ] `wasm/engine/interface.ts`: 从 `js-engine` 导入接口
+   - [ ] `wasm/engine/js-engine.ts`: 从 `js-engine` 导入实现
    - [ ] `wasm/index.ts`: 统一导出（不暴露内部实现）
+
+3. **更新引擎工厂函数**
+   - [ ] 修改 `js-engine/engine/factory.ts`，支持根据 `useWasm` 选择引擎
+   - [ ] 实现自动降级逻辑（WASM 不可用时回退 JS）
 
 4. **添加 Prop 支持**
    - [ ] 在 `VirtualTreeProps` 中添加 `useWasm?: boolean` prop
@@ -1300,10 +1582,7 @@ impl TreeEngine {
    - [ ] 添加 WASM 可用性检测
 
 5. **集成到 Composables**
-   - [ ] 修改 `useTreeData.ts`
-   - [ ] 根据 `useWasm` prop 选择引擎
-   - [ ] 实现引擎工厂函数
-   - [ ] 添加自动降级逻辑（WASM 不可用时回退 JS）
+   - [ ] 修改 `useTreeData.ts`，根据 `useWasm` prop 选择引擎
    - [ ] 保持现有 API 完全兼容
 
 6. **测试**
@@ -1436,33 +1715,85 @@ describe('Performance Tests', () => {
 
 ## 开发优先级
 
-### Phase 1：方案 A 基础实现（2-3 周）
-1. ✅ Rust 核心数据结构
-2. ✅ 树加载和扁平化
-3. ✅ 可见节点计算
-4. ✅ 展开/折叠功能
-5. ✅ WASM 绑定
-6. ✅ JS 端基础集成
+### Phase 0：JS Engine 实现（优先，2-3 周）
 
-### Phase 2：方案 A 完整功能（1-2 周）
-1. ✅ 选中状态管理
-2. ✅ 过滤功能
-3. ✅ 查询功能
-4. ✅ 错误处理
-5. ✅ 完整测试
+**目标**：将 `packages/vue-virtual-tree` 中的数据处理相关代码全部抽离到 `packages/core` 的 JS 引擎中，直到 js-engine 完全顶替了现在的所有数据处理功能代码。
+
+#### 0.1 项目结构调整
+1. [ ] 在 `packages/core` 中创建 JS 引擎目录结构
+2. [ ] 配置 TypeScript 编译和打包
+3. [ ] 设置测试环境
+
+#### 0.2 接口设计
+1. [ ] 定义 `ITreeEngine` 接口（包含所有数据处理方法）
+2. [ ] 定义引擎配置类型
+3. [ ] 定义数据结构和类型
+
+#### 0.3 代码抽离
+1. [ ] 抽离 `flattenTree` 函数（从 `useTreeData.ts`）
+2. [ ] 抽离可见节点计算逻辑（从 `useTreeData.ts`）
+3. [ ] 抽离展开/折叠逻辑（从 `useTreeExpand.ts`）
+4. [ ] 抽离选中状态管理（从 `useTreeSelection.ts`）
+5. [ ] 抽离过滤逻辑（从 `useTreeFilter.ts`）
+6. [ ] 抽离工具函数（从 `utils/tree.ts`）
+
+#### 0.4 JsTreeEngine 实现
+1. [ ] 实现 `JsTreeEngine` 类，实现 `ITreeEngine` 接口
+2. [ ] 整合所有抽离的模块
+3. [ ] 实现数据加载和初始化
+4. [ ] 实现扁平化功能
+5. [ ] 实现可见节点计算
+6. [ ] 实现展开/折叠功能
+7. [ ] 实现选中状态管理
+8. [ ] 实现过滤功能
+
+#### 0.5 Composables 重构
+1. [ ] 重构 `useTreeData.ts`，使用引擎接口
+2. [ ] 重构 `useTreeExpand.ts`，使用引擎接口
+3. [ ] 重构 `useTreeSelection.ts`，使用引擎接口
+4. [ ] 重构 `useTreeFilter.ts`，使用引擎接口
+5. [ ] 确保所有功能正常工作
+
+#### 0.6 测试和验证
+1. [ ] 单元测试（引擎各模块）
+2. [ ] 集成测试（composables 与引擎）
+3. [ ] 功能完整性测试
+4. [ ] 性能测试
+5. [ ] 确保 js-engine 完全顶替现有数据处理功能
+
+### Phase 1：Rust WASM 基础实现（后续，2-3 周）
+
+**前提条件**：Phase 0 完成，js-engine 完全稳定
+
+1. [ ] Rust 核心数据结构
+2. [ ] 树加载和扁平化
+3. [ ] 可见节点计算
+4. [ ] 展开/折叠功能
+5. [ ] WASM 绑定
+6. [ ] JS 端基础集成（WasmTreeEngine）
+
+### Phase 2：Rust WASM 完整功能（1-2 周）
+
+1. [ ] 选中状态管理
+2. [ ] 过滤功能
+3. [ ] 查询功能
+4. [ ] 错误处理
+5. [ ] 完整测试
 
 ### Phase 3：方案 B 优化（2-3 周）
-1. ✅ 内存布局设计
-2. ✅ 共享内存实现
-3. ✅ 零拷贝访问
-4. ✅ 增量更新
-5. ✅ 性能优化
+
+1. [ ] 内存布局设计
+2. [ ] 共享内存实现
+3. [ ] 零拷贝访问
+4. [ ] 增量更新
+5. [ ] 性能优化
 
 ### Phase 4：优化和测试（1 周）
-1. ✅ 性能调优
-2. ✅ 内存优化
-3. ✅ 完整测试
-4. ✅ 文档完善
+
+1. [ ] 性能调优
+2. [ ] 内存优化
+3. [ ] 完整测试
+4. [ ] 文档完善
 
 ---
 

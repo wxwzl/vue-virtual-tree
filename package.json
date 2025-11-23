@@ -6,8 +6,11 @@
   "scripts": {
     "prepare": "husky",
     "dev": "pnpm --filter playground dev",
+    "test": "pnpm --filter @wxwzl/vue-virtual-tree test:unit",
+    "prebuild": "pnpm run build:core",
     "build": "pnpm --filter @wxwzl/vue-virtual-tree build",
     "publish": "pnpm run build && pnpm --filter @wxwzl/vue-virtual-tree publish",
+    "build:core": "cd ./packages/core && wasm-pack build --target web --out-dir ../vue-virtual-tree/lib --out-name lib",
     "build:playground": "pnpm --filter playground build",
     "type-check": "pnpm --filter @wxwzl/vue-virtual-tree type-check",
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",

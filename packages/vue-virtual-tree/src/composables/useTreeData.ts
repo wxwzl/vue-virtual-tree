@@ -1,10 +1,7 @@
-import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
-import type { TreeNodeData, FlatTreeNode, TreePropsConfig, VirtualTreeProps, VirtualTreeEmits } from '../types'
-import { getNodeId, getNodeChildren, isNodeDisabled, isLeafNode } from '../utils/tree'
-import { useTreeSelection } from '../composables/useTreeSelection'
-import { useTreeExpand } from './useTreeExpand'
-import { useTreeFilter } from './useTreeFilter'
+import { nextTick, onUnmounted, ref, watch } from 'vue'
+import type { TreeNodeData, FlatTreeNode, VirtualTreeProps, VirtualTreeEmits } from '../types'
 import { useTreeDrag } from './useTreeDrag'
+import DataEngine from '../engine/js-engine/DataEngine'
 
 /**
  * Emit function type helper
@@ -14,175 +11,32 @@ type EmitFn<T> = <K extends keyof T>(event: K, ...args: T[K] extends any[] ? T[K
 /**
  * 扁平化树形数据
  */
-export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmits>) {
-
-  const flatTree = ref<FlatTreeNode[]>([])
-  const rawData = ref<TreeNodeData[]>(props.data)
-  // 使用 Map 建立索引，O(1) 查找
-  const flatNodeMap = ref<Map<string | number, FlatTreeNode>>(new Map())
+export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmits>,forceUpdate: () => void) {
   const visibleNodes = ref<FlatTreeNode[]>([])
-  const filteredFlatTree = ref<FlatTreeNode[]>([])
-  const filteredFlatNodeMap = ref<Map<string | number, FlatTreeNode>>(new Map())
-  const isFiltered = ref(false)
-  const treeDataWrapper = computed(() => {
-    return isFiltered.value ? filteredFlatTree.value : flatTree.value
+  const rawData = ref<TreeNodeData[]>(props.data)
+  let updateTimer: ReturnType<typeof setTimeout> | null = null
+  const dataEngine = new DataEngine(props.data, props, (nodes: Array<FlatTreeNode>) => {
+    if (updateTimer) {
+      clearTimeout(updateTimer)
+    }
+    updateTimer = setTimeout(() => {
+      visibleNodes.value = nodes
+      console.log('visibleNodes', visibleNodes.value)
+      forceUpdate();
+      updateTimer = null
+    }, 5)
   })
-  const treeDataMapWrapper = computed(() => {
-    return isFiltered.value ? filteredFlatNodeMap.value : flatNodeMap.value
-  })
-  const refreshVisibleIndexes = () => {
-    visibleNodes.value.forEach((node, index) => {
-      node.visibleIndex = index
-    })
-  }
-  const setVisibleNodes = (nodes: FlatTreeNode[]) => {
-    visibleNodes.value = nodes
-    refreshVisibleIndexes()
-  }
-
-  // 根据 key 获取节点数据
-  const getNodeData = (id: string | number): TreeNodeData | null => {
-    const flatNode = treeDataMapWrapper.value.get(id)
-    return flatNode ? flatNode.data : null
-  }
-
-  // 根据 key 获取扁平节点
-  const getFlatNode = (id: string | number): FlatTreeNode | null => {
-    return treeDataMapWrapper.value.get(id) || null
-  }
-
-  // 选择逻辑
-  const {
-    checkedKeys,
-    halfCheckedKeys,
-    selectedKey,
-    currentNode,
-    toggleNodeChecked,
-    setCurrentNode: setSelectionCurrentNode,
-    getCheckedNodes,
-    getCheckedKeys,
-    setCheckedNodes,
-    setCheckedKeys,
-    initNodeChecked
-  } = useTreeSelection(props, flatTree, getNodeData, getFlatNode)
-
-  // 展开/折叠逻辑
-  const { expandNode, collapseNode, expandedKeys, initExpandedKeys } = useTreeExpand(
-    props,
-    treeDataWrapper,
-    visibleNodes,
-    refreshVisibleIndexes
-  )
-
-  // 过滤逻辑
-  const { filter } = useTreeFilter(props, flatTree, flatNodeMap, filteredFlatTree, filteredFlatNodeMap, isFiltered, expandedKeys, setVisibleNodes)
 
   // 拖拽逻辑
-  const dragState = useTreeDrag(props, getNodeData)
+  const dragState = useTreeDrag(props, dataEngine.getNodeData.bind(dataEngine))
 
-  // 扁平化树形数据
-  const flattenTree = (
-    nodes: TreeNodeData[],
-    level: number = 0,
-    parentNode: FlatTreeNode | null = null,
-    startIndex: number = 0,
-    visible: boolean = true,
-    config?: TreePropsConfig
-  ): { nodes: FlatTreeNode[], flatNodes: FlatTreeNode[], nodeMap: Map<string | number, FlatTreeNode>, visibleNodes: FlatTreeNode[] } => {
-    const map = new Map<string | number, FlatTreeNode>()
-    const visibleList: FlatTreeNode[] = []
-    function genenrateFlatNodes(nodes: TreeNodeData[],
-      level: number = 0,
-      parentNode: FlatTreeNode | null = null,
-      startIndex: number = 0,
-      visible: boolean = true,
-      container: FlatTreeNode[] = [],
-      config?: TreePropsConfig) {
-      const result: FlatTreeNode[] = [];
-      let length = nodes.length;
-      for (let i = 0; i < length; i++) {
-        startIndex++;
-        const node: TreeNodeData = nodes[i]
-        const id = getNodeId(node, config)
-        const children = getNodeChildren(node, config)
-        const isExpanded = expandedKeys.value.has(id)
-        const isLeaf = isLeafNode(node, config)
 
-        const flatNode: FlatTreeNode = {
-          id,
-          data: node,
-          level,
-          parentId: parentNode?.id || null,
-          index: startIndex,
-          isExpanded,
-          isDisabled: isNodeDisabled(node, config),
-          isLeaf: isLeaf,
-          isLoading: false,
-          isLoaded: false,
-          isChecked: false,
-          rawChildren: children.length > 0 ? children : undefined
-        }
-        result.push(flatNode)
-        container.push(flatNode)
-        if (visible) {
-          visibleList.push(flatNode)
-        }
-        // 如果节点展开且有子节点，递归处理子节点
-        if (children.length > 0) {
-          const { nodes: childNodes, index } = genenrateFlatNodes(children, level + 1, flatNode, startIndex, isExpanded && visible, container, config)
-          flatNode.children = childNodes
-          startIndex = index
-        }
-        map.set(id, flatNode);
-      }
-
-      return { nodes: result, index: startIndex }
-    }
-
-    const container: FlatTreeNode[] = []
-    const { nodes: result } = genenrateFlatNodes(nodes, level, parentNode, startIndex, visible, container, config)
-    return { nodes: result, flatNodes: container, nodeMap: map, visibleNodes: visibleList }
-  }
-
-  // 更新扁平化数据 - 优化大数据量的性能
-  // 防抖更新标记
-  let updatePending = false
-  const updateFlatTree = () => {
-    if (updatePending) return // 如果已经有更新在等待中，跳过
-    updatePending = true
-    const { flatNodes, nodeMap, visibleNodes: visibleNodesResult } = flattenTree(rawData.value, 0, null, 0, true, props.props)
-    flatTree.value = flatNodes
-    flatNodeMap.value = nodeMap
-    setVisibleNodes(visibleNodesResult)
-    updatePending = false
-  }
-
-  const insertFlatTree = (node: FlatTreeNode, children: TreeNodeData[]) => {
-    const { nodes: result, flatNodes: container, nodeMap } = flattenTree(
-      children,
-      node.level + 1,
-      node,
-      node.index + 1,
-      true,
-      props.props
-    )
-    node.children = result
-    nodeMap.forEach((value, key) => {
-      flatNodeMap.value.set(key, value);
-    })
-    flatTree.value.splice(node.index + 1, 0, ...container)
-    requestAnimationFrame(() => {
-      for (let i = node.index + container.length; i < flatTree.value.length; i++) {
-        const child = flatTree.value[i]
-        child.index = i
-      }
-    })
-  }
   const regenerateState: RegenerateOptions = {
     needEmit: true,
     resetExpanded: true,
     resetChecked: true
   }
+
   // 只在数据变化时重新生成flatTree
   watch(
     () => props.data,
@@ -230,11 +84,11 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
     }
     regenerateTimer = setTimeout(() => {
       if (regenerateState.resetExpanded) {
-        initExpandedKeys()
+        dataEngine.initExpandedKeys()
       }
-      updateFlatTree()
+      dataEngine.loadTree(rawData.value)
       if (regenerateState.resetChecked) {
-        initNodeChecked()
+        dataEngine.initNodeChecked()
       }
       if (regenerateState.needEmit) {
         nextTick(() => {
@@ -259,30 +113,48 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
     }
   })
 
-  return {
-    flatTree,
+  const useTreeInstance = {
     visibleNodes,
-    expandedKeys,
-    checkedKeys,
     rawData,
-    getNodeData,
-    getFlatNode,
+    checkedKeys: dataEngine.checkedKeys,
+    halfCheckedKeys: dataEngine.halfCheckedKeys,
+    selectedKey: dataEngine.selectedKey,
+    currentNode: dataEngine.currentNode,
+    getNodeData: dataEngine.getNodeData.bind(dataEngine),
+    getFlatNode: dataEngine.getFlatNode.bind(dataEngine),
     regenerateFlatTree,
-    flattenTree,
-    insertFlatTree,
-    halfCheckedKeys,
-    selectedKey,
-    currentNode,
-    toggleNodeChecked,
-    setCurrentNode: setSelectionCurrentNode,
-    getCheckedNodes,
-    getCheckedKeys,
-    setCheckedNodes,
-    setCheckedKeys,
-    expandNode,
-    collapseNode,
+    insertFlatTree: dataEngine.insertFlatTree.bind(dataEngine),
+    toggleNodeChecked: dataEngine.toggleNodeChecked.bind(dataEngine),
+    setCurrentNode: dataEngine.setCurrentNode.bind(dataEngine),
+    getCheckedNodes: dataEngine.getCheckedNodes.bind(dataEngine),
+    getCheckedKeys: dataEngine.getCheckedKeys.bind(dataEngine),
+    setCheckedNodes: dataEngine.setCheckedNodes.bind(dataEngine),
+    setCheckedKeys: dataEngine.setCheckedKeys.bind(dataEngine),
+    expandNode: dataEngine.expandNode.bind(dataEngine),
+    collapseNode: dataEngine.collapseNode.bind(dataEngine),
     dragState,
-    filter
+    filter: dataEngine.filter.bind(dataEngine)
   }
+  Object.defineProperty(useTreeInstance, 'checkedKeys', {
+    get: () => {
+      return dataEngine.checkedKeys
+    },
+  })
+  Object.defineProperty(useTreeInstance, 'halfCheckedKeys', {
+    get: () => {
+      return dataEngine.halfCheckedKeys
+    },
+  })
+  Object.defineProperty(useTreeInstance, 'selectedKey', {
+    get: () => {
+      return dataEngine.selectedKey
+    },
+  })
+  Object.defineProperty(useTreeInstance, 'currentNode', {
+    get: () => {
+      return dataEngine.currentNode
+    },
+  })
+  return useTreeInstance
 }
 
