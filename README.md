@@ -174,6 +174,7 @@ pnpm add @wxwzl/vue-virtual-tree vue-virtual-scroller@next
 | insertBefore      | 在节点前插入               | `(data, key)`                      |
 | insertAfter       | 在节点后插入               | `(data, key)`                      |
 | updateKeyChildren | 更新节点的子节点（懒加载） | `(key, data)`                      |
+| scrollToNode      | 滚动到指定节点             | `(key, options?)`                  |
 
 ### Slots
 

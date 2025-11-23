@@ -208,7 +208,5 @@ export interface VirtualTreeMethods {
   updateKeyChildren: (key: string | number, data: TreeNodeData[]) => void
   /** 滚动到指定节点 */
   scrollToNode: (key: string | number | TreeNodeData, options?: { align?: 'top' | 'center' | 'bottom', offset?: number }) => void
-  /** 数据处理完成 */
-  nodeGenerated: () => void
 }
 
