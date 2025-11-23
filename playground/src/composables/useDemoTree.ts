@@ -6,6 +6,7 @@ interface UseDemoTreeOptions {
   initialCount?: number
   minCount?: number
   generatorOptions?: VirtualTreeOptions
+  dataLoaded?: (data: TreeNodeData[]) => void
 }
 
 export function useDemoTree(options: UseDemoTreeOptions = {}) {
@@ -23,6 +24,7 @@ export function useDemoTree(options: UseDemoTreeOptions = {}) {
     treeData.value = result.data
     totalNodeCount.value = result.totalCount
     dataLoaded.value = true
+    options.dataLoaded?.(result.data)
     // 不在这里关闭 loading，等待 VirtualTree 的 node-generated 事件
   }
 

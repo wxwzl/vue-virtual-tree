@@ -11,7 +11,8 @@
     </div>
     <div class="tree-container">
       <div class="tree-shell">
-        <VirtualTree :data="treeData" :loading="isLoading" class="tree-scroll" default-expand-all @node-generated="handleDataGenerated" />
+        <VirtualTree :data="treeData" :loading="isLoading" class="tree-scroll" :default-expand-all="expandAll"
+          @node-generated="handleDataGenerated" />
       </div>
     </div>
   </div>
@@ -20,9 +21,14 @@
 <script setup lang="ts">
 import { VirtualTree } from '@wxwzl/vue-virtual-tree'
 import { useDemoTree } from '../composables/useDemoTree'
+import { ref } from 'vue'
 
+const expandAll = ref(false)
 const { treeData, isLoading, nodeCount, totalNodeCount, regenerateData, handleCountChange, handleDataGenerated } = useDemoTree({
-  initialCount: 5000
+  initialCount: 5000,
+  dataLoaded: (data) => {
+    expandAll.value = true
+  }
 })
 </script>
 
@@ -114,4 +120,3 @@ const { treeData, isLoading, nodeCount, totalNodeCount, regenerateData, handleCo
   flex: 1;
 }
 </style>
-
