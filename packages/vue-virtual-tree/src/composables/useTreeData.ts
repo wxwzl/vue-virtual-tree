@@ -30,14 +30,8 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
   const treeDataMapWrapper = computed(() => {
     return isFiltered.value ? filteredFlatNodeMap.value : flatNodeMap.value
   })
-  const refreshVisibleIndexes = () => {
-    visibleNodes.value.forEach((node, index) => {
-      node.visibleIndex = index
-    })
-  }
   const setVisibleNodes = (nodes: FlatTreeNode[]) => {
     visibleNodes.value = nodes
-    refreshVisibleIndexes()
   }
 
   // 根据 key 获取节点数据
@@ -71,7 +65,6 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
     props,
     treeDataWrapper,
     visibleNodes,
-    refreshVisibleIndexes
   )
 
   // 过滤逻辑

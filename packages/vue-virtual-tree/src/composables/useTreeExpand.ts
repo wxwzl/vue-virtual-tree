@@ -3,13 +3,44 @@ import type { VirtualTreeProps, FlatTreeNode } from '../types'
 import { getAllKeys } from '../utils/tree'
 
 /**
+ * 在有序的 visibleNodes 中根据节点 index 找到对应的数组下标（不存在返回 -1）
+ */
+export function findVisibleNodeIndex(
+  visibleNodes: FlatTreeNode[],
+  targetIndex: number
+): number {
+  if (!Array.isArray(visibleNodes) || visibleNodes.length === 0) {
+    return -1
+  }
+
+  let left = 0
+  let right = visibleNodes.length - 1
+
+  while (left <= right) {
+    const mid = left + Math.floor((right - left) / 2)
+    const currentIndex = visibleNodes[mid].index
+
+    if (currentIndex === targetIndex) {
+      return mid
+    }
+
+    if ((currentIndex ?? -Infinity) < targetIndex) {
+      left = mid + 1
+    } else {
+      right = mid - 1
+    }
+  }
+
+  return -1
+}
+
+/**
  * 树节点展开/折叠逻辑
  */
 export function useTreeExpand(
   props: VirtualTreeProps,
   flatTree: Ref<FlatTreeNode[]>,
   visibleNodes: Ref<FlatTreeNode[]>,
-  refreshVisibleIndexes: () => void
 ) {
 
   const expandedKeys = ref<Set<string | number>>(new Set())
@@ -40,18 +71,20 @@ export function useTreeExpand(
   }
 
   const expandVisibleNode = (node: FlatTreeNode) => {
-    if (typeof node.visibleIndex !== 'number') return
+    if (typeof node.visibleIndex !== 'number') {
+      node.visibleIndex = findVisibleNodeIndex(visibleNodes.value, node.index)
+    }
     const descendants = collectVisibleDescendants(node)
     if (descendants.length === 0) return
     visibleNodes.value.splice(node.visibleIndex + 1, 0, ...descendants)
-    refreshVisibleIndexes()
   }
   const collapseVisibleNode = (node: FlatTreeNode) => {
-    if (typeof node.visibleIndex !== 'number') return
+    if (typeof node.visibleIndex !== 'number') {
+      node.visibleIndex = findVisibleNodeIndex(visibleNodes.value, node.index)
+    }
     const children = collectVisibleDescendants(node)
     if (children.length === 0) return
     visibleNodes.value.splice(node.visibleIndex + 1, children.length)
-    refreshVisibleIndexes()
   }
 
   /**

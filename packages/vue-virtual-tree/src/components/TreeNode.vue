@@ -9,7 +9,7 @@
     'is-current': isCurrent,
     [`drop-${dropType}`]: dropType
   }" :style="{ paddingLeft: `${node.level * indent}px` }" :draggable="draggable && !node.isDisabled"
-    :data-node-id="node.id" @dragstart="handleDragStart" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
+    :data-node-id="node.id" :data-node-index="index" @dragstart="handleDragStart" @dragenter="handleDragEnter" @dragleave="handleDragLeave"
     @dragover="handleDragOver" @dragend="handleDragEnd" @drop="handleDrop">
     <div class="vue-virtual-tree-node__content">
       <span class="vue-virtual-tree-node__expand-icon" :class="{ 'is-leaf': isLeaf, 'is-loading': node.isLoading }">
@@ -43,6 +43,7 @@ import { getNodeLabel, isLeafNode } from '../utils/tree'
 interface TreeNodeProps {
   node: FlatTreeNode
   props?: TreePropsConfig
+  index?: number
   showCheckbox?: boolean
   expandOnClickNode?: boolean
   draggable?: boolean

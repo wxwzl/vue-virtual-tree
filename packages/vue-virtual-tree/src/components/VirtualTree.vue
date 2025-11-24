@@ -19,7 +19,7 @@
           :data-index="index" 
           :size-dependencies="getNodeSizeDependencies(item)"
           class="vue-virtual-tree__item">
-          <TreeNode :node="item" :key="item.id" :props="props.props" :show-checkbox="showCheckbox"
+          <TreeNode :node="item" :key="item.id" :index="index" :props="props.props" :show-checkbox="showCheckbox"
             :expand-on-click-node="expandOnClickNode" :draggable="draggable" :indent="props.indent"
             :current-key="selectedKey"
             :drop-type="dragState.dropNode?.value?.id === item.id ? dragState.dropType?.value ?? null : null"
@@ -152,10 +152,16 @@ const getNodeFromEvent = (event: Event): FlatTreeNode | null => {
   if (!nodeElement) return null
 
   const nodeId = nodeElement.getAttribute('data-node-id')
+  const nodeIndex = nodeElement.getAttribute('data-node-index')
   if (!nodeId) return null
   // 尝试解析为 number 或 string
   const id = isNaN(Number(nodeId)) ? nodeId : Number(nodeId)
-  return getFlatNode(id)
+  const index = isNaN(Number(nodeIndex)) ? undefined : Number(nodeIndex)
+  const flatNode = getFlatNode(id)
+  if (flatNode) {
+    flatNode.visibleIndex = index
+  }
+  return flatNode
 }
 
 // 事件委托：树容器点击事件（只代理 click 事件）
