@@ -8,6 +8,7 @@
     "dev": "pnpm --filter playground dev",
     "build": "pnpm --filter @wxwzl/vue-virtual-tree build",
     "publish": "pnpm run build && pnpm --filter @wxwzl/vue-virtual-tree publish",
+    "build:data-generator": "cd packages/data-generator && wasm-pack build --target web --out-dir ../../playground/lib",
     "build:playground": "pnpm --filter playground build",
     "type-check": "pnpm --filter @wxwzl/vue-virtual-tree type-check",
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",

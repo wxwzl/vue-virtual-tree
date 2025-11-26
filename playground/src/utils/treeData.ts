@@ -1,4 +1,10 @@
 import type { TreeNodeData } from '@wxwzl/vue-virtual-tree'
+import {
+  generateVirtualTreeDataWasm,
+  isWasmAvailable,
+  type GenerateTreeDataResult as WasmResult,
+  type WasmGeneratorOptions
+} from './wasmTreeData'
 
 export interface VirtualNodeContext {
   level: number
@@ -11,6 +17,8 @@ export interface VirtualTreeOptions {
   grandChildCount?: number
   chunkSize?: number
   decorator?: (node: TreeNodeData, context: VirtualNodeContext) => void
+  /** 是否强制使用 JS 版本（跳过 WASM） */
+  forceJS?: boolean
 }
 
 const ensurePositiveInt = (value: number, fallback: number) => {
@@ -23,7 +31,10 @@ export interface GenerateTreeDataResult {
   totalCount: number
 }
 
-export const generateVirtualTreeData = (
+/**
+ * JS 版本的树数据生成（作为 WASM 的回退方案）
+ */
+const generateVirtualTreeDataJS = (
   rootCount = 5000,
   options: VirtualTreeOptions = {}
 ): Promise<GenerateTreeDataResult> => {
@@ -86,6 +97,39 @@ export const generateVirtualTreeData = (
 
     generateChunk()
   })
+}
+
+/**
+ * 生成虚拟树数据（自动选择 WASM 或 JS 版本）
+ * - 优先使用 WASM 版本（性能更好）
+ * - 如果 WASM 不可用或有 decorator，回退到 JS 版本
+ */
+export const generateVirtualTreeData = async (
+  rootCount = 5000,
+  options: VirtualTreeOptions = {}
+): Promise<GenerateTreeDataResult> => {
+  // 如果有 decorator 或强制使用 JS，则使用 JS 版本
+  if (options.decorator || options.forceJS) {
+    return generateVirtualTreeDataJS(rootCount, options)
+  }
+  // 尝试使用 WASM 版本
+  try {
+    const wasmOptions: WasmGeneratorOptions = {
+      childCount: options.childCount,
+      grandChildCount: options.grandChildCount
+    }
+    console.time('WASM 生成树数据')
+    const result = await generateVirtualTreeDataWasm(rootCount, wasmOptions)
+    console.timeEnd('WASM 生成树数据')
+    return result as GenerateTreeDataResult
+  } catch (error) {
+    console.warn('WASM 版本不可用，回退到 JS 版本:', error)
+  }
+  // 回退到 JS 版本
+  console.time('JS 生成树数据')
+  const result = await generateVirtualTreeDataJS(rootCount, options)
+  console.timeEnd('JS 生成树数据')
+  return result
 }
 
 export interface AsyncTreeOptions extends VirtualTreeOptions {

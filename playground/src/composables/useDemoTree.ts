@@ -18,14 +18,17 @@ export function useDemoTree(options: UseDemoTreeOptions = {}) {
   const dataLoaded = ref(false)
 
   const regenerateData = async () => {
+    console.time('数据生成到处理结束时间')
     isLoading.value = true
     dataLoaded.value = false
-    const result = await generateVirtualTreeData(nodeCount.value, generatorOptions)
-    treeData.value = result.data
-    totalNodeCount.value = result.totalCount
-    dataLoaded.value = true
-    options.dataLoaded?.(result.data)
-    // 不在这里关闭 loading，等待 VirtualTree 的 node-generated 事件
+    setTimeout(async () => {
+      const result = await generateVirtualTreeData(nodeCount.value, generatorOptions)
+      treeData.value = result.data
+      totalNodeCount.value = result.totalCount
+      dataLoaded.value = true
+      options.dataLoaded?.(result.data)
+      // 不在这里关闭 loading，等待 VirtualTree 的 node-generated 事件
+    }, 1)
   }
 
   const handleDataGenerated = () => {
@@ -33,6 +36,7 @@ export function useDemoTree(options: UseDemoTreeOptions = {}) {
       return
     }
     isLoading.value = false
+    console.timeEnd('数据生成到处理结束时间')
   }
 
   const handleCountChange = async () => {
