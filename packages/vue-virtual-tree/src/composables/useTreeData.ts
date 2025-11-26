@@ -202,12 +202,10 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
       flatNodeMap.value.set(key, value);
     });
     flatTree.value.splice(node.index + 1, 0, ...container);
-    requestAnimationFrame(() => {
-      for (let i = node.index + container.length; i < flatTree.value.length; i++) {
-        const child = flatTree.value[i];
-        child.index = i;
-      }
-    });
+    for (let i = node.index + container.length; i < flatTree.value.length; i++) {
+      const child = flatTree.value[i];
+      child.index = i;
+    }
   };
   const regenerateState: RegenerateOptions = {
     needEmit: true,
