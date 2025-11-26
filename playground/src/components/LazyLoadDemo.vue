@@ -2,7 +2,10 @@
   <div class="demo-section">
     <h2>子节点懒加载</h2>
     <div class="info-box">
-      <p><strong>说明：</strong>演示懒加载功能，点击展开图标时异步加载子节点</p>
+      <p>
+        <strong>说明：</strong>
+        演示懒加载功能，点击展开图标时异步加载子节点
+      </p>
       <ul>
         <li>根节点预设为可展开状态，但没有预加载子节点</li>
         <li>点击展开时触发load回调函数异步获取子节点</li>
@@ -28,238 +31,238 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { VirtualTree } from '@wxwzl/vue-virtual-tree'
-import type { TreeNodeData } from '@wxwzl/vue-virtual-tree'
+  import { ref } from "vue";
+  import { VirtualTree } from "@wxwzl/vue-virtual-tree";
+  import type { TreeNodeData } from "@wxwzl/vue-virtual-tree";
 
-const lazyTreeData = ref<TreeNodeData[]>([
-  {
-    id: 'lazy-1',
-    label: '懒加载节点 1',
-    isLeaf: false,
-  },
-  {
-    id: 'lazy-2',
-    label: '懒加载节点 2',
-    isLeaf: false,
-  },
-  {
-    id: 'lazy-3',
-    label: '懒加载节点 3',
-    isLeaf: false,
-  },
-  {
-    id: 'lazy-4',
-    label: '懒加载节点 4',
-    isLeaf: false,
-  }
-])
+  const lazyTreeData = ref<TreeNodeData[]>([
+    {
+      id: "lazy-1",
+      label: "懒加载节点 1",
+      isLeaf: false,
+    },
+    {
+      id: "lazy-2",
+      label: "懒加载节点 2",
+      isLeaf: false,
+    },
+    {
+      id: "lazy-3",
+      label: "懒加载节点 3",
+      isLeaf: false,
+    },
+    {
+      id: "lazy-4",
+      label: "懒加载节点 4",
+      isLeaf: false,
+    },
+  ]);
 
-const lazyLogs = ref<string[]>([])
+  const lazyLogs = ref<string[]>([]);
 
-const addLazyLog = (message: string) => {
-  const timestamp = new Date().toLocaleTimeString()
-  lazyLogs.value.unshift(`[${timestamp}] ${message}`)
-  if (lazyLogs.value.length > 20) {
-    lazyLogs.value = lazyLogs.value.slice(0, 20)
-  }
-}
+  const addLazyLog = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    lazyLogs.value.unshift(`[${timestamp}] ${message}`);
+    if (lazyLogs.value.length > 20) {
+      lazyLogs.value = lazyLogs.value.slice(0, 20);
+    }
+  };
 
-const clearLazyLogs = () => {
-  lazyLogs.value = []
-}
+  const clearLazyLogs = () => {
+    lazyLogs.value = [];
+  };
 
-const handleLazyLoad = (node: TreeNodeData, resolve: (data: TreeNodeData[]) => void) => {
-  addLazyLog(`开始加载节点: ${node.label || node.id}`)
+  const handleLazyLoad = (node: TreeNodeData, resolve: (data: TreeNodeData[]) => void) => {
+    addLazyLog(`开始加载节点: ${node.label || node.id}`);
 
-  setTimeout(() => {
-    const nodeId = node.id as string
-    let children: TreeNodeData[] = []
+    setTimeout(
+      () => {
+        const nodeId = node.id as string;
+        let children: TreeNodeData[] = [];
 
-    if (nodeId === 'lazy-1') {
-      children = [
-        { id: 'lazy-1-1', label: '懒加载子节点 1-1', isLeaf: true },
-        { id: 'lazy-1-2', label: '懒加载子节点 1-2', isLeaf: true },
-        {
-          id: 'lazy-1-3',
-          label: '懒加载子节点 1-3',
-          isLeaf: false,
+        if (nodeId === "lazy-1") {
+          children = [
+            { id: "lazy-1-1", label: "懒加载子节点 1-1", isLeaf: true },
+            { id: "lazy-1-2", label: "懒加载子节点 1-2", isLeaf: true },
+            {
+              id: "lazy-1-3",
+              label: "懒加载子节点 1-3",
+              isLeaf: false,
+            },
+          ];
+        } else if (nodeId === "lazy-2") {
+          children = [
+            { id: "lazy-2-1", label: "懒加载子节点 2-1", isLeaf: true },
+            { id: "lazy-2-2", label: "懒加载子节点 2-2", isLeaf: true },
+            { id: "lazy-2-3", label: "懒加载子节点 2-3", isLeaf: true },
+            { id: "lazy-2-4", label: "懒加载子节点 2-4", isLeaf: true },
+          ];
+        } else if (nodeId === "lazy-3") {
+          addLazyLog(`加载节点失败: ${node.label || node.id}`);
+          resolve([]);
+          return;
+        } else if (nodeId === "lazy-4") {
+          children = [{ id: "lazy-4-1", label: "懒加载子节点 4-1", isLeaf: true }];
+        } else if (nodeId === "lazy-1-3") {
+          children = [
+            { id: "lazy-1-3-1", label: "懒加载孙节点 1-3-1", isLeaf: true },
+            { id: "lazy-1-3-2", label: "懒加载孙节点 1-3-2", isLeaf: true },
+          ];
         }
-      ]
-    } else if (nodeId === 'lazy-2') {
-      children = [
-        { id: 'lazy-2-1', label: '懒加载子节点 2-1', isLeaf: true },
-        { id: 'lazy-2-2', label: '懒加载子节点 2-2', isLeaf: true },
-        { id: 'lazy-2-3', label: '懒加载子节点 2-3', isLeaf: true },
-        { id: 'lazy-2-4', label: '懒加载子节点 2-4', isLeaf: true }
-      ]
-    } else if (nodeId === 'lazy-3') {
-      addLazyLog(`加载节点失败: ${node.label || node.id}`)
-      resolve([])
-      return
-    } else if (nodeId === 'lazy-4') {
-      children = [
-        { id: 'lazy-4-1', label: '懒加载子节点 4-1', isLeaf: true }
-      ]
-    } else if (nodeId === 'lazy-1-3') {
-      children = [
-        { id: 'lazy-1-3-1', label: '懒加载孙节点 1-3-1', isLeaf: true },
-        { id: 'lazy-1-3-2', label: '懒加载孙节点 1-3-2', isLeaf: true }
-      ]
-    }
 
-    addLazyLog(`加载完成: ${node.label || node.id} -> ${children.length} 个子节点`)
-    resolve(children)
-  }, Math.random() * 1000 + 500)
-}
+        addLazyLog(`加载完成: ${node.label || node.id} -> ${children.length} 个子节点`);
+        resolve(children);
+      },
+      Math.random() * 1000 + 500
+    );
+  };
 
-const resetLazyData = () => {
-  lazyTreeData.value = [
-    {
-      id: 'lazy-1',
-      label: '懒加载节点 1',
-      isLeaf: false,
-    },
-    {
-      id: 'lazy-2',
-      label: '懒加载节点 2',
-      isLeaf: false,
-    },
-    {
-      id: 'lazy-3',
-      label: '懒加载节点 3',
-      isLeaf: false,
-    },
-    {
-      id: 'lazy-4',
-      label: '懒加载节点 4',
-      isLeaf: false,
-    }
-  ]
-  lazyLogs.value = []
-}
+  const resetLazyData = () => {
+    lazyTreeData.value = [
+      {
+        id: "lazy-1",
+        label: "懒加载节点 1",
+        isLeaf: false,
+      },
+      {
+        id: "lazy-2",
+        label: "懒加载节点 2",
+        isLeaf: false,
+      },
+      {
+        id: "lazy-3",
+        label: "懒加载节点 3",
+        isLeaf: false,
+      },
+      {
+        id: "lazy-4",
+        label: "懒加载节点 4",
+        isLeaf: false,
+      },
+    ];
+    lazyLogs.value = [];
+  };
 </script>
 
 <style scoped>
-.demo-section {
-  background: white;
-  padding: 20px;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  height: 100%;
-  min-height: 0;
-}
+  .demo-section {
+    background: white;
+    padding: 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: 100%;
+    min-height: 0;
+  }
 
-.demo-section h2 {
-  color: #606266;
-  font-size: 18px;
-}
+  .demo-section h2 {
+    color: #606266;
+    font-size: 18px;
+  }
 
-.info-box {
-  background-color: #f0f9ff;
-  border: 1px solid #b3d8ff;
-  border-radius: 4px;
-  padding: 12px;
-  margin-bottom: 15px;
-  font-size: 14px;
-  color: #606266;
-}
+  .info-box {
+    background-color: #f0f9ff;
+    border: 1px solid #b3d8ff;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    color: #606266;
+  }
 
-.info-box p {
-  margin-bottom: 8px;
-  font-weight: 500;
-}
+  .info-box p {
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
 
-.info-box ul {
-  margin-left: 20px;
-  margin-top: 8px;
-}
+  .info-box ul {
+    margin-left: 20px;
+    margin-top: 8px;
+  }
 
-.info-box li {
-  margin-bottom: 4px;
-}
+  .info-box li {
+    margin-bottom: 4px;
+  }
 
-.tree-container {
-  flex: 1;
-  display: flex;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  overflow: hidden;
-  min-height: 0;
-}
+  .tree-container {
+    flex: 1;
+    display: flex;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    overflow: hidden;
+    min-height: 0;
+  }
 
-.tree-shell {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
+  .tree-shell {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
 
-.tree-scroll {
-  flex: 1;
-}
-.control-panel {
-  margin-top: 15px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
+  .tree-scroll {
+    flex: 1;
+  }
+  .control-panel {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
 
-.btn {
-  padding: 8px 16px;
-  background-color: #409eff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s;
-}
+  .btn {
+    padding: 8px 16px;
+    background-color: #409eff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+  }
 
-.btn:hover {
-  background-color: #66b1ff;
-}
+  .btn:hover {
+    background-color: #66b1ff;
+  }
 
-.btn:active {
-  background-color: #3a8ee6;
-}
+  .btn:active {
+    background-color: #3a8ee6;
+  }
 
-.btn-small {
-  margin-top: 10px;
-  padding: 4px 12px;
-  font-size: 12px;
-}
+  .btn-small {
+    margin-top: 10px;
+    padding: 4px 12px;
+    font-size: 12px;
+  }
 
-.lazy-log {
-  margin-top: 15px;
-  padding: 12px;
-  background-color: #f0f9ff;
-  border: 1px solid #b3d8ff;
-  border-radius: 4px;
-  max-height: 100px;
-  overflow-y: auto;
-}
+  .lazy-log {
+    margin-top: 15px;
+    padding: 12px;
+    background-color: #f0f9ff;
+    border: 1px solid #b3d8ff;
+    border-radius: 4px;
+    max-height: 100px;
+    overflow-y: auto;
+  }
 
-.lazy-log h3 {
-  margin-bottom: 10px;
-  font-size: 14px;
-  color: #409eff;
-  font-weight: 500;
-}
+  .lazy-log h3 {
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #409eff;
+    font-weight: 500;
+  }
 
-.log-item {
-  padding: 4px 0;
-  font-size: 12px;
-  color: #909399;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  border-bottom: 1px solid #ebeef5;
-}
+  .log-item {
+    padding: 4px 0;
+    font-size: 12px;
+    color: #909399;
+    font-family: "Consolas", "Monaco", "Courier New", monospace;
+    border-bottom: 1px solid #ebeef5;
+  }
 
-.log-item:last-child {
-  border-bottom: none;
-}
+  .log-item:last-child {
+    border-bottom: none;
+  }
 </style>
-

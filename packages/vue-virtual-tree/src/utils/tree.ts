@@ -1,59 +1,59 @@
-import type { TreeNodeData, TreePropsConfig } from '../types'
+import type { TreeNodeData, TreePropsConfig } from "../types";
 
 /**
  * 默认字段映射配置
  */
 const DEFAULT_PROPS: Required<TreePropsConfig> = {
-  id: 'id',
-  children: 'children',
-  label: 'label',
-  disabled: 'disabled',
-  isLeaf: 'isLeaf'
-}
+  id: "id",
+  children: "children",
+  label: "label",
+  disabled: "disabled",
+  isLeaf: "isLeaf",
+};
 
 /**
  * 获取节点 ID
  */
 export function getNodeId(node: TreeNodeData, props: TreePropsConfig = {}): string | number {
-  const config = { ...DEFAULT_PROPS, ...props }
-  return node[config.id] ?? node.id ?? ''
+  const config = { ...DEFAULT_PROPS, ...props };
+  return node[config.id] ?? node.id ?? "";
 }
 
 /**
  * 获取节点标签
  */
 export function getNodeLabel(node: TreeNodeData, props: TreePropsConfig = {}): string {
-  const config = { ...DEFAULT_PROPS, ...props }
-  return node[config.label] ?? node.label ?? ''
+  const config = { ...DEFAULT_PROPS, ...props };
+  return node[config.label] ?? node.label ?? "";
 }
 
 /**
  * 获取子节点
  */
 export function getNodeChildren(node: TreeNodeData, props: TreePropsConfig = {}): TreeNodeData[] {
-  const config = { ...DEFAULT_PROPS, ...props }
-  return node[config.children] ?? node.children ?? []
+  const config = { ...DEFAULT_PROPS, ...props };
+  return node[config.children] ?? node.children ?? [];
 }
 
 /**
  * 判断节点是否禁用
  */
 export function isNodeDisabled(node: TreeNodeData, props: TreePropsConfig = {}): boolean {
-  const config = { ...DEFAULT_PROPS, ...props }
-  return node[config.disabled] ?? node.disabled ?? false
+  const config = { ...DEFAULT_PROPS, ...props };
+  return node[config.disabled] ?? node.disabled ?? false;
 }
 
 /**
  * 判断是否为叶子节点
  */
 export function isLeafNode(node: TreeNodeData, props: TreePropsConfig = {}): boolean {
-  const config = { ...DEFAULT_PROPS, ...props }
-  const children = getNodeChildren(node, props)
-  if (children.length > 0) return false
+  const config = { ...DEFAULT_PROPS, ...props };
+  const children = getNodeChildren(node, props);
+  if (children.length > 0) return false;
   if (node[config.isLeaf] !== undefined) {
-    return node[config.isLeaf] ?? false
+    return node[config.isLeaf] ?? false;
   }
-  return true
+  return true;
 }
 
 /**
@@ -66,13 +66,13 @@ export function traverseTree(
   props: TreePropsConfig = {}
 ): void {
   for (const node of nodes) {
-    const result = callback(node, parent)
+    const result = callback(node, parent);
     if (result === false) {
-      continue
+      continue;
     }
-    const children = getNodeChildren(node, props)
+    const children = getNodeChildren(node, props);
     if (children.length > 0) {
-      traverseTree(children, callback, node, props)
+      traverseTree(children, callback, node, props);
     }
   }
 }
@@ -87,15 +87,15 @@ export function findNode(
 ): TreeNodeData | null {
   for (const node of nodes) {
     if (predicate(node)) {
-      return node
+      return node;
     }
-    const children = getNodeChildren(node, props)
+    const children = getNodeChildren(node, props);
     if (children.length > 0) {
-      const found = findNode(children, predicate, props)
-      if (found) return found
+      const found = findNode(children, predicate, props);
+      if (found) return found;
     }
   }
-  return null
+  return null;
 }
 
 /**
@@ -106,30 +106,45 @@ export function findNodeByKey(
   key: string | number,
   props: TreePropsConfig = {}
 ): TreeNodeData | null {
-  return findNode(nodes, (node) => getNodeId(node, props) === key, props)
+  return findNode(nodes, (node) => getNodeId(node, props) === key, props);
 }
 
 /**
  * 获取所有节点的 key
  */
-export function getAllKeys(nodes: TreeNodeData[], props: TreePropsConfig = {}): (string | number)[] {
-  const keys: (string | number)[] = []
-  traverseTree(nodes, (node) => {
-    keys.push(getNodeId(node, props))
-  }, null, props)
-  return keys
+export function getAllKeys(
+  nodes: TreeNodeData[],
+  props: TreePropsConfig = {}
+): (string | number)[] {
+  const keys: (string | number)[] = [];
+  traverseTree(
+    nodes,
+    (node) => {
+      keys.push(getNodeId(node, props));
+    },
+    null,
+    props
+  );
+  return keys;
 }
 
 /**
  * 获取所有叶子节点的 key
  */
-export function getLeafKeys(nodes: TreeNodeData[], props: TreePropsConfig = {}): (string | number)[] {
-  const keys: (string | number)[] = []
-  traverseTree(nodes, (node) => {
-    if (isLeafNode(node, props)) {
-      keys.push(getNodeId(node, props))
-    }
-  }, null, props)
-  return keys
+export function getLeafKeys(
+  nodes: TreeNodeData[],
+  props: TreePropsConfig = {}
+): (string | number)[] {
+  const keys: (string | number)[] = [];
+  traverseTree(
+    nodes,
+    (node) => {
+      if (isLeafNode(node, props)) {
+        keys.push(getNodeId(node, props));
+      }
+    },
+    null,
+    props
+  );
+  return keys;
 }
-

@@ -32,146 +32,145 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+  import { ref } from "vue";
 
-interface Props {
-  code: string
-}
-
-const props = defineProps<Props>()
-
-const isExpanded = ref(false)
-const copied = ref(false)
-
-const toggle = () => {
-  isExpanded.value = !isExpanded.value
-}
-
-const copyCode = async () => {
-  try {
-    await navigator.clipboard.writeText(props.code)
-    copied.value = true
-    setTimeout(() => {
-      copied.value = false
-    }, 2000)
-  } catch (err) {
-    console.error('Failed to copy code:', err)
-    // 降级方案
-    const textarea = document.createElement('textarea')
-    textarea.value = props.code
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
-    copied.value = true
-    setTimeout(() => {
-      copied.value = false
-    }, 2000)
+  interface Props {
+    code: string;
   }
-}
+
+  const props = defineProps<Props>();
+
+  const isExpanded = ref(false);
+  const copied = ref(false);
+
+  const toggle = () => {
+    isExpanded.value = !isExpanded.value;
+  };
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(props.code);
+      copied.value = true;
+      setTimeout(() => {
+        copied.value = false;
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy code:", err);
+      // 降级方案
+      const textarea = document.createElement("textarea");
+      textarea.value = props.code;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      copied.value = true;
+      setTimeout(() => {
+        copied.value = false;
+      }, 2000);
+    }
+  };
 </script>
 
 <style scoped>
-.code-panel {
-  margin-top: 20px;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  overflow: hidden;
-}
+  .code-panel {
+    margin-top: 20px;
+    border: 1px solid #e4e7ed;
+    border-radius: 4px;
+    overflow: hidden;
+  }
 
-.code-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background-color: #fafafa;
-  cursor: pointer;
-  user-select: none;
-  transition: background-color 0.3s;
-}
+  .code-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background-color: #fafafa;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.3s;
+  }
 
-.code-panel__header:hover {
-  background-color: #f5f7fa;
-}
+  .code-panel__header:hover {
+    background-color: #f5f7fa;
+  }
 
-.code-panel__title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #606266;
-  font-weight: 500;
-}
+  .code-panel__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #606266;
+    font-weight: 500;
+  }
 
-.code-panel__icon {
-  transition: transform 0.3s;
-  color: #909399;
-}
+  .code-panel__icon {
+    transition: transform 0.3s;
+    color: #909399;
+  }
 
-.code-panel__icon.is-expanded {
-  transform: rotate(90deg);
-}
+  .code-panel__icon.is-expanded {
+    transform: rotate(90deg);
+  }
 
-.code-panel__copy {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #909399;
-  font-size: 12px;
-  transition: color 0.3s;
-}
+  .code-panel__copy {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #909399;
+    font-size: 12px;
+    transition: color 0.3s;
+  }
 
-.code-panel__copy:hover {
-  color: #409eff;
-}
+  .code-panel__copy:hover {
+    color: #409eff;
+  }
 
-.code-panel__copied {
-  font-size: 12px;
-  color: #67c23a;
-}
+  .code-panel__copied {
+    font-size: 12px;
+    color: #67c23a;
+  }
 
-.code-panel__content {
-  background-color: #fafafa;
-  border-top: 1px solid #e4e7ed;
-}
+  .code-panel__content {
+    background-color: #fafafa;
+    border-top: 1px solid #e4e7ed;
+  }
 
-.code-panel__code {
-  margin: 0;
-  padding: 16px;
-  background-color: #282c34;
-  color: #abb2bf;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.6;
-  overflow-x: auto;
-}
+  .code-panel__code {
+    margin: 0;
+    padding: 16px;
+    background-color: #282c34;
+    color: #abb2bf;
+    font-family: "Consolas", "Monaco", "Courier New", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
 
-.code-panel__code code {
-  display: block;
-  white-space: pre;
-}
+  .code-panel__code code {
+    display: block;
+    white-space: pre;
+  }
 
-/* 过渡动画 */
-.code-panel-enter-active,
-.code-panel-leave-active {
-  transition: all 0.3s ease;
-  overflow: hidden;
-}
+  /* 过渡动画 */
+  .code-panel-enter-active,
+  .code-panel-leave-active {
+    transition: all 0.3s ease;
+    overflow: hidden;
+  }
 
-.code-panel-enter-from,
-.code-panel-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
+  .code-panel-enter-from,
+  .code-panel-leave-to {
+    max-height: 0;
+    opacity: 0;
+  }
 
-.code-panel-enter-to,
-.code-panel-leave-from {
-  max-height: 1000px;
-  opacity: 1;
-}
+  .code-panel-enter-to,
+  .code-panel-leave-from {
+    max-height: 1000px;
+    opacity: 1;
+  }
 </style>
-

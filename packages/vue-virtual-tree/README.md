@@ -58,20 +58,20 @@ pnpm add @wxwzl/vue-virtual-tree vue-virtual-scroller@next
 </template>
 
 <script setup lang="ts">
-  import { ref } from 'vue'
+  import { ref } from "vue";
   import { VirtualTree } from "vue-virtual-tree";
 
-  const isLoading = ref(true)
-  const treeData = ref([])
+  const isLoading = ref(true);
+  const treeData = ref([]);
 
   // 模拟数据加载
   setTimeout(() => {
     treeData.value = [
       { id: 1, label: "节点 1" },
       { id: 2, label: "节点 2" },
-    ]
-    isLoading.value = false
-  }, 2000)
+    ];
+    isLoading.value = false;
+  }, 2000);
 </script>
 ```
 
@@ -176,16 +176,15 @@ pnpm add @wxwzl/vue-virtual-tree vue-virtual-scroller@next
 | updateKeyChildren | 更新节点的子节点（懒加载） | `(key, data)`                      |
 | scrollToNode      | 滚动到指定节点             | `(key, options?)`                  |
 
-
 ### Slots
 
-| 插槽名        | 说明                 | 参数             |
-| ------------- | -------------------- | ---------------- |
-| default       | 自定义节点内容       | `{ node, data }` |
-| empty         | 空状态内容           | -                |
-| tree-loading  | 整个树的加载状态     | -                |
-| loading       | 节点懒加载时的状态   | `{ node, data }` |
-| icon          | 自定义节点图标       | `{ node, data }` |
+| 插槽名       | 说明               | 参数             |
+| ------------ | ------------------ | ---------------- |
+| default      | 自定义节点内容     | `{ node, data }` |
+| empty        | 空状态内容         | -                |
+| tree-loading | 整个树的加载状态   | -                |
+| loading      | 节点懒加载时的状态 | `{ node, data }` |
+| icon         | 自定义节点图标     | `{ node, data }` |
 
 ## 开发
 

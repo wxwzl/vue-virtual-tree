@@ -37,16 +37,16 @@ new GenerateOptions(rootCount: number, childCount: number, grandChildCount: numb
 使用配置选项生成树数据：
 
 ```typescript
-import init, { GenerateOptions, generateVirtualTreeData } from 'data-generator'
+import init, { GenerateOptions, generateVirtualTreeData } from "data-generator";
 
-await init()
+await init();
 
-const options = new GenerateOptions(1000, 5, 5)
-const result = generateVirtualTreeData(options)
-options.free() // 释放 WASM 内存
+const options = new GenerateOptions(1000, 5, 5);
+const result = generateVirtualTreeData(options);
+options.free(); // 释放 WASM 内存
 
-console.log(result.data) // TreeNodeData[]
-console.log(result.totalCount) // 总节点数
+console.log(result.data); // TreeNodeData[]
+console.log(result.totalCount); // 总节点数
 ```
 
 ### `generateTreeDataFast(rootCount: number)`
@@ -54,36 +54,36 @@ console.log(result.totalCount) // 总节点数
 快速生成（使用默认的子节点数量 5）：
 
 ```typescript
-import init, { generateTreeDataFast } from 'data-generator'
+import init, { generateTreeDataFast } from "data-generator";
 
-await init()
+await init();
 
-const result = generateTreeDataFast(1000)
-console.log(result.totalCount) // 1000 * (1 + 5 + 5*5) = 31000
+const result = generateTreeDataFast(1000);
+console.log(result.totalCount); // 1000 * (1 + 5 + 5*5) = 31000
 ```
 
 ## 生成的数据结构
 
 ```typescript
 interface TreeNodeData {
-  id: string        // 格式: "node-{i}" | "node-{i}-{j}" | "node-{i}-{j}-{k}"
-  label: string     // 格式: "节点 {i}" | "节点 {i}-{j}" | "节点 {i}-{j}-{k}"
-  children?: TreeNodeData[]
+  id: string; // 格式: "node-{i}" | "node-{i}-{j}" | "node-{i}-{j}-{k}"
+  label: string; // 格式: "节点 {i}" | "节点 {i}-{j}" | "节点 {i}-{j}-{k}"
+  children?: TreeNodeData[];
 }
 
 interface GenerateTreeDataResult {
-  data: TreeNodeData[]
-  totalCount: number
+  data: TreeNodeData[];
+  totalCount: number;
 }
 ```
 
 ## 性能对比
 
-| 节点数量 | JS 版本 | WASM 版本 | 提升 |
-|---------|--------|----------|------|
-| 31,000  | ~50ms  | ~8ms     | 6x   |
-| 155,000 | ~250ms | ~40ms    | 6x   |
-| 1,550,000 | ~2.5s | ~400ms  | 6x   |
+| 节点数量  | JS 版本 | WASM 版本 | 提升 |
+| --------- | ------- | --------- | ---- |
+| 31,000    | ~50ms   | ~8ms      | 6x   |
+| 155,000   | ~250ms  | ~40ms     | 6x   |
+| 1,550,000 | ~2.5s   | ~400ms    | 6x   |
 
 ## License
 
