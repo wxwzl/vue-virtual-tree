@@ -1,6 +1,6 @@
 {
   "name": "@wxwzl/vue-virtual-tree",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "A high-performance virtual tree component for Vue 3",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -9,11 +9,11 @@
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/index.d.ts",
+        "types": "./dist/types/index.d.ts",
         "default": "./dist/index.js"
       },
       "require": {
-        "types": "./dist/index.d.ts",
+        "types": "./dist/types/index.d.ts",
         "default": "./dist/index.cjs"
       }
     },
@@ -33,7 +33,8 @@
   "author": "wxwzl",
   "license": "MIT",
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "repository": {
     "type": "git",
@@ -48,6 +49,7 @@
     "vite-plugin-dts": "^4.5.4"
   },
   "scripts": {
+    "prepublish": "pnpm run build",
     "build": "vite build",
     "publish": "npm publish",
     "type-check": "vue-tsc --noEmit"

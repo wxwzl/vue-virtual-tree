@@ -29,6 +29,7 @@ export default defineConfig({
     rollupOptions: {
       external: ["vue", "vue-virtual-scroller"],
       output: {
+        exports: "named", // 同时使用默认导出和命名导出
         globals: {
           vue: "Vue",
           "vue-virtual-scroller": "VueVirtualScroller",

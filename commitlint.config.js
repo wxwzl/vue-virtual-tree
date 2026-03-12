@@ -14,7 +14,8 @@ module.exports = {
         "test", // 测试用例修改
         "chore", //其他修改, 比如构建流程, 依赖管理.
         "revert", // 代码回滚
-        "types", // 类型定义文件更改
+        "types", // 类型定义文件更改,
+        "release", // 类型定义文件更改
       ],
     ],
     "type-empty": [2, "never"], // 提交不符合规范时,不可以提交
