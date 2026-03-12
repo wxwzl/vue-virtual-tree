@@ -3,14 +3,8 @@
     <h2>带复选框</h2>
     <div class="control-panel">
       <label class="control-label">
-        节点数量：
-        <input
-          type="number"
-          min="1000"
-          step="1000"
-          v-model.number="nodeCount"
-          @change="handleCountChange"
-        />
+        一级节点数量：
+        <input type="number" v-model.number="nodeCount" @change="handleCountChange" />
       </label>
       <button class="btn" @click="regenerateData">重新生成</button>
       <span class="node-count-info" v-if="totalNodeCount > 0">
@@ -22,6 +16,7 @@
         <VirtualTree
           :data="treeData"
           :loading="isLoading"
+          :buffer="500"
           class="tree-scroll"
           show-checkbox
           @node-check="handleNodeCheck"

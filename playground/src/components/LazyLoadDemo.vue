@@ -14,7 +14,13 @@
     </div>
     <div class="tree-container">
       <div class="tree-shell">
-        <VirtualTree :data="lazyTreeData" class="tree-scroll" lazy :load="handleLazyLoad" />
+        <VirtualTree
+          :data="lazyTreeData"
+          :buffer="500"
+          class="tree-scroll"
+          lazy
+          :load="handleLazyLoad"
+        />
       </div>
     </div>
     <div class="control-panel">

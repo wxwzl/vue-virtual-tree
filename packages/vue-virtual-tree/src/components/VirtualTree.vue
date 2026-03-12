@@ -18,6 +18,7 @@
         v-if="data.length > 0"
         :items="visibleNodes"
         :min-item-size="itemSize || 32"
+        v-bind="$attrs"
         class="vue-virtual-tree__scroller"
       >
         <template #default="{ item, index, active }">
@@ -129,6 +130,7 @@
 
   defineOptions({
     name: "VirtualTree",
+    inheritAttrs: false,
   });
 
   const props = withDefaults(defineProps<VirtualTreeProps>(), {

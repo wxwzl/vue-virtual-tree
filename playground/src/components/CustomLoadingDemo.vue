@@ -14,7 +14,13 @@
     </div>
     <div class="tree-container">
       <div class="tree-shell">
-        <VirtualTree :data="customLoadingTreeData" class="tree-scroll" lazy :load="handleLazyLoad">
+        <VirtualTree
+          :data="customLoadingTreeData"
+          :buffer="1000"
+          class="tree-scroll"
+          lazy
+          :load="handleLazyLoad"
+        >
           <template #loading="{ node, data }">
             <div class="custom-loading">
               <div class="loading-spinner"></div>

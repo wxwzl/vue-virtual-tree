@@ -11,14 +11,8 @@
     </div>
     <div class="control-panel control-panel--spacing">
       <label class="control-label">
-        节点数量：
-        <input
-          type="number"
-          min="1000"
-          step="1000"
-          v-model.number="nodeCount"
-          @change="handleCountChange"
-        />
+        一级节点数量：
+        <input type="number" v-model.number="nodeCount" @change="handleCountChange" />
       </label>
       <button class="btn" @click="regenerateData">重新生成</button>
       <span class="node-count-info" v-if="totalNodeCount > 0">
@@ -30,6 +24,7 @@
         <VirtualTree
           :data="treeData"
           :loading="isLoading"
+          :buffer="1000"
           class="tree-scroll"
           :default-expanded-keys="defaultExpandedKeys"
           :default-checked-keys="defaultCheckedKeys"
@@ -190,6 +185,7 @@
   .tree-scroll {
     flex: 1;
   }
+
   .btn {
     padding: 8px 16px;
     background-color: #409eff;

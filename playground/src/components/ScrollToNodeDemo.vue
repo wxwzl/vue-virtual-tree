@@ -77,6 +77,7 @@
         <VirtualTree
           ref="treeRef"
           :data="treeData"
+          :buffer="500"
           :loading="isLoading"
           class="tree-scroll"
           @node-generated="handleDataGenerated"

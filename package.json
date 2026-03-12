@@ -1,6 +1,6 @@
 {
   "name": "vue-virtual-tree-monorepo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "A high-performance virtual tree component for Vue 3",
   "scripts": {

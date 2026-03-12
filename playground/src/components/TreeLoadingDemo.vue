@@ -24,6 +24,7 @@
         <VirtualTree
           :data="treeData"
           :loading="isLoading"
+          :buffer="500"
           class="tree-scroll"
           @node-generated="handleDataGenerated"
         >

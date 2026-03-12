@@ -3,17 +3,14 @@
     <h2>基础用法</h2>
     <div class="control-panel">
       <label class="control-label">
-        节点数量：
-        <input
-          type="number"
-          min="1000"
-          step="1000"
-          v-model.number="nodeCount"
-          @change="handleCountChange"
-        />
+        一级节点数量：
+        <input type="number" v-model.number="nodeCount" @change="handleCountChange" />
       </label>
       <button class="btn" @click="regenerateData">重新生成</button>
       <span class="node-count-info" v-if="totalNodeCount > 0">
+        <span style="margin-right: 20px">
+          (为了减少快速滚动时白屏的时间，可以适当调整组件Buffer数量)
+        </span>
         总节点数：{{ totalNodeCount.toLocaleString() }}
       </span>
     </div>
@@ -22,6 +19,7 @@
         <VirtualTree
           :data="treeData"
           :loading="isLoading"
+          :buffer="500"
           class="tree-scroll"
           @node-generated="handleDataGenerated"
         />
