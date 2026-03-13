@@ -1,4 +1,14 @@
-# [1.0.0](https://github.com/wxwzl/vue-virtual-tree/compare/0.1.12...1.0.0) (2025-11-25)
+# [1.0.0](https://github.com/wxwzl/vue-virtual-tree/compare/0.1.13...1.0.0) (2026-03-13)
+
+## [0.1.13](https://github.com/wxwzl/vue-virtual-tree/compare/0.1.12...0.1.13) (2026-03-12)
+
+### Bug Fixes
+
+- 懒加载插入节点不应该存在异步更新 ([98d9eb9](https://github.com/wxwzl/vue-virtual-tree/commit/98d9eb9e5c3483ec88c15d699c65ec53e3e306e4))
+
+### Features
+
+- 提升vue-virtual-scroller依赖版本和增加vue-virtual-scroller 属性传递 ([f7ed087](https://github.com/wxwzl/vue-virtual-tree/commit/f7ed0879bcdc19c2d7b0c690c597a22262ad86d9))
 
 ## [0.1.12](https://github.com/wxwzl/vue-virtual-tree/compare/0.1.7...0.1.12) (2025-11-24)
 
@@ -17,7 +27,13 @@
 - 优化过滤功能和复选框性能 ([2082ba9](https://github.com/wxwzl/vue-virtual-tree/commit/2082ba96d26774aa282c8277d5cf9e7990215122))
 - 优化性能 ([6c3f6a8](https://github.com/wxwzl/vue-virtual-tree/commit/6c3f6a86fa1fb1cbfc697e71f5d914b6f7356b9b))
 
-## [0.1.7](https://github.com/wxwzl/vue-virtual-tree/compare/6ed73595f63c36478254a6f5c4e94e7f96a71e33...0.1.7) (2025-11-20)
+## [0.1.7](https://github.com/wxwzl/vue-virtual-tree/compare/0.1.6...0.1.7) (2025-11-20)
+
+### Features
+
+- 增加数据加载中的状态prop和插槽 ([973f18a](https://github.com/wxwzl/vue-virtual-tree/commit/973f18ae697f8dd38b4ba6adac7cae4c27b69a5d))
+
+## [0.1.6](https://github.com/wxwzl/vue-virtual-tree/compare/6ed73595f63c36478254a6f5c4e94e7f96a71e33...0.1.6) (2025-11-20)
 
 ### Bug Fixes
 
@@ -35,7 +51,6 @@
 - 图标插槽 ([5030821](https://github.com/wxwzl/vue-virtual-tree/commit/5030821b900d18fb82c751a8661f2c752075cccc))
 - 移除isVisible属性，重构可见数据列表展示机制 ([e97cb25](https://github.com/wxwzl/vue-virtual-tree/commit/e97cb25ff38ac22379e00328a3cc11f615414186))
 - 源代码面板 ([8936640](https://github.com/wxwzl/vue-virtual-tree/commit/89366400cb9d004cab89b2cc5c2c9410fd621f0e))
-- 增加数据加载中的状态prop和插槽 ([973f18a](https://github.com/wxwzl/vue-virtual-tree/commit/973f18ae697f8dd38b4ba6adac7cae4c27b69a5d))
 - 增加缩进定制配置 ([8f74dcf](https://github.com/wxwzl/vue-virtual-tree/commit/8f74dcfcbbdf41567dc2db6386c231cb1c50eaae))
 - init ([6ed7359](https://github.com/wxwzl/vue-virtual-tree/commit/6ed73595f63c36478254a6f5c4e94e7f96a71e33))
 
