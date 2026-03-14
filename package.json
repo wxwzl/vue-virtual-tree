@@ -14,7 +14,8 @@
     "type-check": "pnpm --filter @wxwzl/vue-virtual-tree type-check",
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
     "deploy:demo": "pnpm run build:playground && npx gh-pages -d playground/dist",
-    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md,vue}\""
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md,vue}\"",
+    "lint:fix": "pnpm --filter @wxwzl/vue-virtual-tree run lint:fix"
   },
   "keywords": [
     "vue",

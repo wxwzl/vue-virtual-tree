@@ -6,7 +6,10 @@
   >
     <template v-if="loading">
       <slot name="tree-loading">
-        <div v-if="loading" class="vue-virtual-tree__loading">
+        <div
+          v-if="loading"
+          class="vue-virtual-tree__loading"
+        >
           <!-- 默认loading -->
           <span class="vue-virtual-tree-loading-text">加载中...</span>
         </div>
@@ -14,8 +17,8 @@
     </template>
     <template v-else>
       <DynamicScroller
-        ref="dynamicScrollerRef"
         v-if="data.length > 0"
+        ref="dynamicScrollerRef"
         :items="visibleNodes"
         :min-item-size="itemSize || 32"
         v-bind="$attrs"
@@ -30,8 +33,8 @@
             class="vue-virtual-tree__item"
           >
             <TreeNode
-              :node="item"
               :key="item.id"
+              :node="item"
               :index="index"
               :props="props.props"
               :show-checkbox="showCheckbox"
@@ -52,10 +55,17 @@
               @drop="handleDrop"
             >
               <template #default="{ node, data }">
-                <slot :node="node" :data="data" />
+                <slot
+                  :node="node"
+                  :data="data"
+                ></slot>
               </template>
               <template #loading="{ node, data }">
-                <slot name="loading" :node="node" :data="data">
+                <slot
+                  name="loading"
+                  :node="node"
+                  :data="data"
+                >
                   <!-- 默认loading图标 -->
                   <svg
                     class="vue-virtual-tree-node__loading-icon"
@@ -76,20 +86,49 @@
                       />
                       <!-- 旋转的3个点 -->
                       <g class="vue-virtual-tree-loading-dots">
-                        <circle cx="0" cy="-8" r="2" fill="currentColor" />
-                        <circle cx="6.928" cy="-4" r="2" fill="currentColor" opacity="0.7" />
-                        <circle cx="6.928" cy="4" r="2" fill="currentColor" opacity="0.4" />
+                        <circle
+                          cx="0"
+                          cy="-8"
+                          r="2"
+                          fill="currentColor"
+                        />
+                        <circle
+                          cx="6.928"
+                          cy="-4"
+                          r="2"
+                          fill="currentColor"
+                          opacity="0.7"
+                        />
+                        <circle
+                          cx="6.928"
+                          cy="4"
+                          r="2"
+                          fill="currentColor"
+                          opacity="0.4"
+                        />
                       </g>
                     </g>
                   </svg>
                 </slot>
               </template>
               <template #icon="{ node, data }">
-                <slot name="icon" :node="node" :data="data">
+                <slot
+                  name="icon"
+                  :node="node"
+                  :data="data"
+                >
                   <!-- 默认图标 -->
                   <span class="default-icon">
-                    <svg v-if="!node.isLeaf" viewBox="0 0 1024 1024" width="16" height="16">
-                      <path d="M384 384l256 256-256 256z" fill="currentColor" />
+                    <svg
+                      v-if="!node.isLeaf"
+                      viewBox="0 0 1024 1024"
+                      width="16"
+                      height="16"
+                    >
+                      <path
+                        d="M384 384l256 256-256 256z"
+                        fill="currentColor"
+                      />
                     </svg>
                   </span>
                 </slot>
@@ -98,7 +137,10 @@
           </DynamicScrollerItem>
         </template>
       </DynamicScroller>
-      <div v-else class="vue-virtual-tree__empty">
+      <div
+        v-else
+        class="vue-virtual-tree__empty"
+      >
         <slot name="empty">
           <span>暂无数据</span>
         </slot>
@@ -197,15 +239,21 @@
   // 事件委托：从事件目标查找节点
   const getNodeFromEvent = (event: Event): FlatTreeNode | null => {
     const target = event.target as HTMLElement;
-    if (!target) return null;
+    if (!target) {
+      return null;
+    }
 
     // 查找最近的带有 data-node-id 属性的元素
     const nodeElement = target.closest("[data-node-id]");
-    if (!nodeElement) return null;
+    if (!nodeElement) {
+      return null;
+    }
 
     const nodeId = nodeElement.getAttribute("data-node-id");
     const nodeIndex = nodeElement.getAttribute("data-node-index");
-    if (!nodeId) return null;
+    if (!nodeId) {
+      return null;
+    }
     // 尝试解析为 number 或 string
     const id = isNaN(Number(nodeId)) ? nodeId : Number(nodeId);
     const index = isNaN(Number(nodeIndex)) ? undefined : Number(nodeIndex);
@@ -219,10 +267,14 @@
   // 事件委托：树容器点击事件（只代理 click 事件）
   const handleTreeClick = (event: MouseEvent) => {
     const node = getNodeFromEvent(event);
-    if (!node) return;
+    if (!node) {
+      return;
+    }
 
     const target = event.target as HTMLElement;
-    if (!target) return;
+    if (!target) {
+      return;
+    }
 
     // 检查点击的是哪个区域
     const expandIcon = target.closest(".vue-virtual-tree-node__expand-icon");
@@ -254,7 +306,9 @@
 
   // 节点点击
   const handleNodeClick = (node: FlatTreeNode, event: MouseEvent) => {
-    if (node.isDisabled) return;
+    if (node.isDisabled) {
+      return;
+    }
 
     // 设置当前选中节点
     setSelectionCurrentNode(node.id, node.data);
@@ -265,7 +319,9 @@
 
   // 节点展开
   const handleNodeExpand = async (node: FlatTreeNode) => {
-    if (node.isDisabled) return;
+    if (node.isDisabled) {
+      return;
+    }
 
     // 懒加载
     if (props.lazy && !node.isLoaded && props.load) {
@@ -298,14 +354,18 @@
 
   // 节点折叠
   const handleNodeCollapse = (node: FlatTreeNode) => {
-    if (node.isDisabled) return;
+    if (node.isDisabled) {
+      return;
+    }
     collapseNode(node);
     emit("node-collapse", node.data, createNodeInstance(node));
   };
 
   // 节点复选框点击
   const handleNodeCheck = (node: FlatTreeNode) => {
-    if (node.isDisabled) return;
+    if (node.isDisabled) {
+      return;
+    }
     toggleNodeChecked(node.id);
 
     const checkedNodes = getCheckedNodes();
@@ -387,7 +447,9 @@
     let childrenInstances: TreeNodeInstance[] | null = null;
 
     const getParent = (): TreeNodeInstance | null => {
-      if (parentInstance !== null) return parentInstance;
+      if (parentInstance !== null) {
+        return parentInstance;
+      }
       if (flatNode.parentId === null) {
         parentInstance = null;
         return null;
@@ -402,7 +464,9 @@
     };
 
     const getChildren = (): TreeNodeInstance[] => {
-      if (childrenInstances !== null) return childrenInstances;
+      if (childrenInstances !== null) {
+        return childrenInstances;
+      }
       const children = visibleNodes.value.filter((n) => n.parentId === flatNode.id);
       childrenInstances = children.map((child) => createNodeInstance(child));
       return childrenInstances;
@@ -421,7 +485,9 @@
       const traverse = (parentId: string | number) => {
         const children = visibleNodes.value.filter((n) => n.parentId === parentId);
         children.forEach((child) => {
-          if (visited.has(child.id)) return; // 防止循环引用
+          if (visited.has(child.id)) {
+            return;
+          } // 防止循环引用
           visited.add(child.id);
           result.push(createNodeInstance(child));
           traverse(child.id);
@@ -436,7 +502,9 @@
       const visited = new Set<string | number>();
       let currentId: string | number | null = flatNode.parentId;
       while (currentId !== null) {
-        if (visited.has(currentId)) break; // 防止循环引用
+        if (visited.has(currentId)) {
+          break;
+        } // 防止循环引用
         visited.add(currentId);
         const parent = getFlatNode(currentId);
         if (parent) {
@@ -528,7 +596,9 @@
     },
     remove: (key: string | number) => {
       const node = findNodeByKey(rawData.value, key, props.props);
-      if (!node) return;
+      if (!node) {
+        return;
+      }
 
       // 从原始数据中删除节点
       const removeFromArray = (arr: TreeNodeData[], targetKey: string | number): boolean => {

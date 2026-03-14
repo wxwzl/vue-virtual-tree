@@ -1,7 +1,7 @@
 import { ref, watch } from "vue";
 import type { Ref } from "vue";
 import type { VirtualTreeProps, FlatTreeNode, TreeNodeData } from "../types";
-import { getNodeId, getNodeChildren, isLeafNode } from "../utils/tree";
+import { getNodeId, isLeafNode } from "../utils/tree";
 
 /**
  * 节点元数据缓存接口
@@ -82,7 +82,9 @@ export function useTreeSelection(
     for (const [id, meta] of metaMap) {
       let count = 0;
       for (const descId of meta.allDescendantIds) {
-        if (checkedKeys.value.has(descId)) count++;
+        if (checkedKeys.value.has(descId)) {
+          count++;
+        }
       }
       countMap.set(id, count);
     }
@@ -98,13 +100,19 @@ export function useTreeSelection(
 
     while (currentId !== null) {
       const meta = nodeMetaMap.value.get(currentId);
-      if (!meta) break;
+      if (!meta) {
+        break;
+      }
 
       const parentId = meta.parentId;
-      if (parentId === null) break;
+      if (parentId === null) {
+        break;
+      }
 
       const parentMeta = nodeMetaMap.value.get(parentId);
-      if (!parentMeta) break;
+      if (!parentMeta) {
+        break;
+      }
 
       // 更新父节点的选中后代计数
       const currentCount = checkedCountMap.value.get(parentId) || 0;
@@ -257,7 +265,9 @@ export function useTreeSelection(
    * h = 树高度, d = 后代节点数
    */
   const setNodeCheckedInTree = (node: FlatTreeNode, checked: boolean) => {
-    if (node.isChecked === checked && !node.isIndeterminate) return;
+    if (node.isChecked === checked && !node.isIndeterminate) {
+      return;
+    }
 
     const nodeId = node.id;
     const meta = nodeMetaMap.value.get(nodeId);
@@ -314,7 +324,9 @@ export function useTreeSelection(
   // 设置节点选中状态（考虑父子关联）
   const setNodeChecked = (nodeId: string | number, checked: boolean, checkStrictly?: boolean) => {
     const node = getFlatNode(nodeId);
-    if (!node) return;
+    if (!node) {
+      return;
+    }
 
     const isStrictly = checkStrictly ?? props.checkStrictly ?? false;
 
@@ -365,7 +377,9 @@ export function useTreeSelection(
 
     for (const key of keys) {
       const node = getNodeData(key);
-      if (!node) continue;
+      if (!node) {
+        continue;
+      }
 
       if (leafOnly) {
         const meta = nodeMetaMap.value.get(key);

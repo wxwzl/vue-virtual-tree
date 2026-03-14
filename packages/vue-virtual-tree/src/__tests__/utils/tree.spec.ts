@@ -174,7 +174,9 @@ describe("tree utils", () => {
       const visited: string[] = [];
       traverseTree(mockTreeData, (node) => {
         visited.push(node.id as string);
-        if (node.id === "1") return false; // Skip children of node "1"
+        if (node.id === "1") {
+          return false;
+        } // Skip children of node "1"
       });
       expect(visited).toEqual(["1", "2", "2-1", "3"]);
     });

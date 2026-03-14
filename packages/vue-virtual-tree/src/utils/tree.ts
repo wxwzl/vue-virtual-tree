@@ -49,7 +49,9 @@ export function isNodeDisabled(node: TreeNodeData, props: TreePropsConfig = {}):
 export function isLeafNode(node: TreeNodeData, props: TreePropsConfig = {}): boolean {
   const config = { ...DEFAULT_PROPS, ...props };
   const children = getNodeChildren(node, props);
-  if (children.length > 0) return false;
+  if (children.length > 0) {
+    return false;
+  }
   if (node[config.isLeaf] !== undefined) {
     return node[config.isLeaf] ?? false;
   }
@@ -92,7 +94,9 @@ export function findNode(
     const children = getNodeChildren(node, props);
     if (children.length > 0) {
       const found = findNode(children, predicate, props);
-      if (found) return found;
+      if (found) {
+        return found;
+      }
     }
   }
   return null;

@@ -29,12 +29,24 @@
       >
         <!-- 图标区域 -->
         <span v-if="node.isLoading">
-          <slot name="loading" :node="node" :data="node.data"></slot>
+          <slot
+            name="loading"
+            :node="node"
+            :data="node.data"
+          ></slot>
         </span>
 
-        <slot v-else name="icon" :node="node" :data="node.data"></slot>
+        <slot
+          v-else
+          name="icon"
+          :node="node"
+          :data="node.data"
+        ></slot>
       </span>
-      <span v-if="showCheckbox" class="vue-virtual-tree-node__checkbox">
+      <span
+        v-if="showCheckbox"
+        class="vue-virtual-tree-node__checkbox"
+      >
         <input
           type="checkbox"
           :checked="node.isChecked"
@@ -43,7 +55,10 @@
         />
       </span>
       <span class="vue-virtual-tree-node__label">
-        <slot :node="node" :data="node.data">
+        <slot
+          :node="node"
+          :data="node.data"
+        >
           {{ label }}
         </slot>
       </span>
@@ -104,23 +119,31 @@
   // click 事件已改为事件委托，在父组件 VirtualTree 中统一处理
 
   const handleDragStart = (event: DragEvent) => {
-    if (props.node.isDisabled || !props.draggable) return;
+    if (props.node.isDisabled || !props.draggable) {
+      return;
+    }
     isDragging.value = true;
     emit("drag-start", props.node, event);
   };
 
   const handleDragEnter = (event: DragEvent) => {
-    if (!props.draggable) return;
+    if (!props.draggable) {
+      return;
+    }
     emit("drag-enter", props.node, event);
   };
 
   const handleDragLeave = (event: DragEvent) => {
-    if (!props.draggable) return;
+    if (!props.draggable) {
+      return;
+    }
     emit("drag-leave", props.node, event);
   };
 
   const handleDragOver = (event: DragEvent) => {
-    if (!props.draggable) return;
+    if (!props.draggable) {
+      return;
+    }
     emit("drag-over", props.node, event);
   };
 
@@ -130,7 +153,9 @@
   };
 
   const handleDrop = (event: DragEvent) => {
-    if (!props.draggable) return;
+    if (!props.draggable) {
+      return;
+    }
     emit("drop", props.node, event);
   };
 </script>

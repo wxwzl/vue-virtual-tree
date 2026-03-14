@@ -34,7 +34,9 @@ export function useTreeDrag(
     if (type === "inner") {
       const draggingId = getNodeId(draggingNode, props.props);
       const isDescendant = (node: TreeNodeData): boolean => {
-        if (getNodeId(node, props.props) === draggingId) return true;
+        if (getNodeId(node, props.props) === draggingId) {
+          return true;
+        }
         const children = getNodeChildren(node, props.props);
         return children.some((child) => isDescendant(child));
       };
@@ -53,12 +55,16 @@ export function useTreeDrag(
 
   // 拖拽进入
   const handleDragEnter = (node: FlatTreeNode, event: DragEvent) => {
-    if (!draggingNode.value) return;
+    if (!draggingNode.value) {
+      return;
+    }
 
     const draggingData = getNodeData(draggingNode.value.id);
     const dropData = getNodeData(node.id);
 
-    if (!draggingData || !dropData) return;
+    if (!draggingData || !dropData) {
+      return;
+    }
 
     // 判断是否允许拖拽
     const allowDrag = props.allowDrag || defaultAllowDrag;
@@ -109,12 +115,16 @@ export function useTreeDrag(
 
   // 拖拽悬停
   const handleDragOver = (node: FlatTreeNode, event: DragEvent) => {
-    if (!draggingNode.value || !dropNode.value || dropNode.value.id !== node.id) return;
+    if (!draggingNode.value || !dropNode.value || dropNode.value.id !== node.id) {
+      return;
+    }
 
     const draggingData = getNodeData(draggingNode.value.id);
     const dropData = getNodeData(node.id);
 
-    if (!draggingData || !dropData) return;
+    if (!draggingData || !dropData) {
+      return;
+    }
 
     // 计算拖拽位置类型
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
@@ -161,7 +171,9 @@ export function useTreeDrag(
     const draggingData = getNodeData(draggingNode.value.id);
     const dropData = getNodeData(node.id);
 
-    if (!draggingData || !dropData) return;
+    if (!draggingData || !dropData) {
+      return;
+    }
 
     // 判断是否允许放置
     const allowDrop =

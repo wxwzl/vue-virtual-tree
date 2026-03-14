@@ -41,13 +41,18 @@
     "url": "https://github.com/wxwzl/vue-virtual-tree.git"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^24.10.1",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vitest/coverage-v8": "^1.6.0",
     "@vue/test-utils": "^2.4.6",
+    "eslint": "^10.0.3",
+    "eslint-plugin-vue": "^10.8.0",
+    "globals": "^17.4.0",
     "happy-dom": "^20.8.4",
     "sass-embedded": "^1.93.3",
     "typescript": "^5.3.3",
+    "typescript-eslint": "^8.57.0",
     "vite": "^5.0.0",
     "vite-plugin-dts": "^4.5.4",
     "vitest": "^1.6.0"
@@ -59,7 +64,11 @@
     "type-check": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint . --ext .js,.ts,.vue",
+    "lint:fix": "eslint . --ext .js,.ts,.vue --fix",
+    "lint:staged": "eslint --fix",
+    "format:staged": "prettier --write"
   },
   "dependencies": {
     "vue": "3.4.0",

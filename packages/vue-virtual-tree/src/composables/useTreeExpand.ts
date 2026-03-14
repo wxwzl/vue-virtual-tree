@@ -8,7 +8,9 @@ import { getAllKeys } from "../utils/tree";
  */
 const collectVisibleDescendants = (parent: FlatTreeNode): FlatTreeNode[] => {
   const result: FlatTreeNode[] = [];
-  if (!parent.children || parent.children.length === 0) return result;
+  if (!parent.children || parent.children.length === 0) {
+    return result;
+  }
 
   // 使用栈进行迭代遍历，避免递归调用开销
   const stack: FlatTreeNode[] = [...parent.children].reverse();
@@ -124,7 +126,9 @@ export function useTreeExpand(
 
     // 使用迭代方式收集后代节点
     const descendants = collectVisibleDescendants(node);
-    if (descendants.length === 0) return;
+    if (descendants.length === 0) {
+      return;
+    }
 
     const insertIndex = node.visibleIndex + 1;
 
@@ -159,7 +163,9 @@ export function useTreeExpand(
 
     const startIndex = node.visibleIndex + 1;
     const descendants = collectVisibleDescendants(node);
-    if (descendants.length === 0) return;
+    if (descendants.length === 0) {
+      return;
+    }
 
     const endIndex = startIndex + descendants.length;
 
@@ -253,7 +259,9 @@ export function useTreeExpand(
    * 优化：合并多次数组操作为单次操作
    */
   const batchToggleNodes = (nodes: FlatTreeNode[], expand: boolean) => {
-    if (nodes.length === 0) return;
+    if (nodes.length === 0) {
+      return;
+    }
 
     // 收集所有需要展开/折叠的节点
     const allNodes: FlatTreeNode[] = [];
@@ -269,7 +277,9 @@ export function useTreeExpand(
       }
     });
 
-    if (allNodes.length === 0) return;
+    if (allNodes.length === 0) {
+      return;
+    }
 
     // 一次性重建 visibleNodes
     if (expand) {

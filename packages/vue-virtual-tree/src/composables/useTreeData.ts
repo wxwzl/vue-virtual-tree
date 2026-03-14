@@ -113,7 +113,7 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
       config?: TreePropsConfig
     ) {
       const result: FlatTreeNode[] = [];
-      let length = nodes.length;
+      const length = nodes.length;
       for (let i = 0; i < length; i++) {
         startIndex++;
         const node: TreeNodeData = nodes[i];
@@ -178,7 +178,9 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
   // 防抖更新标记
   let updatePending = false;
   const updateFlatTree = () => {
-    if (updatePending) return; // 如果已经有更新在等待中，跳过
+    if (updatePending) {
+      return;
+    } // 如果已经有更新在等待中，跳过
     updatePending = true;
     const {
       flatNodes,

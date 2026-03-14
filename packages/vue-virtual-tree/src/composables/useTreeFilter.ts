@@ -77,7 +77,9 @@ export function useTreeFilter(
 
   // 默认过滤方法
   const defaultFilterMethod = (value: string, data: any): boolean => {
-    if (!value) return true;
+    if (!value) {
+      return true;
+    }
     const label = getNodeLabel(data, props.props);
     return label.toLowerCase().includes(value.toLowerCase());
   };
@@ -110,7 +112,7 @@ export function useTreeFilter(
     }
     isFiltered.value = true;
     expandedKeys.value.clear();
-    return new Promise(async (resolve) => {
+    return new Promise<void>((resolve) => {
       const filterMethod = props.filterNodeMethod || defaultFilterMethod;
 
       // 第一步：收集所有匹配的节点（包括需要显示的父节点），并克隆它们
