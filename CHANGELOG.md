@@ -1,4 +1,12 @@
-# [1.0.0](https://github.com/wxwzl/vue-virtual-tree/compare/0.1.13...1.0.0) (2026-03-13)
+# [1.0.0](https://github.com/wxwzl/vue-virtual-tree/compare/0.1.13...1.0.0) (2026-03-14)
+
+### Bug Fixes
+
+- 手风琴效果 ([aa37550](https://github.com/wxwzl/vue-virtual-tree/commit/aa375501f9af18a68ca0e8363e3e3bc7131a8a30))
+
+### Performance Improvements
+
+- **selection:** 优化 O(n²) 选择算法为 O(h) 复杂度 ([6447cf8](https://github.com/wxwzl/vue-virtual-tree/commit/6447cf857b8f1f3c2b1cc514bd3bd6d599f35f6e))
 
 ## [0.1.13](https://github.com/wxwzl/vue-virtual-tree/compare/0.1.12...0.1.13) (2026-03-12)
 
