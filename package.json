@@ -6,6 +6,7 @@
   "scripts": {
     "prepare": "husky",
     "dev": "pnpm --filter playground dev",
+    "test": "pnpm --filter @wxwzl/vue-virtual-tree test",
     "build": "pnpm --filter @wxwzl/vue-virtual-tree build",
     "publish": "pnpm run build && pnpm --filter @wxwzl/vue-virtual-tree publish",
     "build:data-generator": "cd packages/data-generator && wasm-pack build --target web --out-dir ../../playground/lib",

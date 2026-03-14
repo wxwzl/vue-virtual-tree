@@ -43,16 +43,23 @@
   "devDependencies": {
     "@types/node": "^24.10.1",
     "@vitejs/plugin-vue": "^5.0.0",
+    "@vitest/coverage-v8": "^1.6.0",
+    "@vue/test-utils": "^2.4.6",
+    "happy-dom": "^20.8.4",
     "sass-embedded": "^1.93.3",
     "typescript": "^5.3.3",
     "vite": "^5.0.0",
-    "vite-plugin-dts": "^4.5.4"
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^1.6.0"
   },
   "scripts": {
     "prepublish": "pnpm run build",
     "build": "vite build",
     "publish": "npm publish",
-    "type-check": "vue-tsc --noEmit"
+    "type-check": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "vue": "3.4.0",
