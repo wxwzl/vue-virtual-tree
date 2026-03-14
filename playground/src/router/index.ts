@@ -14,6 +14,18 @@ export const demoRoutes: RouteRecordRaw[] = [
     meta: { title: "复选框模式" },
   },
   {
+    path: "/accordion",
+    name: "AccordionDemo",
+    component: () => import("../components/AccordionDemo.vue"),
+    meta: { title: "手风琴模式" },
+  },
+  {
+    path: "/check-strictly",
+    name: "CheckStrictlyDemo",
+    component: () => import("../components/CheckStrictlyDemo.vue"),
+    meta: { title: "严格模式复选框" },
+  },
+  {
     path: "/default-expand-all",
     name: "DefaultExpandAllDemo",
     component: () => import("../components/DefaultExpandAllDemo.vue"),

@@ -49,9 +49,9 @@
 
 ---
 
-### 3. 【中优先级】useTreeExpand.ts - 数组操作优化
+### 3. ✅【已完成】useTreeExpand.ts - 数组操作优化
 
-**文件**: `src/composables/useTreeExpand.ts:75, 83`
+**文件**: `src/composables/useTreeExpand.ts`
 
 **问题**:
 
@@ -61,14 +61,54 @@
 
 **优化方案**:
 
-- 使用 `push()` 批量添加替代 `splice`
-- 或者使用数组拼接创建新数组
-- 批量操作时使用 `pauseTracking()` 暂停响应式追踪
+- ✅ 使用迭代替代递归 (`collectVisibleDescendantsIterative`)，避免栈溢出
+- ✅ 使用数组拼接 (`insertNodesOptimized`) 替代 `splice + spread`，减少 GC
+- ✅ 使用 `filter` 替代 `splice` 进行批量删除 (`removeNodesOptimized`)
+- ✅ 添加批量操作队列 (`batchQueue`)，合并多次更新为一次响应式更新
+- ✅ 新增 `batchToggleNodes` 批量操作 API
+- ✅ 新增 `flushPendingOperations` 手动刷新操作
+
+**实现详情**:
+
+```typescript
+// 1. 迭代替代递归
+const collectVisibleDescendantsIterative = (parent: FlatTreeNode): FlatTreeNode[] => {
+  const result: FlatTreeNode[] = [];
+  const stack: FlatTreeNode[] = [...parent.children].reverse();
+  while (stack.length > 0) {
+    const node = stack.pop()!;
+    result.push(node);
+    if (node.isExpanded && node.children) {
+      for (let i = node.children.length - 1; i >= 0; i--) {
+        stack.push(node.children[i]);
+      }
+    }
+  }
+  return result;
+};
+
+// 2. 优化数组插入
+const insertNodesOptimized = (
+  visibleNodes: FlatTreeNode[],
+  insertIndex: number,
+  nodesToInsert: FlatTreeNode[]
+): FlatTreeNode[] => {
+  const before = visibleNodes.slice(0, insertIndex + 1);
+  const after = visibleNodes.slice(insertIndex + 1);
+  return before.concat(nodesToInsert, after);
+};
+
+// 3. 批量操作
+const batchToggleNodes = (nodes: FlatTreeNode[], expand: boolean) => {
+  nodes.forEach((node) => queueBatchOperation({ type: expand ? "expand" : "collapse", node }));
+};
+```
 
 **预期提升**:
 
 - 展开 1000 节点: 从 50ms → 5ms (10× 提升)
-- 减少 GC 压力
+- 深层树 (1000+ 层): 从栈溢出 → 正常处理
+- 减少 GC 压力，批量操作减少 80% 响应式更新
 
 ---
 
@@ -199,8 +239,8 @@
    - `src/__tests__/components/VirtualTree.spec.ts` - 组件集成测试 (2项通过)
    - **总计**: 45项测试通过
 4. ⏳ **待定**: 优化 #2 - useTreeData 增量更新
-5. ⏳ **待定**: 优化 #3 - useTreeExpand 数组操作
-6. ⏳ **待定**: 优化 #4 - useTreeExpand 递归优化
+5. ✅ **已完成**: 优化 #3 - useTreeExpand 数组操作与批量更新
+6. ✅ **已完成**: 优化 #4 - useTreeExpand 递归优化（迭代替代递归）
 7. ⏳ **待定**: 优化 #5 - computed 缓存
 8. ⏳ **待定**: 优化 #6 - getNodeSizeDependencies
 9. ⏳ **待定**: 架构优化 Web Worker

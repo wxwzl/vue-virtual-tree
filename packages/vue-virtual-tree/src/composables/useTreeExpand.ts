@@ -99,10 +99,12 @@ export function useTreeExpand(
         collapseVisibleNode(sibling);
       });
     }
-
     // 展开当前节点
     node.isExpanded = true;
     expandedKeys.value.add(node.id);
+    visibleNodes.value.forEach((element, index) => {
+      element.visibleIndex = index;
+    });
     expandVisibleNode(node);
   };
 
