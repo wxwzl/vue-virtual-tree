@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, ref, onMounted, onUpdated } from "vue";
+  import { computed, ref, onMounted, onUpdated, onUnmounted } from "vue";
 
   const props = withDefaults(
     defineProps<{
@@ -39,19 +39,23 @@
   const scrollTop = ref(0);
   const viewportHeight = ref(0);
 
-  const totalHeight = computed(() => props.totalCount * props.itemSize);
+  const safeItemSize = computed(() => Math.max(1, props.itemSize));
+  const safeBuffer = computed(() => Math.max(0, Math.floor(props.buffer ?? 5)));
+  const safeTotalCount = computed(() => Math.max(0, props.totalCount));
+
+  const totalHeight = computed(() => safeTotalCount.value * safeItemSize.value);
 
   const startIndex = computed(() => {
-    return Math.max(0, Math.floor(scrollTop.value / props.itemSize) - props.buffer);
+    return Math.max(0, Math.floor(scrollTop.value / safeItemSize.value) - safeBuffer.value);
   });
 
   const visibleCount = computed(() => {
     if (viewportHeight.value <= 0) return 0;
-    return Math.ceil(viewportHeight.value / props.itemSize) + props.buffer * 2;
+    return Math.ceil(viewportHeight.value / safeItemSize.value) + safeBuffer.value * 2;
   });
 
   const visibleIndices = computed(() => {
-    const count = Math.min(props.totalCount - startIndex.value, visibleCount.value);
+    const count = Math.min(safeTotalCount.value - startIndex.value, visibleCount.value);
     if (count <= 0) return [];
     const indices: number[] = [];
     for (let i = 0; i < count; i++) {
@@ -60,7 +64,7 @@
     return indices;
   });
 
-  const offsetY = computed(() => startIndex.value * props.itemSize);
+  const offsetY = computed(() => startIndex.value * safeItemSize.value);
 
   const measureViewport = () => {
     if (scrollerRef.value) {
@@ -83,15 +87,19 @@
     measureViewport();
   });
 
+  onUnmounted(() => {
+    window.removeEventListener("resize", measureViewport);
+  });
+
   const scrollToIndex = (index: number, align: "start" | "center" | "end" = "start") => {
-    if (!scrollerRef.value || props.totalCount === 0) return;
-    const clamped = Math.max(0, Math.min(index, props.totalCount - 1));
-    const targetTop = clamped * props.itemSize;
+    if (!scrollerRef.value || safeTotalCount.value === 0) return;
+    const clamped = Math.max(0, Math.min(index, safeTotalCount.value - 1));
+    const targetTop = clamped * safeItemSize.value;
     let finalScrollTop = targetTop;
     if (align === "center") {
-      finalScrollTop = targetTop - viewportHeight.value / 2 + props.itemSize / 2;
+      finalScrollTop = targetTop - viewportHeight.value / 2 + safeItemSize.value / 2;
     } else if (align === "end") {
-      finalScrollTop = targetTop - viewportHeight.value + props.itemSize;
+      finalScrollTop = targetTop - viewportHeight.value + safeItemSize.value;
     }
     scrollerRef.value.scrollTop = Math.max(0, finalScrollTop);
     scrollTop.value = scrollerRef.value.scrollTop;
