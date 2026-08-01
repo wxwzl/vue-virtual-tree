@@ -75,9 +75,8 @@ export function useTreeExpand(
     let current: { start: number; end: number } | null = null;
     for (let i = 0; i < flatTree.length; i++) {
       if (isVisibleAt(i)) {
-        const idx = flatTree[i].index;
-        if (!current) current = { start: idx, end: idx };
-        else current.end = idx;
+        if (!current) current = { start: i, end: i };
+        else current.end = i;
       } else if (current) {
         ranges.push(current);
         current = null;

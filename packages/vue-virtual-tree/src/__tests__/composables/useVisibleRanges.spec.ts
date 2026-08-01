@@ -24,53 +24,53 @@ const makeNode = (
 describe("useVisibleRanges", () => {
   it("initializes with root-only ranges when nothing expanded", () => {
     const { visibleRanges } = useVisibleRanges([
-      makeNode("a", 1, 3),
-      makeNode("b", 4, 4, null, true),
+      makeNode("a", 0, 2),
+      makeNode("b", 1, 1, null, true),
     ]);
     expect(visibleRanges.value).toEqual([
+      { start: 0, end: 0 },
       { start: 1, end: 1 },
-      { start: 4, end: 4 },
     ]);
   });
 
   it("expands a node by inserting its descendant range", () => {
-    const { visibleRanges, expandNode } = useVisibleRanges([makeNode("a", 1, 3)]);
-    expandNode(makeNode("a", 1, 3));
-    expect(visibleRanges.value).toEqual([{ start: 1, end: 3 }]);
+    const { visibleRanges, expandNode } = useVisibleRanges([makeNode("a", 0, 2)]);
+    expandNode(makeNode("a", 0, 2));
+    expect(visibleRanges.value).toEqual([{ start: 0, end: 2 }]);
   });
 
   it("collapses a node by removing its descendant range", () => {
-    const { visibleRanges, collapseNode } = useVisibleRanges([makeNode("a", 1, 3)]);
-    collapseNode(makeNode("a", 1, 3));
-    expect(visibleRanges.value).toEqual([{ start: 1, end: 1 }]);
+    const { visibleRanges, collapseNode } = useVisibleRanges([makeNode("a", 0, 2)]);
+    collapseNode(makeNode("a", 0, 2));
+    expect(visibleRanges.value).toEqual([{ start: 0, end: 0 }]);
   });
 
   it("maps visible index to flat index", () => {
-    const { expandNode, getFlatIndexAtVisibleIndex } = useVisibleRanges([makeNode("a", 1, 3)]);
-    expandNode(makeNode("a", 1, 3));
-    expect(getFlatIndexAtVisibleIndex(2)).toBe(3);
+    const { expandNode, getFlatIndexAtVisibleIndex } = useVisibleRanges([makeNode("a", 0, 2)]);
+    expandNode(makeNode("a", 0, 2));
+    expect(getFlatIndexAtVisibleIndex(2)).toBe(2);
   });
 
   it("setFlatTree updates ranges", () => {
-    const { visibleRanges, setFlatTree } = useVisibleRanges([makeNode("a", 1, 3)]);
-    setFlatTree([makeNode("a", 1, 1, null, true), makeNode("b", 4, 4, null, true)]);
+    const { visibleRanges, setFlatTree } = useVisibleRanges([makeNode("a", 0, 2)]);
+    setFlatTree([makeNode("a", 0, 0, null, true), makeNode("b", 1, 1, null, true)]);
     expect(visibleRanges.value).toEqual([
+      { start: 0, end: 0 },
       { start: 1, end: 1 },
-      { start: 4, end: 4 },
     ]);
   });
 
   it("visibleCount is calculated correctly", () => {
-    const { visibleCount, expandNode } = useVisibleRanges([makeNode("a", 1, 3)]);
+    const { visibleCount, expandNode } = useVisibleRanges([makeNode("a", 0, 2)]);
     expect(visibleCount.value).toBe(1);
-    expandNode(makeNode("a", 1, 3));
+    expandNode(makeNode("a", 0, 2));
     expect(visibleCount.value).toBe(3);
   });
 
   it("getVisibleIndexAtFlatIndex maps correctly", () => {
-    const { expandNode, getVisibleIndexAtFlatIndex } = useVisibleRanges([makeNode("a", 1, 3)]);
-    expandNode(makeNode("a", 1, 3));
-    expect(getVisibleIndexAtFlatIndex(3)).toBe(2);
+    const { expandNode, getVisibleIndexAtFlatIndex } = useVisibleRanges([makeNode("a", 0, 2)]);
+    expandNode(makeNode("a", 0, 2));
+    expect(getVisibleIndexAtFlatIndex(2)).toBe(2);
   });
 
   it("initializes with empty ranges for empty tree", () => {

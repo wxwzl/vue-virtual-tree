@@ -36,12 +36,12 @@ describe("useTreeData descendant range", () => {
     const root = flatTree.value.find((n) => n.id === "1")!;
     const child1 = flatTree.value.find((n) => n.id === "1-1")!;
     const child2 = flatTree.value.find((n) => n.id === "1-2")!;
-    expect(root.firstDescendantIndex).toBe(2);
-    expect(root.lastDescendantIndex).toBe(3);
-    expect(child1.firstDescendantIndex).toBe(2);
-    expect(child1.lastDescendantIndex).toBe(2);
-    expect(child2.firstDescendantIndex).toBe(3);
-    expect(child2.lastDescendantIndex).toBe(3);
+    expect(root.firstDescendantIndex).toBe(1);
+    expect(root.lastDescendantIndex).toBe(2);
+    expect(child1.firstDescendantIndex).toBe(1);
+    expect(child1.lastDescendantIndex).toBe(1);
+    expect(child2.firstDescendantIndex).toBe(2);
+    expect(child2.lastDescendantIndex).toBe(2);
   });
 
   it("handles leaf nodes correctly", async () => {

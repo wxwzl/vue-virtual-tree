@@ -111,8 +111,8 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
     ) {
       const result: FlatTreeNode[] = [];
       let length = nodes.length;
+      let currentIndex = startIndex;
       for (let i = 0; i < length; i++) {
-        startIndex++;
         const node: TreeNodeData = nodes[i];
         const id = getNodeId(node, config);
         const children = getNodeChildren(node, config);
@@ -124,7 +124,7 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
           data: node,
           level,
           parentId: parentNode?.id || null,
-          index: startIndex,
+          index: currentIndex,
           isExpanded,
           isDisabled: isNodeDisabled(node, config),
           isLeaf: isLeaf,
@@ -132,19 +132,19 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
           isLoaded: false,
           isChecked: false,
           rawChildren: children.length > 0 ? children : undefined,
-          firstDescendantIndex: startIndex,
-          lastDescendantIndex: startIndex,
+          firstDescendantIndex: currentIndex,
+          lastDescendantIndex: currentIndex,
         };
         result.push(flatNode);
         container.push(flatNode);
         // 如果节点展开且有子节点，递归处理子节点
         if (children.length > 0) {
-          const childStartIndex = startIndex + 1;
+          const childStartIndex = currentIndex + 1;
           const { nodes: childNodes, index } = generateFlatNodes(
             children,
             level + 1,
             flatNode,
-            startIndex,
+            childStartIndex,
             isExpanded && visible,
             container,
             config
@@ -152,12 +152,13 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
           flatNode.children = childNodes;
           flatNode.firstDescendantIndex = childStartIndex;
           flatNode.lastDescendantIndex = index;
-          startIndex = index;
+          currentIndex = index;
         }
         map.set(id, flatNode);
+        currentIndex++;
       }
 
-      return { nodes: result, index: startIndex };
+      return { nodes: result, index: currentIndex - 1 };
     }
 
     const container: FlatTreeNode[] = [];

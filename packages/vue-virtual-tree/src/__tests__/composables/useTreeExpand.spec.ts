@@ -25,40 +25,55 @@ const defaultProps: VirtualTreeProps = { data: [] };
 
 describe("useTreeExpand with intervals", () => {
   it("expands a node and updates visible ranges", () => {
-    const nodes: FlatTreeNode[] = [makeNode("a", 1, 3), makeNode("b", 4, 4, null, true)];
+    const nodes: FlatTreeNode[] = [
+      makeNode("a", 0, 2),
+      makeNode("a-1", 1, 1, "a", true),
+      makeNode("a-2", 2, 2, "a", true),
+      makeNode("b", 3, 3, null, true),
+    ];
     const { visibleRanges, expandNode } = useTreeExpand(defaultProps, nodes);
     expandNode(nodes[0]);
-    expect(visibleRanges.value).toEqual([{ start: 1, end: 4 }]);
+    expect(visibleRanges.value).toEqual([{ start: 0, end: 3 }]);
   });
 
   it("collapses a node and updates visible ranges", () => {
-    const nodes: FlatTreeNode[] = [makeNode("a", 1, 3)];
+    const nodes: FlatTreeNode[] = [
+      makeNode("a", 0, 2),
+      makeNode("a-1", 1, 1, "a", true),
+      makeNode("a-2", 2, 2, "a", true),
+    ];
     const { visibleRanges, expandNode, collapseNode } = useTreeExpand(defaultProps, nodes);
     expandNode(nodes[0]);
     collapseNode(nodes[0]);
-    expect(visibleRanges.value).toEqual([{ start: 1, end: 1 }]);
+    expect(visibleRanges.value).toEqual([{ start: 0, end: 0 }]);
   });
 
   it("initializes with defaultExpandAll", () => {
-    const nodes: FlatTreeNode[] = [makeNode("a", 1, 3)];
+    const nodes: FlatTreeNode[] = [
+      makeNode("a", 0, 2),
+      makeNode("a-1", 1, 1, "a", true),
+      makeNode("a-2", 2, 2, "a", true),
+    ];
     const { visibleRanges } = useTreeExpand({ ...defaultProps, defaultExpandAll: true }, nodes);
-    expect(visibleRanges.value).toEqual([{ start: 1, end: 3 }]);
+    expect(visibleRanges.value).toEqual([{ start: 0, end: 2 }]);
   });
 
   it("supports accordion mode", () => {
     const nodes: FlatTreeNode[] = [
-      makeNode("a", 1, 2, null, false),
-      makeNode("b", 3, 4, null, false),
+      makeNode("a", 0, 1, null, false),
+      makeNode("a-1", 1, 1, "a", true),
+      makeNode("b", 2, 3, null, false),
+      makeNode("b-1", 3, 3, "b", true),
     ];
     const { visibleRanges, expandNode } = useTreeExpand(
       { ...defaultProps, accordion: true },
       nodes
     );
     expandNode(nodes[0]);
-    expandNode(nodes[1]);
+    expandNode(nodes[2]);
     expect(visibleRanges.value).toEqual([
-      { start: 1, end: 1 },
-      { start: 3, end: 4 },
+      { start: 0, end: 0 },
+      { start: 2, end: 3 },
     ]);
   });
 });

@@ -18,7 +18,7 @@ export function useVisibleRanges(initialFlatTree: FlatTreeNode[] = []) {
     for (let i = 0; i < flatTree.value.length; i++) {
       const node = flatTree.value[i];
       if (node.parentId === null) {
-        ranges.push({ start: node.index, end: node.index });
+        ranges.push({ start: i, end: i });
       }
     }
     visibleRanges.value = ranges;
