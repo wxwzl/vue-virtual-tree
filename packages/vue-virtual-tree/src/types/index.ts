@@ -16,7 +16,7 @@ export interface FlatTreeNode {
   data: TreeNodeData;
   /** 节点层级，从 0 开始 */
   level: number;
-  /** 节点索引，从 0 开始 */
+  /** 节点索引，从 1 开始 */
   index: number;
   /** 在虚拟列表中的索引 */
   visibleIndex?: number;

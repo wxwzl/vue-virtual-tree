@@ -103,7 +103,7 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
   } => {
     const map = new Map<string | number, FlatTreeNode>();
     const visibleList: FlatTreeNode[] = [];
-    function genenrateFlatNodes(
+    function generateFlatNodes(
       nodes: TreeNodeData[],
       level: number = 0,
       parentNode: FlatTreeNode | null = null,
@@ -146,7 +146,7 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
         // 如果节点展开且有子节点，递归处理子节点
         if (children.length > 0) {
           const childStartIndex = startIndex + 1;
-          const { nodes: childNodes, index } = genenrateFlatNodes(
+          const { nodes: childNodes, index } = generateFlatNodes(
             children,
             level + 1,
             flatNode,
@@ -167,7 +167,7 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
     }
 
     const container: FlatTreeNode[] = [];
-    const { nodes: result } = genenrateFlatNodes(
+    const { nodes: result } = generateFlatNodes(
       nodes,
       level,
       parentNode,
