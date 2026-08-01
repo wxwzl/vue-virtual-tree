@@ -1,4 +1,4 @@
-import { computed, nextTick, onUnmounted, ref, watch } from "vue";
+import { nextTick, onUnmounted, ref, watch } from "vue";
 import type {
   TreeNodeData,
   FlatTreeNode,
@@ -25,29 +25,17 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
   const rawData = ref<TreeNodeData[]>(props.data);
   // 使用 Map 建立索引，O(1) 查找
   const flatNodeMap = ref<Map<string | number, FlatTreeNode>>(new Map());
-  const visibleNodes = ref<FlatTreeNode[]>([]);
-  const filteredFlatTree = ref<FlatTreeNode[]>([]);
-  const filteredFlatNodeMap = ref<Map<string | number, FlatTreeNode>>(new Map());
   const isFiltered = ref(false);
-  const treeDataWrapper = computed(() => {
-    return isFiltered.value ? filteredFlatTree.value : flatTree.value;
-  });
-  const treeDataMapWrapper = computed(() => {
-    return isFiltered.value ? filteredFlatNodeMap.value : flatNodeMap.value;
-  });
-  const setVisibleNodes = (nodes: FlatTreeNode[]) => {
-    visibleNodes.value = nodes;
-  };
 
   // 根据 key 获取节点数据
   const getNodeData = (id: string | number): TreeNodeData | null => {
-    const flatNode = treeDataMapWrapper.value.get(id);
+    const flatNode = flatNodeMap.value.get(id);
     return flatNode ? flatNode.data : null;
   };
 
   // 根据 key 获取扁平节点
   const getFlatNode = (id: string | number): FlatTreeNode | null => {
-    return treeDataMapWrapper.value.get(id) || null;
+    return flatNodeMap.value.get(id) || null;
   };
 
   // 选择逻辑
@@ -66,22 +54,33 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
   } = useTreeSelection(props, flatTree, getNodeData, getFlatNode);
 
   // 展开/折叠逻辑
-  const { expandNode, collapseNode, expandedKeys, initExpandedKeys } = useTreeExpand(
-    props,
-    treeDataWrapper,
-    visibleNodes
-  );
+  const {
+    expandNode,
+    collapseNode,
+    expandedKeys,
+    initExpandedKeys,
+    visibleRanges,
+    visibleCount,
+    getFlatIndexAtVisibleIndex,
+    getVisibleIndexAtFlatIndex,
+  } = useTreeExpand(props, flatTree);
+
+  // 根据可见索引获取节点
+  const getVisibleNodeAt = (visibleIndex: number): FlatTreeNode | null => {
+    const flatIndex = getFlatIndexAtVisibleIndex(visibleIndex);
+    return flatTree.value[flatIndex] ?? null;
+  };
 
   // 过滤逻辑
   const { filter } = useTreeFilter(
     props,
     flatTree,
     flatNodeMap,
-    filteredFlatTree,
-    filteredFlatNodeMap,
     isFiltered,
     expandedKeys,
-    setVisibleNodes
+    (_nodes: FlatTreeNode[]) => {
+      // placeholder: will be replaced in Task 9
+    }
   );
 
   // 拖拽逻辑
@@ -99,10 +98,8 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
     nodes: FlatTreeNode[];
     flatNodes: FlatTreeNode[];
     nodeMap: Map<string | number, FlatTreeNode>;
-    visibleNodes: FlatTreeNode[];
   } => {
     const map = new Map<string | number, FlatTreeNode>();
-    const visibleList: FlatTreeNode[] = [];
     function generateFlatNodes(
       nodes: TreeNodeData[],
       level: number = 0,
@@ -140,9 +137,6 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
         };
         result.push(flatNode);
         container.push(flatNode);
-        if (visible) {
-          visibleList.push(flatNode);
-        }
         // 如果节点展开且有子节点，递归处理子节点
         if (children.length > 0) {
           const childStartIndex = startIndex + 1;
@@ -176,7 +170,7 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
       container,
       config
     );
-    return { nodes: result, flatNodes: container, nodeMap: map, visibleNodes: visibleList };
+    return { nodes: result, flatNodes: container, nodeMap: map };
   };
 
   // 更新扁平化数据 - 优化大数据量的性能
@@ -185,14 +179,10 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
   const updateFlatTree = () => {
     if (updatePending) return; // 如果已经有更新在等待中，跳过
     updatePending = true;
-    const {
-      flatNodes,
-      nodeMap,
-      visibleNodes: visibleNodesResult,
-    } = flattenTree(rawData.value, 0, null, 0, true, props.props);
+    const { flatNodes, nodeMap } = flattenTree(rawData.value, 0, null, 0, true, props.props);
     flatTree.value = flatNodes;
     flatNodeMap.value = nodeMap;
-    setVisibleNodes(visibleNodesResult);
+    initExpandedKeys();
     updatePending = false;
   };
 
@@ -294,12 +284,16 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
 
   return {
     flatTree,
-    visibleNodes,
+    visibleRanges,
+    visibleCount,
     expandedKeys,
     checkedKeys,
     rawData,
     getNodeData,
     getFlatNode,
+    getVisibleNodeAt,
+    getVisibleIndexAtFlatIndex,
+    getFlatIndexAtVisibleIndex,
     regenerateFlatTree,
     flattenTree,
     insertFlatTree,

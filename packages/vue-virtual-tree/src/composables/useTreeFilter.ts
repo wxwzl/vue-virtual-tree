@@ -56,12 +56,12 @@ export function useTreeFilter(
   props: VirtualTreeProps,
   flatTree: Ref<FlatTreeNode[]>,
   flatNodeMap: Ref<Map<string | number, FlatTreeNode>>,
-  filteredFlatTree: Ref<FlatTreeNode[]>,
-  filteredFlatNodeMap: Ref<Map<string | number, FlatTreeNode>>,
   isFiltered: Ref<boolean>,
   expandedKeys: Ref<Set<string | number>>,
   setVisibleNodes: (nodes: FlatTreeNode[]) => void
 ) {
+  const filteredFlatTree = ref<FlatTreeNode[]>([]);
+  const filteredFlatNodeMap = ref<Map<string | number, FlatTreeNode>>(new Map());
   const rebuildVisibleNodes = () => {
     const roots = flatTree.value.filter((node) => node.parentId === null);
     const result: FlatTreeNode[] = [];

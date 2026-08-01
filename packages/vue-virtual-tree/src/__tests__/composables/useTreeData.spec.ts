@@ -1,5 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
-import { ref, nextTick } from "vue";
+import { describe, it, expect } from "vitest";
 
 // 简化测试 - 仅验证核心数据结构
 describe("useTreeData - data structure", () => {

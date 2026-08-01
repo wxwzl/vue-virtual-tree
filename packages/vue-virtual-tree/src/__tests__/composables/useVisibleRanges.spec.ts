@@ -46,9 +46,7 @@ describe("useVisibleRanges", () => {
   });
 
   it("maps visible index to flat index", () => {
-    const { visibleRanges, expandNode, getFlatIndexAtVisibleIndex } = useVisibleRanges([
-      makeNode("a", 1, 3),
-    ]);
+    const { expandNode, getFlatIndexAtVisibleIndex } = useVisibleRanges([makeNode("a", 1, 3)]);
     expandNode(makeNode("a", 1, 3));
     expect(getFlatIndexAtVisibleIndex(2)).toBe(3);
   });

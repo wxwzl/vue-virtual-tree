@@ -108,7 +108,7 @@
 </template>
 
 <script setup lang="ts">
-  import { nextTick, ref } from "vue";
+  import { computed, nextTick, ref } from "vue";
   import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller";
   import TreeNode from "./TreeNode.vue";
   import type {
@@ -155,10 +155,12 @@
 
   // 数据扁平化
   const {
-    visibleNodes,
+    flatTree,
+    visibleRanges,
     rawData,
     getNodeData,
     getFlatNode,
+    getVisibleIndexAtFlatIndex,
     regenerateFlatTree,
     insertFlatTree,
     checkedKeys,
@@ -178,6 +180,18 @@
   } = useTreeData(props, emit);
 
   const dynamicScrollerRef = ref<InstanceType<typeof DynamicScroller> | null>(null);
+
+  // 兼容：从 visibleRanges 派生可见节点列表
+  const visibleNodes = computed(() => {
+    const result: FlatTreeNode[] = [];
+    for (const range of visibleRanges.value) {
+      for (let i = range.start; i <= range.end; i++) {
+        const node = flatTree.value[i];
+        if (node) result.push(node);
+      }
+    }
+    return result;
+  });
 
   // 计算节点高度依赖项，用于 DynamicScroller 重新计算高度
   const getNodeSizeDependencies = (item: FlatTreeNode) => {
@@ -667,8 +681,8 @@
         // 等待 DOM 更新完成
         await nextTick();
 
-        // 查找节点在 visibleNodes 中的索引
-        const index = visibleNodes.value.findIndex((node) => node.id === targetKey);
+        // 查找节点在可见列表中的索引
+        const index = getVisibleIndexAtFlatIndex(flatNode.index);
         if (index === -1) {
           console.warn(`[VirtualTree] Node with key "${targetKey}" is not visible`);
           return;

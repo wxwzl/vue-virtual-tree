@@ -1,7 +1,7 @@
 import { ref, watch } from "vue";
 import type { Ref } from "vue";
 import type { VirtualTreeProps, FlatTreeNode, TreeNodeData } from "../types";
-import { getNodeId, getNodeChildren, isLeafNode } from "../utils/tree";
+import { getNodeId, isLeafNode } from "../utils/tree";
 
 /**
  * 节点元数据缓存接口
