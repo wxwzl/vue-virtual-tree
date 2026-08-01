@@ -20,6 +20,10 @@ export interface FlatTreeNode {
   index: number;
   /** 在虚拟列表中的索引 */
   visibleIndex?: number;
+  /** 前序遍历中第一个后代的 flatTree 下标 */
+  firstDescendantIndex?: number;
+  /** 前序遍历中最后一个后代的 flatTree 下标 */
+  lastDescendantIndex?: number;
   /** 父节点 ID */
   parentId: string | number | null;
   /** 是否展开 */

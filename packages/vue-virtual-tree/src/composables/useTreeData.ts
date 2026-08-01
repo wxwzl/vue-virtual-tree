@@ -135,6 +135,8 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
           isLoaded: false,
           isChecked: false,
           rawChildren: children.length > 0 ? children : undefined,
+          firstDescendantIndex: startIndex,
+          lastDescendantIndex: startIndex,
         };
         result.push(flatNode);
         container.push(flatNode);
@@ -143,6 +145,7 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
         }
         // 如果节点展开且有子节点，递归处理子节点
         if (children.length > 0) {
+          const childStartIndex = startIndex + 1;
           const { nodes: childNodes, index } = genenrateFlatNodes(
             children,
             level + 1,
@@ -153,6 +156,8 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
             config
           );
           flatNode.children = childNodes;
+          flatNode.firstDescendantIndex = childStartIndex;
+          flatNode.lastDescendantIndex = index;
           startIndex = index;
         }
         map.set(id, flatNode);
