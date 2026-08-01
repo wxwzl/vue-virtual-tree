@@ -1,3 +1,11 @@
+import VirtualScroller from "./components/VirtualScroller.vue";
+
+export { VirtualScroller };
+export * from "./utils/range";
 export type { VirtualScrollerProps, VirtualScrollerExpose } from "./types";
 
-// VirtualScroller component will be exported here after Task 3
+export default {
+  install(app: any) {
+    app.component("VirtualScroller", VirtualScroller);
+  },
+};
