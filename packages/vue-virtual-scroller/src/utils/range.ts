@@ -74,6 +74,7 @@ export function getVisibleIndexAtFlatIndex(ranges: VisibleRange[], flatIndex: nu
 }
 
 export function getFlatIndexAtVisibleIndex(ranges: VisibleRange[], visibleIndex: number): number {
+  if (visibleIndex < 0) return -1;
   let count = 0;
   for (const range of ranges) {
     const size = range.end - range.start + 1;

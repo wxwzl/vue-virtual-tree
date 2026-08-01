@@ -33,6 +33,27 @@ describe("range utils", () => {
       ]);
     });
 
+    it("inserts at the beginning of the list", () => {
+      const ranges: VisibleRange[] = [{ start: 5, end: 7 }];
+      expect(insertRange(ranges, 0, 3)).toEqual([
+        { start: 0, end: 3 },
+        { start: 5, end: 7 },
+      ]);
+    });
+
+    it("inserts at the end of the list", () => {
+      const ranges: VisibleRange[] = [{ start: 0, end: 2 }];
+      expect(insertRange(ranges, 5, 7)).toEqual([
+        { start: 0, end: 2 },
+        { start: 5, end: 7 },
+      ]);
+    });
+
+    it("merges a range inserted adjacent to the first range", () => {
+      const ranges: VisibleRange[] = [{ start: 3, end: 5 }];
+      expect(insertRange(ranges, 0, 2)).toEqual([{ start: 0, end: 5 }]);
+    });
+
     it("merges a new range that spans multiple existing ranges", () => {
       const ranges: VisibleRange[] = [
         { start: 0, end: 1 },
@@ -43,6 +64,10 @@ describe("range utils", () => {
   });
 
   describe("removeRange", () => {
+    it("returns an empty array when the input is empty", () => {
+      expect(removeRange([], 0, 5)).toEqual([]);
+    });
+
     it("returns the original range when there is no overlap", () => {
       const ranges: VisibleRange[] = [{ start: 0, end: 2 }];
       expect(removeRange(ranges, 5, 7)).toEqual([{ start: 0, end: 2 }]);
@@ -78,6 +103,17 @@ describe("range utils", () => {
         { start: 6, end: 10 },
       ]);
     });
+
+    it("removes across multiple existing ranges", () => {
+      const ranges: VisibleRange[] = [
+        { start: 0, end: 2 },
+        { start: 5, end: 7 },
+      ];
+      expect(removeRange(ranges, 1, 6)).toEqual([
+        { start: 0, end: 0 },
+        { start: 7, end: 7 },
+      ]);
+    });
   });
 
   describe("findRangeIndex", () => {
@@ -96,11 +132,18 @@ describe("range utils", () => {
       expect(findRangeIndex(ranges, 8)).toBe(1);
     });
 
-    it("returns -1 for indexes that are not covered", () => {
+    it("returns -1 for out-of-bounds indices of a single range", () => {
+      const ranges: VisibleRange[] = [{ start: 0, end: 2 }];
+      expect(findRangeIndex(ranges, -1)).toBe(-1);
+      expect(findRangeIndex(ranges, 3)).toBe(-1);
+    });
+
+    it("returns -1 for uncovered or out-of-bounds indices", () => {
       const ranges: VisibleRange[] = [
         { start: 0, end: 2 },
         { start: 5, end: 8 },
       ];
+      expect(findRangeIndex(ranges, -1)).toBe(-1);
       expect(findRangeIndex(ranges, 4)).toBe(-1);
       expect(findRangeIndex(ranges, 9)).toBe(-1);
     });
@@ -153,6 +196,7 @@ describe("range utils", () => {
         { start: 0, end: 2 },
         { start: 5, end: 7 },
       ];
+      expect(getFlatIndexAtVisibleIndex(ranges, -1)).toBe(-1);
       expect(getFlatIndexAtVisibleIndex(ranges, 99)).toBe(-1);
     });
   });
