@@ -22,6 +22,24 @@
   "files": [
     "dist"
   ],
+  "keywords": [
+    "vue",
+    "vue3",
+    "scroller",
+    "virtual-scroll",
+    "virtual-scroller",
+    "component"
+  ],
+  "author": "wxwzl",
+  "license": "MIT",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wxwzl/vue-virtual-tree.git"
+  },
   "scripts": {
     "build": "vite build",
     "test": "vitest run",
@@ -34,10 +52,11 @@
     "@vitejs/plugin-vue": "^5.0.0",
     "@vue/test-utils": "^2.4.6",
     "happy-dom": "^20.8.4",
-    "typescript": "^5.3.3",
+    "typescript": "~5.3.3",
     "vite": "^5.0.0",
     "vite-plugin-dts": "^4.5.4",
     "vitest": "^1.6.0",
-    "vue": "3.4.0"
+    "vue": "3.4.0",
+    "vue-tsc": "^1.8.27"
   }
 }

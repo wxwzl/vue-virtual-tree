@@ -9,6 +9,7 @@ export default defineConfig({
     dts({
       outDir: "dist/types",
       insertTypesEntry: true,
+      tsconfigPath: "./tsconfig.json",
     }),
   ],
   build: {
