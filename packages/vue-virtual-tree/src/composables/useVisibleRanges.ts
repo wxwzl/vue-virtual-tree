@@ -1,4 +1,4 @@
-import { ref, computed, shallowReadonly } from "vue";
+import { ref, computed } from "vue";
 import type { FlatTreeNode } from "../types";
 import {
   insertRange,
@@ -48,7 +48,7 @@ export function useVisibleRanges(initialFlatTree: FlatTreeNode[] = []) {
   rebuildRanges();
 
   return {
-    visibleRanges: shallowReadonly(visibleRanges),
+    visibleRanges,
     visibleCount,
     expandNode,
     collapseNode,

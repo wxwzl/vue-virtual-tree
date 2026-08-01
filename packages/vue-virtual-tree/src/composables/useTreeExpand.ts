@@ -1,150 +1,138 @@
 import { ref, type Ref } from "vue";
 import type { VirtualTreeProps, FlatTreeNode } from "../types";
 import { getAllKeys } from "../utils/tree";
+import { useVisibleRanges } from "./useVisibleRanges";
 
-/**
- * 在有序的 visibleNodes 中根据节点 index 找到对应的数组下标（不存在返回 -1）
- */
-export function findVisibleNodeIndex(visibleNodes: FlatTreeNode[], targetIndex: number): number {
-  if (!Array.isArray(visibleNodes) || visibleNodes.length === 0) {
-    return -1;
-  }
-
-  let left = 0;
-  let right = visibleNodes.length - 1;
-
-  while (left <= right) {
-    const mid = left + Math.floor((right - left) / 2);
-    const currentIndex = visibleNodes[mid].index;
-
-    if (currentIndex === targetIndex) {
-      return mid;
-    }
-
-    if ((currentIndex ?? -Infinity) < targetIndex) {
-      left = mid + 1;
-    } else {
-      right = mid - 1;
-    }
-  }
-
-  return -1;
-}
-
-/**
- * 树节点展开/折叠逻辑
- */
 export function useTreeExpand(
   props: VirtualTreeProps,
-  flatTree: Ref<FlatTreeNode[]>,
-  visibleNodes: Ref<FlatTreeNode[]>
+  flatTree: FlatTreeNode[] | Ref<FlatTreeNode[]>
 ) {
+  const flatTreeRef = Array.isArray(flatTree) ? ref(flatTree) : flatTree;
   const expandedKeys = ref<Set<string | number>>(new Set());
 
-  // 初始化展开的节点
+  const {
+    visibleRanges,
+    visibleCount,
+    expandNode: expandRange,
+    collapseNode: collapseRange,
+    setFlatTree,
+    getFlatIndexAtVisibleIndex,
+    getVisibleIndexAtFlatIndex,
+  } = useVisibleRanges(flatTreeRef.value);
+
   const initExpandedKeys = () => {
-    // 重置展开状态
+    expandedKeys.value.clear();
     if (props.defaultExpandAll) {
       const allKeys = getAllKeys(props.data, props.props);
-      expandedKeys.value = new Set(allKeys);
-    } else if (props.defaultExpandedKeys && props.defaultExpandedKeys.length > 0) {
-      expandedKeys.value = new Set(props.defaultExpandedKeys);
-    } else {
-      expandedKeys.value = new Set();
-    }
-  };
-
-  const collectVisibleDescendants = (parent: FlatTreeNode): FlatTreeNode[] => {
-    const result: FlatTreeNode[] = [];
-    if (!parent.children) return result;
-    parent.children.forEach((child) => {
-      result.push(child);
-      if (child.isExpanded) {
-        result.push(...collectVisibleDescendants(child));
+      allKeys.forEach((key) => expandedKeys.value.add(key));
+      let minIndex = Infinity;
+      let maxLastDescendantIndex = -Infinity;
+      for (const node of flatTreeRef.value) {
+        minIndex = Math.min(minIndex, node.index);
+        maxLastDescendantIndex = Math.max(
+          maxLastDescendantIndex,
+          node.lastDescendantIndex ?? node.index
+        );
       }
-    });
-    return result;
+      visibleRanges.value =
+        minIndex <= maxLastDescendantIndex
+          ? [{ start: minIndex, end: maxLastDescendantIndex }]
+          : [];
+    } else if (props.defaultExpandedKeys && props.defaultExpandedKeys.length > 0) {
+      props.defaultExpandedKeys.forEach((key) => expandedKeys.value.add(key));
+      rebuildRangesFromExpanded();
+    } else {
+      setFlatTree(flatTreeRef.value);
+    }
   };
 
-  const expandVisibleNode = (node: FlatTreeNode) => {
-    if (typeof node.visibleIndex !== "number") {
-      node.visibleIndex = findVisibleNodeIndex(visibleNodes.value, node.index);
+  const rebuildRangesFromExpanded = () => {
+    const ranges: { start: number; end: number }[] = [];
+    const isVisibleAt = (idx: number): boolean => {
+      const node = flatTreeRef.value[idx];
+      if (!node) return false;
+      if (node.parentId === null) return true;
+      const parentIndex = flatTreeRef.value.findIndex((n) => n.id === node.parentId);
+      if (parentIndex < 0) return false;
+      const parent = flatTreeRef.value[parentIndex];
+      return expandedKeys.value.has(parent.id) && isVisibleAt(parentIndex);
+    };
+
+    let current: { start: number; end: number } | null = null;
+    for (let i = 0; i < flatTreeRef.value.length; i++) {
+      if (isVisibleAt(i)) {
+        const idx = flatTreeRef.value[i].index;
+        if (!current) current = { start: idx, end: idx };
+        else current.end = idx;
+      } else if (current) {
+        ranges.push(current);
+        current = null;
+      }
     }
-    const descendants = collectVisibleDescendants(node);
-    if (descendants.length === 0) return;
-    visibleNodes.value.splice(node.visibleIndex + 1, 0, ...descendants);
-  };
-  const collapseVisibleNode = (node: FlatTreeNode) => {
-    if (typeof node.visibleIndex !== "number") {
-      node.visibleIndex = findVisibleNodeIndex(visibleNodes.value, node.index);
-    }
-    const children = collectVisibleDescendants(node);
-    if (children.length === 0) return;
-    visibleNodes.value.splice(node.visibleIndex + 1, children.length);
+    if (current) ranges.push(current);
+    visibleRanges.value = ranges;
   };
 
-  /**
-   * 展开节点
-   */
   const expandNode = (node: FlatTreeNode) => {
     if (props.accordion) {
-      // 手风琴模式：折叠同级其他节点
-      // 查找兄弟节点（需要从flatTree中查找，因为node.parentId可能为null）
-      const siblings = flatTree.value.filter(
-        (n) => n.parentId === node.parentId && n.id !== node.id && n.isExpanded
+      const siblings = flatTreeRef.value.filter(
+        (n) => n.parentId === node.parentId && n.id !== node.id && expandedKeys.value.has(n.id)
       );
       siblings.forEach((sibling) => {
-        sibling.isExpanded = false;
         expandedKeys.value.delete(sibling.id);
-        collapseVisibleNode(sibling);
+        collapseRange(sibling);
       });
     }
-    // 展开当前节点
     node.isExpanded = true;
     expandedKeys.value.add(node.id);
-    visibleNodes.value.forEach((element, index) => {
-      element.visibleIndex = index;
-    });
-    expandVisibleNode(node);
+    expandRange(node);
   };
 
-  const setRecursionExpanded = (node: FlatTreeNode, isExpanded: boolean) => {
-    node.isExpanded = isExpanded;
-    if (isExpanded) {
-      expandedKeys.value.add(node.id);
-    } else {
-      expandedKeys.value.delete(node.id);
-    }
-    if (node.children) {
-      node.children.forEach((child) => {
-        setRecursionExpanded(child, isExpanded);
-      });
-    }
-  };
-  /**
-   * 折叠节点
-   */
   const collapseNode = (node: FlatTreeNode) => {
-    collapseVisibleNode(node);
-    setRecursionExpanded(node, false);
-  };
-
-  /**
-   * 切换节点展开状态
-   */
-  const toggleNode = (node: FlatTreeNode) => {
-    if (node.isExpanded) {
-      collapseNode(node);
-    } else {
-      expandNode(node);
+    collapseRange(node);
+    const stack = [node];
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+      current.isExpanded = false;
+      expandedKeys.value.delete(current.id);
+      if (current.children) {
+        for (let i = current.children.length - 1; i >= 0; i--) {
+          stack.push(current.children[i]);
+        }
+      }
     }
   };
+
+  const toggleNode = (node: FlatTreeNode) => {
+    if (node.isExpanded) collapseNode(node);
+    else expandNode(node);
+  };
+
+  const batchToggleNodes = (nodes: FlatTreeNode[], expand: boolean) => {
+    nodes.forEach((node) => {
+      if (expand && !node.isExpanded) {
+        node.isExpanded = true;
+        expandedKeys.value.add(node.id);
+        expandRange(node);
+      } else if (!expand && node.isExpanded) {
+        expandedKeys.value.delete(node.id);
+        collapseRange(node);
+      }
+    });
+  };
+
+  initExpandedKeys();
 
   return {
     expandedKeys,
+    visibleRanges,
+    visibleCount,
     initExpandedKeys,
     expandNode,
     collapseNode,
     toggleNode,
+    batchToggleNodes,
+    getFlatIndexAtVisibleIndex,
+    getVisibleIndexAtFlatIndex,
   };
 }
