@@ -33,6 +33,33 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
+  packages/vue-virtual-scroller:
+    devDependencies:
+      '@vitejs/plugin-vue':
+        specifier: ^5.0.0
+        version: 5.2.4(vite@5.4.21(@types/node@24.10.1)(sass-embedded@1.93.3)(sass@1.93.3))(vue@3.4.0(typescript@5.9.3))
+      '@vue/test-utils':
+        specifier: ^2.4.6
+        version: 2.4.6
+      happy-dom:
+        specifier: ^20.8.4
+        version: 20.8.4
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+      vite:
+        specifier: ^5.0.0
+        version: 5.4.21(@types/node@24.10.1)(sass-embedded@1.93.3)(sass@1.93.3)
+      vite-plugin-dts:
+        specifier: ^4.5.4
+        version: 4.5.4(@types/node@24.10.1)(rollup@4.53.2)(typescript@5.9.3)(vite@5.4.21(@types/node@24.10.1)(sass-embedded@1.93.3)(sass@1.93.3))
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.0(@types/node@24.10.1)(happy-dom@20.8.4)(sass-embedded@1.93.3)(sass@1.93.3)
+      vue:
+        specifier: 3.4.0
+        version: 3.4.0(typescript@5.9.3)
+
   packages/vue-virtual-tree:
     dependencies:
       vue:
@@ -76,8 +103,8 @@ importers:
   playground:
     dependencies:
       '@wxwzl/vue-virtual-tree':
-        specifier: 0.1.13
-        version: 0.1.13(typescript@5.9.3)
+        specifier: workspace:*
+        version: link:../packages/vue-virtual-tree
       vue:
         specifier: ^3.4.0
         version: 3.5.24(typescript@5.9.3)
@@ -781,9 +808,6 @@ packages:
 
   '@vue/test-utils@2.4.6':
     resolution: {integrity: sha512-FMxEjOpYNYiFe0GkaHsnJPXFHxQ6m4t8vI/ElPGpMWxZKpmRvQ33OIrvRXemy6yha03RxhOlQuy+gZMC3CQSow==}
-
-  '@wxwzl/vue-virtual-tree@0.1.13':
-    resolution: {integrity: sha512-2eWq3ZWuMVZmq12zk91VLOd9MBweJqUZbm0J3I8ZK3dMFiSLloZ6ItUFhGAfeXqTdK8CV2tL2GmEHxxxhYZvkg==}
 
   JSONStream@1.3.5:
     resolution: {integrity: sha512-E+iruNOY8VV9s4JEbe1aNEm6MiszPRr/UfcHMz0TQh1BXSxHK+ASV1R6W4HpjBhSeS+54PIsAMCBmwD06LLsqQ==}
@@ -3077,7 +3101,7 @@ snapshots:
 
   '@vue/compiler-core@3.4.0':
     dependencies:
-      '@babel/parser': 7.28.5
+      '@babel/parser': 7.29.0
       '@vue/shared': 3.4.0
       entities: 4.5.0
       estree-walker: 2.0.2
@@ -3103,7 +3127,7 @@ snapshots:
 
   '@vue/compiler-sfc@3.4.0':
     dependencies:
-      '@babel/parser': 7.28.5
+      '@babel/parser': 7.29.0
       '@vue/compiler-core': 3.4.0
       '@vue/compiler-dom': 3.4.0
       '@vue/compiler-ssr': 3.4.0
@@ -3206,13 +3230,6 @@ snapshots:
     dependencies:
       js-beautify: 1.15.4
       vue-component-type-helpers: 2.2.12
-
-  '@wxwzl/vue-virtual-tree@0.1.13(typescript@5.9.3)':
-    dependencies:
-      vue: 3.4.0(typescript@5.9.3)
-      vue-virtual-scroller: 2.0.0-beta.9(vue@3.4.0(typescript@5.9.3))
-    transitivePeerDependencies:
-      - typescript
 
   JSONStream@1.3.5:
     dependencies:
