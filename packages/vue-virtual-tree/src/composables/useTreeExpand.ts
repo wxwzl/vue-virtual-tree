@@ -25,19 +25,24 @@ export function useTreeExpand(
     if (props.defaultExpandAll) {
       const allKeys = getAllKeys(props.data, props.props);
       allKeys.forEach((key) => expandedKeys.value.add(key));
-      let minIndex = Infinity;
-      let maxLastDescendantIndex = -Infinity;
+      const intervals: { start: number; end: number }[] = [];
       for (const node of flatTreeRef.value) {
-        minIndex = Math.min(minIndex, node.index);
-        maxLastDescendantIndex = Math.max(
-          maxLastDescendantIndex,
-          node.lastDescendantIndex ?? node.index
-        );
+        intervals.push({
+          start: node.index,
+          end: node.lastDescendantIndex ?? node.index,
+        });
       }
-      visibleRanges.value =
-        minIndex <= maxLastDescendantIndex
-          ? [{ start: minIndex, end: maxLastDescendantIndex }]
-          : [];
+      intervals.sort((a, b) => a.start - b.start);
+      const ranges: { start: number; end: number }[] = [];
+      for (const interval of intervals) {
+        const last = ranges[ranges.length - 1];
+        if (last && interval.start <= last.end + 1) {
+          last.end = Math.max(last.end, interval.end);
+        } else {
+          ranges.push({ start: interval.start, end: interval.end });
+        }
+      }
+      visibleRanges.value = ranges;
     } else if (props.defaultExpandedKeys && props.defaultExpandedKeys.length > 0) {
       props.defaultExpandedKeys.forEach((key) => expandedKeys.value.add(key));
       rebuildRangesFromExpanded();
@@ -48,20 +53,29 @@ export function useTreeExpand(
 
   const rebuildRangesFromExpanded = () => {
     const ranges: { start: number; end: number }[] = [];
+    const flatTree = flatTreeRef.value;
+    const idToFlatIndex = new Map<string | number, number>();
+    for (let i = 0; i < flatTree.length; i++) {
+      idToFlatIndex.set(flatTree[i].id, i);
+    }
+
     const isVisibleAt = (idx: number): boolean => {
-      const node = flatTreeRef.value[idx];
-      if (!node) return false;
-      if (node.parentId === null) return true;
-      const parentIndex = flatTreeRef.value.findIndex((n) => n.id === node.parentId);
-      if (parentIndex < 0) return false;
-      const parent = flatTreeRef.value[parentIndex];
-      return expandedKeys.value.has(parent.id) && isVisibleAt(parentIndex);
+      let current = flatTree[idx];
+      while (current) {
+        if (current.parentId === null) return true;
+        const parentIndex = idToFlatIndex.get(current.parentId);
+        if (parentIndex === undefined) return false;
+        const parent = flatTree[parentIndex];
+        if (!expandedKeys.value.has(parent.id)) return false;
+        current = parent;
+      }
+      return false;
     };
 
     let current: { start: number; end: number } | null = null;
-    for (let i = 0; i < flatTreeRef.value.length; i++) {
+    for (let i = 0; i < flatTree.length; i++) {
       if (isVisibleAt(i)) {
-        const idx = flatTreeRef.value[i].index;
+        const idx = flatTree[i].index;
         if (!current) current = { start: idx, end: idx };
         else current.end = idx;
       } else if (current) {
