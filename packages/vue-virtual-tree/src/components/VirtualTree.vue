@@ -13,25 +13,19 @@
       </slot>
     </template>
     <template v-else>
-      <DynamicScroller
-        ref="dynamicScrollerRef"
+      <VirtualScroller
+        ref="virtualScrollerRef"
         v-if="data.length > 0"
-        :items="visibleNodes"
-        :min-item-size="itemSize || 32"
+        :total-count="visibleCount"
+        :item-size="itemSize || 32"
         v-bind="$attrs"
         class="vue-virtual-tree__scroller"
       >
-        <template #default="{ item, index, active }">
-          <DynamicScrollerItem
-            :item="item"
-            :active="active"
-            :data-index="index"
-            :size-dependencies="getNodeSizeDependencies(item)"
-            class="vue-virtual-tree__item"
-          >
+        <template #default="{ index }">
+          <template v-for="item in [getVisibleNodeAt(index)]" :key="item?.id ?? index">
             <TreeNode
+              v-if="item"
               :node="item"
-              :key="item.id"
               :index="index"
               :props="props.props"
               :show-checkbox="showCheckbox"
@@ -95,9 +89,9 @@
                 </slot>
               </template>
             </TreeNode>
-          </DynamicScrollerItem>
+          </template>
         </template>
-      </DynamicScroller>
+      </VirtualScroller>
       <div v-else class="vue-virtual-tree__empty">
         <slot name="empty">
           <span>暂无数据</span>
@@ -109,7 +103,7 @@
 
 <script setup lang="ts">
   import { computed, nextTick, ref } from "vue";
-  import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller";
+  import { VirtualScroller } from "@wxwzl/vue-virtual-scroller";
   import TreeNode from "./TreeNode.vue";
   import type {
     VirtualTreeProps,
@@ -157,9 +151,11 @@
   const {
     flatTree,
     visibleRanges,
+    visibleCount,
     rawData,
     getNodeData,
     getFlatNode,
+    getVisibleNodeAt,
     getVisibleIndexAtFlatIndex,
     regenerateFlatTree,
     insertFlatTree,
@@ -179,7 +175,7 @@
     filter: filterNodes,
   } = useTreeData(props, emit);
 
-  const dynamicScrollerRef = ref<InstanceType<typeof DynamicScroller> | null>(null);
+  const virtualScrollerRef = ref<InstanceType<typeof VirtualScroller> | null>(null);
 
   // 兼容：从 visibleRanges 派生可见节点列表
   const visibleNodes = computed(() => {
@@ -192,21 +188,6 @@
     }
     return result;
   });
-
-  // 计算节点高度依赖项，用于 DynamicScroller 重新计算高度
-  const getNodeSizeDependencies = (item: FlatTreeNode) => {
-    // 包含所有可能影响节点高度的状态和数据
-    return [
-      item.data,
-      item.isExpanded,
-      item.isChecked,
-      item.isLoading,
-      item.isDisabled,
-      item.level,
-      // 如果节点数据中有 label，也包含进来，因为长文本可能换行
-      getNodeLabel(item.data, props.props),
-    ];
-  };
 
   // 事件委托：从事件目标查找节点
   const getNodeFromEvent = (event: Event): FlatTreeNode | null => {
@@ -532,8 +513,8 @@
     filter: (value: string) => {
       return filterNodes(value).then(() => {
         nextTick(() => {
-          dynamicScrollerRef.value?.scrollToItem(0);
-          dynamicScrollerRef.value?.forceUpdate();
+          virtualScrollerRef.value?.scrollToIndex(0);
+          virtualScrollerRef.value?.forceUpdate();
         });
       });
     },
@@ -688,37 +669,28 @@
           return;
         }
 
-        // 调用 DynamicScroller 的 scrollToItem 方法
-        if (dynamicScrollerRef.value) {
+        // 调用 VirtualScroller 的 scrollToIndex 方法
+        if (virtualScrollerRef.value) {
           const align = options?.align || "top";
           const offset = options?.offset || 0;
 
-          // DynamicScroller 的 scrollToItem 方法签名: scrollToItem(index, align?, offset?)
-          // align: 'start' | 'center' | 'end'
           const alignMap: Record<"top" | "center" | "bottom", "start" | "center" | "end"> = {
             top: "start",
             center: "center",
             bottom: "end",
           };
 
-          const scroller = dynamicScrollerRef.value;
-          if (scroller && typeof scroller.scrollToItem === "function") {
-            if (offset !== 0) {
-              // 如果提供了 offset，使用三个参数
-              scroller.scrollToItem(index, alignMap[align], offset);
-            } else if (align !== "top") {
-              // 如果提供了 align，使用两个参数
-              scroller.scrollToItem(index, alignMap[align]);
-            } else {
-              // 只使用 index
-              scroller.scrollToItem(index);
+          virtualScrollerRef.value.scrollToIndex(index, alignMap[align]);
+
+          // 手动应用 offset
+          if (offset !== 0) {
+            const scrollerEl = virtualScrollerRef.value?.$el as HTMLElement | undefined;
+            if (scrollerEl) {
+              scrollerEl.scrollTop += offset;
             }
           }
 
-          // 强制更新以确保滚动生效
-          if (typeof scroller.forceUpdate === "function") {
-            scroller.forceUpdate();
-          }
+          virtualScrollerRef.value.forceUpdate();
         }
       };
 
