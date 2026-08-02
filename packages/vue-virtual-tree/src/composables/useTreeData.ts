@@ -6,6 +6,7 @@ import type {
   VirtualTreeProps,
   VirtualTreeEmits,
 } from "../types";
+import type { VisibleRange } from "@wxwzl/vue-virtual-scroller";
 import { getNodeId, getNodeChildren, isNodeDisabled, isLeafNode } from "../utils/tree";
 import { useTreeSelection } from "../composables/useTreeSelection";
 import { useTreeExpand } from "./useTreeExpand";
@@ -63,6 +64,7 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
     visibleCount,
     getFlatIndexAtVisibleIndex,
     getVisibleIndexAtFlatIndex,
+    rebuildRangesFromExpanded,
   } = useTreeExpand(props, flatTree);
 
   // 根据可见索引获取节点
@@ -78,8 +80,38 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
     flatNodeMap,
     isFiltered,
     expandedKeys,
-    (_nodes: FlatTreeNode[]) => {
-      // placeholder: will be replaced in Task 9
+    (filteredNodes: FlatTreeNode[] | null) => {
+      if (filteredNodes === null) {
+        // 清除过滤：展开所有非叶子节点并重建可见范围
+        isFiltered.value = false;
+        flatTree.value.forEach((node) => {
+          if (!node.isLeaf) {
+            node.isExpanded = true;
+            expandedKeys.value.add(node.id);
+          }
+        });
+        rebuildRangesFromExpanded();
+      } else {
+        // 应用过滤结果：按原始 index 构建可见区间
+        isFiltered.value = true;
+        expandedKeys.value.clear();
+        const ranges: VisibleRange[] = [];
+        let current: VisibleRange | null = null;
+        for (const node of filteredNodes) {
+          if (node.children && node.children.length > 0) {
+            node.isExpanded = true;
+            expandedKeys.value.add(node.id);
+          }
+          if (current && node.index === current.end + 1) {
+            current.end = node.index;
+          } else {
+            if (current) ranges.push(current);
+            current = { start: node.index, end: node.index };
+          }
+        }
+        if (current) ranges.push(current);
+        visibleRanges.value = ranges;
+      }
     }
   );
 

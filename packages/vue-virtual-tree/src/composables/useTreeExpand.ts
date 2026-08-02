@@ -147,5 +147,6 @@ export function useTreeExpand(
     batchToggleNodes,
     getFlatIndexAtVisibleIndex,
     getVisibleIndexAtFlatIndex,
+    rebuildRangesFromExpanded,
   };
 }

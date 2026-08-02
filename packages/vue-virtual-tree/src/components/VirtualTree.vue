@@ -102,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, nextTick, ref } from "vue";
+  import { nextTick, ref } from "vue";
   import { VirtualScroller } from "@wxwzl/vue-virtual-scroller";
   import TreeNode from "./TreeNode.vue";
   import type {
@@ -150,7 +150,6 @@
   // 数据扁平化
   const {
     flatTree,
-    visibleRanges,
     visibleCount,
     rawData,
     getNodeData,
@@ -177,17 +176,17 @@
 
   const virtualScrollerRef = ref<InstanceType<typeof VirtualScroller> | null>(null);
 
-  // 兼容：从 visibleRanges 派生可见节点列表
-  const visibleNodes = computed(() => {
-    const result: FlatTreeNode[] = [];
-    for (const range of visibleRanges.value) {
-      for (let i = range.start; i <= range.end; i++) {
-        const node = flatTree.value[i];
-        if (node) result.push(node);
-      }
+  // 判断节点是否可见（所有祖先均展开）
+  const isNodeVisible = (node: FlatTreeNode): boolean => {
+    let current: FlatTreeNode | null = node;
+    while (current) {
+      if (current.parentId === null) return true;
+      const parent = getFlatNode(current.parentId);
+      if (!parent || !parent.isExpanded) return false;
+      current = parent;
     }
-    return result;
-  });
+    return false;
+  };
 
   // 事件委托：从事件目标查找节点
   const getNodeFromEvent = (event: Event): FlatTreeNode | null => {
@@ -398,14 +397,14 @@
 
     const getChildren = (): TreeNodeInstance[] => {
       if (childrenInstances !== null) return childrenInstances;
-      const children = visibleNodes.value.filter((n) => n.parentId === flatNode.id);
+      const children = flatTree.value.filter((n) => n.parentId === flatNode.id && isNodeVisible(n));
       childrenInstances = children.map((child) => createNodeInstance(child));
       return childrenInstances;
     };
 
     const getSiblings = (): TreeNodeInstance[] => {
-      const siblings = visibleNodes.value.filter(
-        (n) => n.parentId === flatNode.parentId && n.id !== flatNode.id
+      const siblings = flatTree.value.filter(
+        (n) => n.parentId === flatNode.parentId && n.id !== flatNode.id && isNodeVisible(n)
       );
       return siblings.map((sibling) => createNodeInstance(sibling));
     };
@@ -414,7 +413,7 @@
       const result: TreeNodeInstance[] = [];
       const visited = new Set<string | number>();
       const traverse = (parentId: string | number) => {
-        const children = visibleNodes.value.filter((n) => n.parentId === parentId);
+        const children = flatTree.value.filter((n) => n.parentId === parentId && isNodeVisible(n));
         children.forEach((child) => {
           if (visited.has(child.id)) return; // 防止循环引用
           visited.add(child.id);

@@ -58,22 +58,10 @@ export function useTreeFilter(
   flatNodeMap: Ref<Map<string | number, FlatTreeNode>>,
   isFiltered: Ref<boolean>,
   expandedKeys: Ref<Set<string | number>>,
-  setVisibleNodes: (nodes: FlatTreeNode[]) => void
+  onFilterResult: (nodes: FlatTreeNode[] | null) => void
 ) {
   const filteredFlatTree = ref<FlatTreeNode[]>([]);
   const filteredFlatNodeMap = ref<Map<string | number, FlatTreeNode>>(new Map());
-  const rebuildVisibleNodes = () => {
-    const roots = flatTree.value.filter((node) => node.parentId === null);
-    const result: FlatTreeNode[] = [];
-    const traverse = (node: FlatTreeNode) => {
-      result.push(node);
-      if (node.isExpanded && node.children) {
-        node.children.forEach((child) => traverse(child));
-      }
-    };
-    roots.forEach((root) => traverse(root));
-    setVisibleNodes(result);
-  };
 
   // 默认过滤方法
   const defaultFilterMethod = (value: string, data: any): boolean => {
@@ -105,7 +93,7 @@ export function useTreeFilter(
           expandedKeys.value.add(node.id);
         }
       });
-      rebuildVisibleNodes();
+      onFilterResult(null);
       return Promise.resolve();
     }
     isFiltered.value = true;
@@ -161,7 +149,7 @@ export function useTreeFilter(
       // 第三步：按 index 排序
       const sortedNodes = mergeSort(Array.from(clonedNodes.values()));
 
-      setVisibleNodes(sortedNodes);
+      onFilterResult(sortedNodes);
       filteredFlatTree.value = sortedNodes;
       resolve(void 0);
     });
