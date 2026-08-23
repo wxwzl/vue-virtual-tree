@@ -1,6 +1,5 @@
 import { ref, type Ref } from "vue";
 import type { VirtualTreeProps, FlatTreeNode } from "../types";
-import { getAllKeys } from "../utils/tree";
 import { useVisibleRanges } from "./useVisibleRanges";
 
 export function useTreeExpand(
@@ -13,8 +12,6 @@ export function useTreeExpand(
   const {
     visibleRanges,
     visibleCount,
-    expandNode: expandRange,
-    collapseNode: collapseRange,
     setFlatTree,
     getFlatIndexAtVisibleIndex,
     getVisibleIndexAtFlatIndex,
@@ -23,32 +20,24 @@ export function useTreeExpand(
   const initExpandedKeys = () => {
     expandedKeys.value.clear();
     if (props.defaultExpandAll) {
-      const allKeys = getAllKeys(props.data, props.props);
-      allKeys.forEach((key) => expandedKeys.value.add(key));
-      const intervals: { start: number; end: number }[] = [];
-      for (const node of flatTreeRef.value) {
-        intervals.push({
-          start: node.index,
-          end: node.lastDescendantIndex ?? node.index,
-        });
-      }
-      intervals.sort((a, b) => a.start - b.start);
-      const ranges: { start: number; end: number }[] = [];
-      for (const interval of intervals) {
-        const last = ranges[ranges.length - 1];
-        if (last && interval.start <= last.end + 1) {
-          last.end = Math.max(last.end, interval.end);
-        } else {
-          ranges.push({ start: interval.start, end: interval.end });
+      // 全部展开时直接设置为一个连续区间，避免 O(n) 遍历构建区间
+      const length = flatTreeRef.value.length;
+      visibleRanges.value = length > 0 ? [{ start: 0, end: length - 1 }] : [];
+      flatTreeRef.value.forEach((node) => {
+        if (!node.isLeaf) {
+          expandedKeys.value.add(node.id);
         }
-      }
-      visibleRanges.value = ranges;
+      });
     } else if (props.defaultExpandedKeys && props.defaultExpandedKeys.length > 0) {
       props.defaultExpandedKeys.forEach((key) => expandedKeys.value.add(key));
       rebuildRangesFromExpanded();
     } else {
       setFlatTree(flatTreeRef.value);
     }
+    // 同步每个节点的 isExpanded 状态，确保展开图标样式正确
+    flatTreeRef.value.forEach((node) => {
+      node.isExpanded = expandedKeys.value.has(node.id);
+    });
   };
 
   const rebuildRangesFromExpanded = () => {
@@ -93,27 +82,18 @@ export function useTreeExpand(
       );
       siblings.forEach((sibling) => {
         expandedKeys.value.delete(sibling.id);
-        collapseRange(sibling);
+        sibling.isExpanded = false;
       });
     }
     node.isExpanded = true;
     expandedKeys.value.add(node.id);
-    expandRange(node);
+    rebuildRangesFromExpanded();
   };
 
   const collapseNode = (node: FlatTreeNode) => {
-    collapseRange(node);
-    const stack = [node];
-    while (stack.length > 0) {
-      const current = stack.pop()!;
-      current.isExpanded = false;
-      expandedKeys.value.delete(current.id);
-      if (current.children) {
-        for (let i = current.children.length - 1; i >= 0; i--) {
-          stack.push(current.children[i]);
-        }
-      }
-    }
+    expandedKeys.value.delete(node.id);
+    node.isExpanded = false;
+    rebuildRangesFromExpanded();
   };
 
   const toggleNode = (node: FlatTreeNode) => {
@@ -126,12 +106,12 @@ export function useTreeExpand(
       if (expand && !node.isExpanded) {
         node.isExpanded = true;
         expandedKeys.value.add(node.id);
-        expandRange(node);
       } else if (!expand && node.isExpanded) {
         expandedKeys.value.delete(node.id);
-        collapseRange(node);
+        node.isExpanded = false;
       }
     });
+    rebuildRangesFromExpanded();
   };
 
   initExpandedKeys();

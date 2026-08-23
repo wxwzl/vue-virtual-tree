@@ -76,4 +76,34 @@ describe("useTreeExpand with intervals", () => {
       { start: 2, end: 3 },
     ]);
   });
+
+  it("preserves descendant expand state when collapsing and re-expanding parent", () => {
+    const nodes: FlatTreeNode[] = [
+      makeNode("a", 0, 5),
+      makeNode("a-1", 1, 3, "a"),
+      makeNode("a-1-1", 2, 2, "a-1", true),
+      makeNode("a-1-2", 3, 3, "a-1", true),
+      makeNode("a-2", 4, 5, "a"),
+      makeNode("a-2-1", 5, 5, "a-2", true),
+    ];
+    const { visibleRanges, expandNode, collapseNode } = useTreeExpand(defaultProps, nodes);
+
+    expandNode(nodes[0]);
+    expect(visibleRanges.value).toEqual([
+      { start: 0, end: 1 },
+      { start: 4, end: 4 },
+    ]);
+
+    expandNode(nodes[1]);
+    expect(nodes[1].isExpanded).toBe(true);
+    expect(visibleRanges.value).toEqual([{ start: 0, end: 4 }]);
+
+    collapseNode(nodes[0]);
+    expect(visibleRanges.value).toEqual([{ start: 0, end: 0 }]);
+
+    expandNode(nodes[0]);
+    expect(nodes[1].isExpanded).toBe(true);
+    expect(nodes[4].isExpanded).toBe(false);
+    expect(visibleRanges.value).toEqual([{ start: 0, end: 4 }]);
+  });
 });
