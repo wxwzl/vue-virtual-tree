@@ -23,7 +23,7 @@
           :loading="isLoading || searching"
           ref="treeRef"
           :data="treeData"
-          :buffer="500"
+          :buffer="20"
           class="tree-scroll"
           @node-generated="handleDataGenerated"
         />

@@ -39,7 +39,7 @@
           ref="treeRef"
           :data="treeData"
           :loading="isLoading"
-          :buffer="500"
+          :buffer="20"
           class="tree-scroll"
           show-checkbox
           check-strictly

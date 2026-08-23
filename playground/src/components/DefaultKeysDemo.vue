@@ -24,7 +24,7 @@
         <VirtualTree
           :data="treeData"
           :loading="isLoading"
-          :buffer="1000"
+          :buffer="20"
           class="tree-scroll"
           :default-expanded-keys="defaultExpandedKeys"
           :default-checked-keys="defaultCheckedKeys"

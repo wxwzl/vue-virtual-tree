@@ -97,6 +97,12 @@ export const demoRoutes: RouteRecordRaw[] = [
     component: () => import("../components/ScrollToNodeDemo.vue"),
     meta: { title: "滚动到指定节点" },
   },
+  {
+    path: "/performance",
+    name: "PerformanceDemo",
+    component: () => import("../components/PerformanceDemo.vue"),
+    meta: { title: "100 万节点性能测试" },
+  },
 ];
 
 const router = createRouter({

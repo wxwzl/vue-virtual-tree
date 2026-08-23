@@ -23,7 +23,7 @@
         <VirtualTree
           :data="treeData"
           :loading="isLoading"
-          :buffer="1000"
+          :buffer="20"
           class="tree-scroll custom-checkbox-tree"
           show-checkbox
           @node-check="handleNodeCheck"

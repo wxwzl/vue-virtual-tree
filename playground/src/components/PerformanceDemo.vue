@@ -1,25 +1,26 @@
 <template>
   <div class="demo-section">
-    <h2>带复选框</h2>
+    <h2>100 万节点性能测试</h2>
     <div class="control-panel">
-      <label class="control-label">
-        一级节点数量：
-        <input type="number" v-model.number="nodeCount" @change="handleCountChange" />
-      </label>
+      <span class="node-count-info">总节点数：{{ totalNodeCount.toLocaleString() }}</span>
       <button class="btn" @click="regenerateData">重新生成</button>
-      <span class="node-count-info" v-if="totalNodeCount > 0">
-        总节点数：{{ totalNodeCount.toLocaleString() }}
-      </span>
+      <button class="btn" @click="toggleExpandAll">
+        {{ expandAll ? "全部收起" : "全部展开" }}
+      </button>
+    </div>
+    <div class="metrics">
+      <span>数据生成：{{ generationTime.toFixed(2) }} ms</span>
+      <span>展开/收起耗时：{{ toggleTime.toFixed(2) }} ms</span>
     </div>
     <div class="tree-container">
       <div class="tree-shell">
         <VirtualTree
+          :key="treeKey"
           :data="treeData"
           :loading="isLoading"
-          :buffer="20"
+          :buffer="100"
           class="tree-scroll"
-          show-checkbox
-          @node-check="handleNodeCheck"
+          :default-expand-all="expandAll"
           @node-generated="handleDataGenerated"
         />
       </div>
@@ -29,23 +30,40 @@
 
 <script setup lang="ts">
   import { VirtualTree } from "@wxwzl/vue-virtual-tree";
-  import type { TreeNodeData } from "@wxwzl/vue-virtual-tree";
   import { useDemoTree } from "../composables/useDemoTree";
+  import { ref } from "vue";
+
+  const expandAll = ref(true);
+  const treeKey = ref(0);
+  const generationTime = ref(0);
+  const toggleTime = ref(0);
 
   const {
     treeData,
     isLoading,
-    nodeCount,
     totalNodeCount,
-    regenerateData,
-    handleCountChange,
+    regenerateData: originalRegenerateData,
     handleDataGenerated,
   } = useDemoTree({
-    initialCount: 5000,
+    initialCount: 100,
+    generatorOptions: {
+      depth: 3,
+      childrenPerNode: 100,
+      chunkSize: 10000,
+    },
   });
 
-  const handleNodeCheck = (data: TreeNodeData, info: any) => {
-    console.log("Node checked:", data, info);
+  const regenerateData = async () => {
+    const start = performance.now();
+    await originalRegenerateData();
+    generationTime.value = performance.now() - start;
+  };
+
+  const toggleExpandAll = () => {
+    const start = performance.now();
+    expandAll.value = !expandAll.value;
+    treeKey.value++;
+    toggleTime.value = performance.now() - start;
   };
 </script>
 
@@ -68,33 +86,10 @@
   }
 
   .control-panel {
-    margin-bottom: 16px;
     display: flex;
     align-items: center;
     gap: 12px;
     flex-wrap: wrap;
-  }
-
-  .control-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    color: #606266;
-  }
-
-  .control-label input {
-    width: 140px;
-    padding: 6px 10px;
-    border: 1px solid #dcdfe6;
-    border-radius: 4px;
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .control-label input:focus {
-    border-color: #409eff;
   }
 
   .btn {
@@ -114,7 +109,14 @@
   .node-count-info {
     font-size: 14px;
     color: #909399;
-    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .metrics {
+    display: flex;
+    gap: 16px;
+    font-size: 14px;
+    color: #606266;
   }
 
   .tree-container {

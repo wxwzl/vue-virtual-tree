@@ -16,7 +16,7 @@
       <div class="tree-shell">
         <VirtualTree
           :data="lazyTreeData"
-          :buffer="500"
+          :buffer="20"
           class="tree-scroll"
           lazy
           :load="handleLazyLoad"

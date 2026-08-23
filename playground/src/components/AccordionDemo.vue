@@ -23,7 +23,7 @@
         <VirtualTree
           :data="treeData"
           :loading="isLoading"
-          :buffer="500"
+          :buffer="20"
           class="tree-scroll"
           :accordion="true"
           @node-expand="handleNodeExpand"

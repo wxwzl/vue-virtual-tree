@@ -24,7 +24,7 @@
           :data="dragTreeData"
           :loading="isLoading || isDragReorganizing"
           class="tree-scroll"
-          :buffer="500"
+          :buffer="20"
           draggable
           @node-drag-start="handleDragStart"
           @node-drag-enter="handleDragEnter"

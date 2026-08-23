@@ -18,7 +18,7 @@
         <VirtualTree
           :data="treeData"
           :loading="isLoading"
-          :buffer="1000"
+          :buffer="100"
           class="tree-scroll"
           :default-expand-all="expandAll"
           @node-generated="handleDataGenerated"
