@@ -14,6 +14,18 @@ const createTestData = (): TreeNodeData[] => [
   },
 ];
 
+const createLargeTestData = (rootCount: number, childCount: number): TreeNodeData[] => {
+  const data: TreeNodeData[] = [];
+  for (let i = 1; i <= rootCount; i++) {
+    const children: TreeNodeData[] = [];
+    for (let j = 1; j <= childCount; j++) {
+      children.push({ id: `${i}-${j}`, label: `child ${i}-${j}` });
+    }
+    data.push({ id: `${i}`, label: `root ${i}`, children });
+  }
+  return data;
+};
+
 const setupUseTreeData = async (props: Partial<VirtualTreeProps> = {}) => {
   const emit = () => {};
   const result = useTreeData({ data: createTestData(), ...props }, emit as any);
@@ -49,5 +61,43 @@ describe("useTreeData descendant range", () => {
     const leaf = flatTree.value.find((n) => n.id === "1-1")!;
     expect(leaf.firstDescendantIndex).toBe(leaf.index);
     expect(leaf.lastDescendantIndex).toBe(leaf.index);
+  });
+
+  it("calculates descendant ranges correctly in async flattening path", async () => {
+    vi.useRealTimers();
+
+    // 3 roots with 2000 children each = 6003 nodes, triggers async path
+    const data = createLargeTestData(3, 2000);
+    const emit = () => {};
+    const { flatTree } = useTreeData({ data, defaultExpandAll: true }, emit as any);
+
+    // Wait for chunked async flattening to complete
+    for (let i = 0; i < 200; i++) {
+      if (flatTree.value.length >= 6003) break;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    await nextTick();
+
+    expect(flatTree.value.length).toBe(6003);
+
+    const root1 = flatTree.value.find((n) => n.id === "1")!;
+    const root2 = flatTree.value.find((n) => n.id === "2")!;
+    const root3 = flatTree.value.find((n) => n.id === "3")!;
+
+    expect(root1.index).toBe(0);
+    expect(root1.firstDescendantIndex).toBe(1);
+    expect(root1.lastDescendantIndex).toBe(2000);
+
+    expect(root2.index).toBe(2001);
+    expect(root2.firstDescendantIndex).toBe(2002);
+    expect(root2.lastDescendantIndex).toBe(4001);
+
+    expect(root3.index).toBe(4002);
+    expect(root3.firstDescendantIndex).toBe(4003);
+    expect(root3.lastDescendantIndex).toBe(6002);
+
+    const lastChild = flatTree.value.find((n) => n.id === "3-2000")!;
+    expect(lastChild.index).toBe(6002);
+    expect(lastChild.lastDescendantIndex).toBe(6002);
   });
 });

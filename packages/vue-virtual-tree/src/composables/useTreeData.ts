@@ -125,20 +125,22 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
     parentNode: FlatTreeNode | null = null,
     startIndex: number = 0,
     visible: boolean = true,
-    config?: TreePropsConfig
+    config?: TreePropsConfig,
+    targetContainer?: FlatTreeNode[],
+    targetMap?: Map<string | number, FlatTreeNode>
   ): {
     nodes: FlatTreeNode[];
     flatNodes: FlatTreeNode[];
     nodeMap: Map<string | number, FlatTreeNode>;
   } => {
-    const map = new Map<string | number, FlatTreeNode>();
+    const map = targetMap || new Map<string | number, FlatTreeNode>();
+    const container = targetContainer || [];
     function generateFlatNodes(
       nodes: TreeNodeData[],
       level: number = 0,
       parentNode: FlatTreeNode | null = null,
       startIndex: number = 0,
       visible: boolean = true,
-      container: FlatTreeNode[] = [],
       config?: TreePropsConfig
     ) {
       const result: FlatTreeNode[] = [];
@@ -178,7 +180,6 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
             flatNode,
             childStartIndex,
             isExpanded && visible,
-            container,
             config
           );
           flatNode.children = childNodes;
@@ -193,26 +194,152 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
       return { nodes: result, index: currentIndex - 1 };
     }
 
-    const container: FlatTreeNode[] = [];
     const { nodes: result } = generateFlatNodes(
       nodes,
       level,
       parentNode,
       startIndex,
       visible,
-      container,
       config
     );
     return { nodes: result, flatNodes: container, nodeMap: map };
   };
 
+  // 快速估算节点总数，超过 maxCount 时提前返回
+  const countNodes = (
+    nodes: TreeNodeData[],
+    config?: TreePropsConfig,
+    maxCount: number = 5000
+  ): number => {
+    let count = 0;
+    const stack: TreeNodeData[] = nodes.slice();
+    while (stack.length > 0) {
+      const node = stack.pop()!;
+      count++;
+      if (count > maxCount) return count;
+      const children = getNodeChildren(node, config);
+      for (let i = children.length - 1; i >= 0; i--) {
+        stack.push(children[i]);
+      }
+    }
+    return count;
+  };
+
+  interface FlattenFrame {
+    nodes: TreeNodeData[];
+    level: number;
+    parentNode: FlatTreeNode | null;
+    i: number;
+    result: FlatTreeNode[];
+  }
+
+  // 分片异步扁平化：超过阈值时按节点数分批处理，让出主线程
+  const flattenTreeAsync = (
+    nodes: TreeNodeData[],
+    level: number = 0,
+    parentNode: FlatTreeNode | null = null,
+    startIndex: number = 0,
+    _visible: boolean = true,
+    config?: TreePropsConfig,
+    chunkSize: number = 2000
+  ): Promise<{
+    nodes: FlatTreeNode[];
+    flatNodes: FlatTreeNode[];
+    nodeMap: Map<string | number, FlatTreeNode>;
+  }> => {
+    return new Promise((resolve) => {
+      const map = new Map<string | number, FlatTreeNode>();
+      const container: FlatTreeNode[] = [];
+      const rootResult: FlatTreeNode[] = [];
+      const stack: FlattenFrame[] = [];
+      let nextIndex = startIndex;
+
+      stack.push({
+        nodes,
+        level,
+        parentNode,
+        i: 0,
+        result: rootResult,
+      });
+
+      const processChunk = () => {
+        let batchCount = 0;
+        while (stack.length > 0 && batchCount < chunkSize) {
+          const frame = stack[stack.length - 1];
+          if (frame.i >= frame.nodes.length) {
+            stack.pop();
+            if (frame.parentNode) {
+              frame.parentNode.children = frame.result;
+              frame.parentNode.lastDescendantIndex = nextIndex - 1;
+              if (frame.result.length > 0) {
+                frame.parentNode.firstDescendantIndex = frame.result[0].index;
+              }
+            }
+            continue;
+          }
+
+          const node: TreeNodeData = frame.nodes[frame.i];
+          const id = getNodeId(node, config);
+          const children = getNodeChildren(node, config);
+          const isExpanded = expandedKeys.value.has(id);
+          const isLeaf = isLeafNode(node, config);
+          const index = nextIndex++;
+
+          const flatNode: FlatTreeNode = {
+            id,
+            data: node,
+            level: frame.level,
+            parentId: frame.parentNode?.id || null,
+            index,
+            isExpanded,
+            isDisabled: isNodeDisabled(node, config),
+            isLeaf,
+            isLoading: false,
+            isLoaded: false,
+            isChecked: false,
+            rawChildren: children.length > 0 ? children : undefined,
+            firstDescendantIndex: index,
+            lastDescendantIndex: index,
+          };
+
+          frame.result.push(flatNode);
+          container.push(flatNode);
+          map.set(id, flatNode);
+          frame.i++;
+          batchCount++;
+
+          if (children.length > 0) {
+            stack.push({
+              nodes: children,
+              level: frame.level + 1,
+              parentNode: flatNode,
+              i: 0,
+              result: [],
+            });
+          }
+        }
+
+        if (stack.length > 0) {
+          requestAnimationFrame(processChunk);
+        } else {
+          resolve({ nodes: rootResult, flatNodes: container, nodeMap: map });
+        }
+      };
+
+      processChunk();
+    });
+  };
+
   // 更新扁平化数据 - 优化大数据量的性能
   // 防抖更新标记
   let updatePending = false;
-  const updateFlatTree = () => {
+  const updateFlatTree = async () => {
     if (updatePending) return; // 如果已经有更新在等待中，跳过
     updatePending = true;
-    const { flatNodes, nodeMap } = flattenTree(rawData.value, 0, null, 0, true, props.props);
+    const shouldAsync = countNodes(rawData.value, props.props, 5000) > 5000;
+    const { flatNodes, nodeMap } = shouldAsync
+      ? await flattenTreeAsync(rawData.value, 0, null, 0, true, props.props)
+      : flattenTree(rawData.value, 0, null, 0, true, props.props);
     flatTree.value = flatNodes;
     flatNodeMap.value = nodeMap;
     initExpandedKeys();
@@ -284,11 +411,11 @@ export function useTreeData(props: VirtualTreeProps, emit: EmitFn<VirtualTreeEmi
     if (regenerateTimer) {
       clearTimeout(regenerateTimer);
     }
-    regenerateTimer = setTimeout(() => {
+    regenerateTimer = setTimeout(async () => {
       if (regenerateState.resetExpanded) {
         initExpandedKeys();
       }
-      updateFlatTree();
+      await updateFlatTree();
       if (regenerateState.resetChecked) {
         initNodeChecked();
       }
