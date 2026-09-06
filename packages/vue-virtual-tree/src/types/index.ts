@@ -106,6 +106,14 @@ export interface VirtualTreeProps {
   indent?: number | ((node: FlatTreeNode) => number);
   /** 是否显示加载状态 */
   loading?: boolean;
+  /**
+   * 固定行高模式（默认 false 动态行高）
+   * true 时使用 RecycleScroller：O(1) 滚动定位、无高度测量，大数据量快速滚动不白屏；
+   * 此时超长 label 不换行（省略号截断），行高恒等于 itemSize
+   */
+  fixedHeight?: boolean;
+  /** 虚拟滚动缓冲区（px），默认 500 */
+  buffer?: number;
 }
 
 /**

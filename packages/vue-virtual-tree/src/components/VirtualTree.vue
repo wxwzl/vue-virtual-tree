@@ -1,6 +1,7 @@
 <template>
   <div
     class="vue-virtual-tree"
+    :class="{ 'vue-virtual-tree--fixed': fixedHeight }"
     :style="{ height: typeof height === 'number' ? `${height}px` : height }"
     @click="handleTreeClick"
   >
@@ -16,11 +17,63 @@
       </slot>
     </template>
     <template v-else>
+      <!-- 固定行高模式：RecycleScroller O(1) 滚动定位，无测量开销，快速滚动不白屏 -->
+      <RecycleScroller
+        v-if="fixedHeight && data.length > 0"
+        ref="scrollerRef"
+        :items="visibleNodes"
+        :item-size="itemSize || 32"
+        :buffer="buffer"
+        key-field="id"
+        v-bind="$attrs"
+        class="vue-virtual-tree__scroller"
+      >
+        <template #default="{ item, index }">
+          <TreeNodeItem
+            :item="item"
+            :index="index"
+            :props="props.props"
+            :show-checkbox="showCheckbox"
+            :expand-on-click-node="expandOnClickNode"
+            :draggable="draggable"
+            :indent="props.indent"
+            :current-key="selectedKey"
+            :drop-type="
+              dragState.dropNode?.value?.id === item.id ? (dragState.dropType?.value ?? null) : null
+            "
+            :style="{ height: `${itemSize || 32}px`, overflow: 'hidden' }"
+            @drag-start="handleDragStart"
+            @drag-enter="handleDragEnter"
+            @drag-leave="handleDragLeave"
+            @drag-over="handleDragOver"
+            @drag-end="handleDragEnd"
+            @drop="handleDrop"
+          >
+            <template #default="slotProps">
+              <slot v-bind="slotProps"></slot>
+            </template>
+            <template #loading="slotProps">
+              <slot
+                name="loading"
+                v-bind="slotProps"
+              ></slot>
+            </template>
+            <template #icon="slotProps">
+              <slot
+                name="icon"
+                v-bind="slotProps"
+              ></slot>
+            </template>
+          </TreeNodeItem>
+        </template>
+      </RecycleScroller>
+      <!-- 动态行高模式：DynamicScroller 支持节点内容换行撑高 -->
       <DynamicScroller
-        v-if="data.length > 0"
-        ref="dynamicScrollerRef"
+        v-else-if="data.length > 0"
+        ref="scrollerRef"
         :items="visibleNodes"
         :min-item-size="itemSize || 32"
+        :buffer="buffer"
         v-bind="$attrs"
         class="vue-virtual-tree__scroller"
       >
@@ -32,9 +85,8 @@
             :size-dependencies="getNodeSizeDependencies(item)"
             class="vue-virtual-tree__item"
           >
-            <TreeNode
-              :key="item.id"
-              :node="item"
+            <TreeNodeItem
+              :item="item"
               :index="index"
               :props="props.props"
               :show-checkbox="showCheckbox"
@@ -54,86 +106,22 @@
               @drag-end="handleDragEnd"
               @drop="handleDrop"
             >
-              <template #default="{ node, data }">
-                <slot
-                  :node="node"
-                  :data="data"
-                ></slot>
+              <template #default="slotProps">
+                <slot v-bind="slotProps"></slot>
               </template>
-              <template #loading="{ node, data }">
+              <template #loading="slotProps">
                 <slot
                   name="loading"
-                  :node="node"
-                  :data="data"
-                >
-                  <!-- 默认loading图标 -->
-                  <svg
-                    class="vue-virtual-tree-node__loading-icon"
-                    viewBox="0 0 24 24"
-                    width="16"
-                    height="16"
-                  >
-                    <g transform="translate(12,12)">
-                      <!-- 轨道圆环 -->
-                      <circle
-                        cx="0"
-                        cy="0"
-                        r="8"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1"
-                        opacity="0.2"
-                      />
-                      <!-- 旋转的3个点 -->
-                      <g class="vue-virtual-tree-loading-dots">
-                        <circle
-                          cx="0"
-                          cy="-8"
-                          r="2"
-                          fill="currentColor"
-                        />
-                        <circle
-                          cx="6.928"
-                          cy="-4"
-                          r="2"
-                          fill="currentColor"
-                          opacity="0.7"
-                        />
-                        <circle
-                          cx="6.928"
-                          cy="4"
-                          r="2"
-                          fill="currentColor"
-                          opacity="0.4"
-                        />
-                      </g>
-                    </g>
-                  </svg>
-                </slot>
+                  v-bind="slotProps"
+                ></slot>
               </template>
-              <template #icon="{ node, data }">
+              <template #icon="slotProps">
                 <slot
                   name="icon"
-                  :node="node"
-                  :data="data"
-                >
-                  <!-- 默认图标 -->
-                  <span class="default-icon">
-                    <svg
-                      v-if="!node.isLeaf"
-                      viewBox="0 0 1024 1024"
-                      width="16"
-                      height="16"
-                    >
-                      <path
-                        d="M384 384l256 256-256 256z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  </span>
-                </slot>
+                  v-bind="slotProps"
+                ></slot>
               </template>
-            </TreeNode>
+            </TreeNodeItem>
           </DynamicScrollerItem>
         </template>
       </DynamicScroller>
@@ -151,8 +139,8 @@
 
 <script setup lang="ts">
   import { computed, nextTick, ref } from "vue";
-  import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller";
-  import TreeNode from "./TreeNode.vue";
+  import { DynamicScroller, DynamicScrollerItem, RecycleScroller } from "vue-virtual-scroller";
+  import TreeNodeItem from "./TreeNodeItem.vue";
   import type {
     VirtualTreeProps,
     VirtualTreeEmits,
@@ -191,6 +179,8 @@
     height: "100%",
     indent: 18,
     loading: false,
+    fixedHeight: false,
+    buffer: 500,
   });
 
   const emit = defineEmits<VirtualTreeEmits>();
@@ -221,24 +211,15 @@
     filter: filterNodes,
   } = useTreeData(props, emit);
 
-  const dynamicScrollerRef = ref<InstanceType<typeof DynamicScroller> | null>(null);
+  const scrollerRef = ref<InstanceType<typeof DynamicScroller> | null>(null);
 
   // 外部 loading 或内部大数据量分片初始化进行中时展示加载态
   const showLoading = computed(() => props.loading || initializing.value);
 
   // 计算节点高度依赖项，用于 DynamicScroller 重新计算高度
+  // 仅 label 会影响行高（长文本换行），精简依赖减少每个渲染节点的 watcher 数量
   const getNodeSizeDependencies = (item: FlatTreeNode) => {
-    // 包含所有可能影响节点高度的状态和数据
-    return [
-      item.data,
-      item.isExpanded,
-      item.isChecked,
-      item.isLoading,
-      item.isDisabled,
-      item.level,
-      // 如果节点数据中有 label，也包含进来，因为长文本可能换行
-      getNodeLabel(item.data, props.props),
-    ];
+    return [getNodeLabel(item.data, props.props)];
   };
 
   // 事件委托：从事件目标查找节点
@@ -591,8 +572,11 @@
     filter: (value: string) => {
       return filterNodes(value).then(() => {
         nextTick(() => {
-          dynamicScrollerRef.value?.scrollToItem(0);
-          dynamicScrollerRef.value?.forceUpdate();
+          scrollerRef.value?.scrollToItem(0);
+          // 仅 DynamicScroller 有 forceUpdate
+          if (typeof scrollerRef.value?.forceUpdate === "function") {
+            scrollerRef.value.forceUpdate();
+          }
         });
       });
     },
@@ -753,7 +737,7 @@
         }
 
         // 调用 DynamicScroller 的 scrollToItem 方法
-        if (dynamicScrollerRef.value) {
+        if (scrollerRef.value) {
           const align = options?.align || "top";
           const offset = options?.offset || 0;
 
@@ -765,7 +749,7 @@
             bottom: "end",
           };
 
-          const scroller = dynamicScrollerRef.value;
+          const scroller = scrollerRef.value;
           if (scroller && typeof scroller.scrollToItem === "function") {
             if (offset !== 0) {
               // 如果提供了 offset，使用三个参数
@@ -820,6 +804,15 @@
     font-size: 14px;
   }
 
+  /* 固定行高模式：禁止换行，超长文本省略，保证行高恒定 */
+  .vue-virtual-tree--fixed {
+    .vue-virtual-tree-node__label {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
   .vue-virtual-tree__loading {
     display: flex;
     align-items: center;
@@ -836,45 +829,5 @@
   .vue-virtual-tree-loading-text {
     font-size: 14px;
     color: #909399;
-  }
-
-  .vue-virtual-tree-node {
-    &.is-expanded .vue-virtual-tree-node__expand-icon .default-icon {
-      transform: rotate(90deg);
-    }
-
-    &.is-loading {
-      .vue-virtual-tree-node__expand-icon {
-        color: #409eff;
-      }
-    }
-
-    &__loading-icon {
-      animation: vue-virtual-tree-loading-rotate 1.5s linear infinite;
-    }
-
-    &__loading-dots {
-      animation: vue-virtual-tree-loading-dots-rotate 1.5s linear infinite;
-    }
-
-    @keyframes vue-virtual-tree-loading-rotate {
-      0% {
-        transform: rotate(0deg);
-      }
-
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-
-    @keyframes vue-virtual-tree-loading-dots-rotate {
-      0% {
-        transform: rotate(0deg);
-      }
-
-      100% {
-        transform: rotate(360deg);
-      }
-    }
   }
 </style>

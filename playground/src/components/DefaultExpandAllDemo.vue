@@ -20,6 +20,8 @@
           :loading="isLoading"
           :buffer="1000"
           class="tree-scroll"
+          :item-size="32"
+          fixed-height
           :default-expand-all="expandAll"
           @node-generated="handleDataGenerated"
         />

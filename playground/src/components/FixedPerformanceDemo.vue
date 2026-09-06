@@ -1,13 +1,13 @@
 <template>
   <div class="demo-section">
-    <h2>100 万节点性能测试（动态高度）</h2>
+    <h2>100 万节点性能测试（固定高度）</h2>
     <div class="control-panel">
       <span class="node-count-info">总节点数：{{ totalNodeCount.toLocaleString() }}</span>
       <button class="btn" @click="regenerateData">重新生成</button>
       <button class="btn" @click="toggleExpandAll">
         {{ expandAll ? "全部收起" : "全部展开" }}
       </button>
-      <RouterLink class="btn btn-link" to="/performance-fixed">切换到固定高度版本</RouterLink>
+      <RouterLink class="btn btn-link" to="/performance">切换到动态高度版本</RouterLink>
     </div>
     <div class="metrics">
       <span>数据生成：{{ generationTime.toFixed(2) }} ms</span>
@@ -15,7 +15,8 @@
       <span>展开/收起耗时：{{ toggleTime.toFixed(2) }} ms</span>
     </div>
     <p class="tip">
-      每 7 个节点插入一条超长文本（换行撑高行），验证动态高度（DynamicScroller）模式。
+      fixed-height 模式：行高恒定（itemSize=32），超长文本省略号截断； RecycleScroller O(1)
+      滚动定位，拖动滚动条快速滚动不白屏。
     </p>
     <div class="tree-container">
       <div class="tree-shell">
@@ -23,7 +24,8 @@
           :key="treeKey"
           :data="treeData"
           :loading="isLoading"
-          :buffer="500"
+          :item-size="32"
+          fixed-height
           class="tree-scroll"
           :default-expand-all="expandAll"
           @node-generated="handleGenerated"
@@ -45,7 +47,7 @@
   const toggleTime = ref(0);
 
   // 1 万个根 × 10 个子 × 10 个孙 = 1,110,000 节点
-  // decorator：每 7 个节点给一条超长 label，制造行高差异
+  // decorator：每 7 个节点给一条超长 label，验证固定高度下的省略截断
   const {
     treeData,
     isLoading,
@@ -60,7 +62,7 @@
       chunkSize: 10000,
       decorator: (node, ctx) => {
         if (ctx.index % 7 === 0) {
-          node.label = `${node.label} —— 这是一段用于撑高行高的超长文本内容，验证动态高度模式下的换行效果`;
+          node.label = `${node.label} —— 这是一段超长文本内容，固定高度模式下会被省略号截断而不会撑高行`;
         }
       },
     },
@@ -138,6 +140,15 @@
     background-color: #66b1ff;
   }
 
+  .btn-link {
+    text-decoration: none;
+    background-color: #67c23a;
+  }
+
+  .btn-link:hover {
+    background-color: #85ce61;
+  }
+
   .node-count-info {
     font-size: 14px;
     color: #909399;
@@ -150,6 +161,11 @@
     font-size: 14px;
     color: #606266;
     flex-wrap: wrap;
+  }
+
+  .tip {
+    font-size: 13px;
+    color: #909399;
   }
 
   .tree-container {
@@ -170,19 +186,5 @@
 
   .tree-scroll {
     flex: 1;
-  }
-
-  .btn-link {
-    text-decoration: none;
-    background-color: #67c23a;
-  }
-
-  .btn-link:hover {
-    background-color: #85ce61;
-  }
-
-  .tip {
-    font-size: 13px;
-    color: #909399;
   }
 </style>

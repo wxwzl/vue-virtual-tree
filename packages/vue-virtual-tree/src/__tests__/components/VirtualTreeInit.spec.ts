@@ -227,6 +227,31 @@ describe("VirtualTree - 大数据量初始化", () => {
     wrapper.unmount();
   }, 20000);
 
+  it("固定高度模式（fixed-height）使用 RecycleScroller 渲染", async () => {
+    const data: TreeNodeData[] = [
+      { id: "1", label: "甲", children: [{ id: "1-1", label: "甲-1" }] },
+      { id: "2", label: "乙" },
+    ];
+    const wrapper = mount(VirtualTree, {
+      props: { data, height: 400, fixedHeight: true, itemSize: 32 },
+    });
+    await waitForGenerated(wrapper);
+
+    // RecycleScroller 容器存在，节点行内高度固定为 itemSize
+    expect(wrapper.find(".vue-recycle-scroller").exists()).toBe(true);
+    const firstNode = wrapper.find(".vue-virtual-tree-node");
+    expect(firstNode.exists()).toBe(true);
+
+    const vm = wrapper.vm as unknown as {
+      getNode: (k: string) => { key: string } | null;
+      scrollToNode: (k: string) => void;
+    };
+    expect(vm.getNode("1-1")).toBeTruthy();
+    // 固定模式下 scrollToNode 不抛错
+    expect(() => vm.scrollToNode("2")).not.toThrow();
+    wrapper.unmount();
+  }, 20000);
+
   it("remove 后清理已删除节点的勾选状态", async () => {
     const data: TreeNodeData[] = [
       { id: "1", label: "甲" },

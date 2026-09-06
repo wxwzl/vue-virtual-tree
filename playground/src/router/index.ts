@@ -101,7 +101,13 @@ export const demoRoutes: RouteRecordRaw[] = [
     path: "/performance",
     name: "PerformanceDemo",
     component: () => import("../components/PerformanceDemo.vue"),
-    meta: { title: "100 万节点性能测试" },
+    meta: { title: "100 万节点性能测试（动态高度）" },
+  },
+  {
+    path: "/performance-fixed",
+    name: "FixedPerformanceDemo",
+    component: () => import("../components/FixedPerformanceDemo.vue"),
+    meta: { title: "100 万节点性能测试（固定高度）" },
   },
   {
     path: "/dynamic-data",
