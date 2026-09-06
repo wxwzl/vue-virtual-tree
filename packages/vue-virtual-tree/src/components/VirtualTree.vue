@@ -4,10 +4,10 @@
     :style="{ height: typeof height === 'number' ? `${height}px` : height }"
     @click="handleTreeClick"
   >
-    <template v-if="loading">
+    <template v-if="showLoading">
       <slot name="tree-loading">
         <div
-          v-if="loading"
+          v-if="showLoading"
           class="vue-virtual-tree__loading"
         >
           <!-- 默认loading -->
@@ -150,7 +150,7 @@
 </template>
 
 <script setup lang="ts">
-  import { nextTick, ref } from "vue";
+  import { computed, nextTick, ref } from "vue";
   import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller";
   import TreeNode from "./TreeNode.vue";
   import type {
@@ -199,6 +199,8 @@
   const {
     visibleNodes,
     rawData,
+    initializing,
+    replaceNode,
     getNodeData,
     getFlatNode,
     regenerateFlatTree,
@@ -220,6 +222,9 @@
   } = useTreeData(props, emit);
 
   const dynamicScrollerRef = ref<InstanceType<typeof DynamicScroller> | null>(null);
+
+  // 外部 loading 或内部大数据量分片初始化进行中时展示加载态
+  const showLoading = computed(() => props.loading || initializing.value);
 
   // 计算节点高度依赖项，用于 DynamicScroller 重新计算高度
   const getNodeSizeDependencies = (item: FlatTreeNode) => {
@@ -686,6 +691,9 @@
         node[childrenKey] = data;
         regenerateFlatTree();
       }
+    },
+    replace: (data: TreeNodeData, key: string | number) => {
+      replaceNode(data, key);
     },
     scrollToNode: (
       key: string | number | TreeNodeData,

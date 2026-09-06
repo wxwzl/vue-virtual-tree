@@ -223,6 +223,12 @@ export interface VirtualTreeMethods {
   insertAfter: (data: TreeNodeData, key: string | number) => void;
   /** 更新节点的子节点（懒加载） */
   updateKeyChildren: (key: string | number, data: TreeNodeData[]) => void;
+  /**
+   * 替换指定节点的数据
+   * - 新数据不包含 children 时保留原子树；包含 children 时整体替换子树
+   * - 新数据 key 与原 key 不同时，自动迁移展开/勾选/当前选中状态
+   */
+  replace: (data: TreeNodeData, key: string | number) => void;
   /** 滚动到指定节点 */
   scrollToNode: (
     key: string | number | TreeNodeData,

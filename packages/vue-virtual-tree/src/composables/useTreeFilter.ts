@@ -1,4 +1,4 @@
-import { ref, type Ref } from "vue";
+import { ref, shallowReactive, type Ref } from "vue";
 import type { VirtualTreeProps, FlatTreeNode } from "../types";
 import { getNodeLabel } from "../utils/tree";
 
@@ -62,16 +62,20 @@ export function useTreeFilter(
   expandedKeys: Ref<Set<string | number>>,
   setVisibleNodes: (nodes: FlatTreeNode[]) => void
 ) {
+  // 迭代重建可见节点，避免深层树递归栈溢出
   const rebuildVisibleNodes = () => {
     const roots = flatTree.value.filter((node) => node.parentId === null);
     const result: FlatTreeNode[] = [];
-    const traverse = (node: FlatTreeNode) => {
+    const stack: FlatTreeNode[] = [...roots].reverse();
+    while (stack.length > 0) {
+      const node = stack.pop()!;
       result.push(node);
       if (node.isExpanded && node.children) {
-        node.children.forEach((child) => traverse(child));
+        for (let i = node.children.length - 1; i >= 0; i--) {
+          stack.push(node.children[i]);
+        }
       }
-    };
-    roots.forEach((root) => traverse(root));
+    }
     setVisibleNodes(result);
   };
 
@@ -85,12 +89,13 @@ export function useTreeFilter(
   };
   /**
    * 克隆节点（浅拷贝基本属性，children 需要重新构造）
+   * shallowReactive 保持节点字段响应式，与扁平化生成的节点行为一致
    */
   const cloneNode = (node: FlatTreeNode): FlatTreeNode => {
-    return {
+    return shallowReactive({
       ...node,
       children: undefined, // children 需要重新构造
-    };
+    }) as FlatTreeNode;
   };
 
   const filterText = ref("");

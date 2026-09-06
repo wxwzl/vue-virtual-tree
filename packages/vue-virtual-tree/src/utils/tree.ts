@@ -12,43 +12,57 @@ const DEFAULT_PROPS: Required<TreePropsConfig> = {
 };
 
 /**
- * 获取节点 ID
+ * 解析字段映射配置（在批量遍历前只解析一次，避免循环中反复 spread 分配对象）
  */
-export function getNodeId(node: TreeNodeData, props: TreePropsConfig = {}): string | number {
-  const config = { ...DEFAULT_PROPS, ...props };
+export function resolveTreeConfig(props: TreePropsConfig = {}): Required<TreePropsConfig> {
+  return { ...DEFAULT_PROPS, ...props };
+}
+
+/**
+ * 获取节点 ID（已解析配置，供热路径循环使用）
+ */
+export function getNodeIdByConfig(
+  node: TreeNodeData,
+  config: Required<TreePropsConfig>
+): string | number {
   return node[config.id] ?? node.id ?? "";
 }
 
 /**
- * 获取节点标签
+ * 获取节点标签（已解析配置）
  */
-export function getNodeLabel(node: TreeNodeData, props: TreePropsConfig = {}): string {
-  const config = { ...DEFAULT_PROPS, ...props };
+export function getNodeLabelByConfig(
+  node: TreeNodeData,
+  config: Required<TreePropsConfig>
+): string {
   return node[config.label] ?? node.label ?? "";
 }
 
 /**
- * 获取子节点
+ * 获取子节点（已解析配置）
  */
-export function getNodeChildren(node: TreeNodeData, props: TreePropsConfig = {}): TreeNodeData[] {
-  const config = { ...DEFAULT_PROPS, ...props };
+export function getNodeChildrenByConfig(
+  node: TreeNodeData,
+  config: Required<TreePropsConfig>
+): TreeNodeData[] {
   return node[config.children] ?? node.children ?? [];
 }
 
 /**
- * 判断节点是否禁用
+ * 判断节点是否禁用（已解析配置）
  */
-export function isNodeDisabled(node: TreeNodeData, props: TreePropsConfig = {}): boolean {
-  const config = { ...DEFAULT_PROPS, ...props };
+export function isNodeDisabledByConfig(
+  node: TreeNodeData,
+  config: Required<TreePropsConfig>
+): boolean {
   return node[config.disabled] ?? node.disabled ?? false;
 }
 
 /**
- * 判断是否为叶子节点
+ * 判断是否为叶子节点（已解析配置）
  */
-export function isLeafNode(node: TreeNodeData, props: TreePropsConfig = {}): boolean {
-  const config = { ...DEFAULT_PROPS, ...props };
-  const children = getNodeChildren(node, props);
+export function isLeafNodeByConfig(node: TreeNodeData, config: Required<TreePropsConfig>): boolean {
+  const children = getNodeChildrenByConfig(node, config);
   if (children.length > 0) {
     return false;
   }
@@ -59,7 +73,43 @@ export function isLeafNode(node: TreeNodeData, props: TreePropsConfig = {}): boo
 }
 
 /**
- * 递归遍历树节点
+ * 获取节点 ID
+ */
+export function getNodeId(node: TreeNodeData, props: TreePropsConfig = {}): string | number {
+  return getNodeIdByConfig(node, resolveTreeConfig(props));
+}
+
+/**
+ * 获取节点标签
+ */
+export function getNodeLabel(node: TreeNodeData, props: TreePropsConfig = {}): string {
+  return getNodeLabelByConfig(node, resolveTreeConfig(props));
+}
+
+/**
+ * 获取子节点
+ */
+export function getNodeChildren(node: TreeNodeData, props: TreePropsConfig = {}): TreeNodeData[] {
+  return getNodeChildrenByConfig(node, resolveTreeConfig(props));
+}
+
+/**
+ * 判断节点是否禁用
+ */
+export function isNodeDisabled(node: TreeNodeData, props: TreePropsConfig = {}): boolean {
+  return isNodeDisabledByConfig(node, resolveTreeConfig(props));
+}
+
+/**
+ * 判断是否为叶子节点
+ */
+export function isLeafNode(node: TreeNodeData, props: TreePropsConfig = {}): boolean {
+  return isLeafNodeByConfig(node, resolveTreeConfig(props));
+}
+
+/**
+ * 迭代遍历树节点（替代递归，避免深层树栈溢出）
+ * callback 返回 false 时跳过该节点的子树
  */
 export function traverseTree(
   nodes: TreeNodeData[],
@@ -67,14 +117,20 @@ export function traverseTree(
   parent: TreeNodeData | null = null,
   props: TreePropsConfig = {}
 ): void {
-  for (const node of nodes) {
-    const result = callback(node, parent);
+  const config = resolveTreeConfig(props);
+  const stack: { node: TreeNodeData; parent: TreeNodeData | null }[] = [];
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    stack.push({ node: nodes[i], parent });
+  }
+  while (stack.length > 0) {
+    const { node, parent: currentParent } = stack.pop()!;
+    const result = callback(node, currentParent);
     if (result === false) {
       continue;
     }
-    const children = getNodeChildren(node, props);
-    if (children.length > 0) {
-      traverseTree(children, callback, node, props);
+    const children = getNodeChildrenByConfig(node, config);
+    for (let i = children.length - 1; i >= 0; i--) {
+      stack.push({ node: children[i], parent: node });
     }
   }
 }
@@ -121,10 +177,11 @@ export function getAllKeys(
   props: TreePropsConfig = {}
 ): (string | number)[] {
   const keys: (string | number)[] = [];
+  const config = resolveTreeConfig(props);
   traverseTree(
     nodes,
     (node) => {
-      keys.push(getNodeId(node, props));
+      keys.push(getNodeIdByConfig(node, config));
     },
     null,
     props
@@ -140,11 +197,12 @@ export function getLeafKeys(
   props: TreePropsConfig = {}
 ): (string | number)[] {
   const keys: (string | number)[] = [];
+  const config = resolveTreeConfig(props);
   traverseTree(
     nodes,
     (node) => {
-      if (isLeafNode(node, props)) {
-        keys.push(getNodeId(node, props));
+      if (isLeafNodeByConfig(node, config)) {
+        keys.push(getNodeIdByConfig(node, config));
       }
     },
     null,
