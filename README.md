@@ -4,7 +4,7 @@
 
 ## 特性
 
-- ⚡️ **虚拟滚动** - 支持大量数据的高性能渲染
+- ⚡️ **虚拟滚动** - 支持百万级节点的高性能渲染（分片初始化，主线程不卡顿）
 - 🌳 **完整树功能** - 展开/折叠、选择、过滤、拖拽等
 - 🎨 **Element Plus 风格** - API 设计与 Element Plus Tree 保持一致
 - 📦 **TypeScript** - 完整的类型支持
@@ -138,6 +138,8 @@ pnpm add @wxwzl/vue-virtual-tree vue-virtual-scroller@next
 | height | 虚拟滚动容器高度 | `number \| string` | `'100%'` |
 | indent | 每一级节点的缩进值，支持数字或函数（函数入参为 `node: FlatTreeNode`） | `number \| (node) => number` | `18` |
 | loading | 是否显示加载状态 | `boolean` | `false` |
+| fixed-height | 固定行高模式。`true` 时使用 RecycleScroller：O(1) 滚动定位、无高度测量，大数据量下快速滚动不白屏；此时超长 label 不换行（省略号截断），行高恒等于 `item-size` | `boolean` | `false` |
+| buffer | 虚拟滚动缓冲区（px） | `number` | `500` |
 
 ### Events
 
@@ -157,24 +159,43 @@ pnpm add @wxwzl/vue-virtual-tree vue-virtual-scroller@next
 
 ### Methods
 
-| 方法名            | 说明                       | 参数                               |
-| ----------------- | -------------------------- | ---------------------------------- |
-| getCheckedNodes   | 获取选中的节点             | `(leafOnly?, includeHalfChecked?)` |
-| getCheckedKeys    | 获取选中的节点 key         | `(leafOnly?)`                      |
-| setCheckedNodes   | 设置选中的节点             | `(nodes, leafOnly?)`               |
-| setCheckedKeys    | 设置选中的节点 key         | `(keys, leafOnly?)`                |
-| getCurrentNode    | 获取当前选中节点           | -                                  |
-| setCurrentNode    | 设置当前选中节点           | `(node)`                           |
-| getCurrentKey     | 获取当前选中节点的 key     | -                                  |
-| setCurrentKey     | 设置当前选中节点的 key     | `(key)`                            |
-| filter            | 过滤节点                   | `(value)`                          |
-| getNode           | 根据 key 获取节点          | `(key)`                            |
-| remove            | 删除节点                   | `(key)`                            |
-| append            | 追加节点                   | `(data, parentKey?)`               |
-| insertBefore      | 在节点前插入               | `(data, key)`                      |
-| insertAfter       | 在节点后插入               | `(data, key)`                      |
-| updateKeyChildren | 更新节点的子节点（懒加载） | `(key, data)`                      |
-| scrollToNode      | 滚动到指定节点             | `(key, options?)`                  |
+| 方法名            | 说明                           | 参数                               |
+| ----------------- | ------------------------------ | ---------------------------------- |
+| getCheckedNodes   | 获取选中的节点                 | `(leafOnly?, includeHalfChecked?)` |
+| getCheckedKeys    | 获取选中的节点 key             | `(leafOnly?)`                      |
+| setCheckedNodes   | 设置选中的节点                 | `(nodes, leafOnly?)`               |
+| setCheckedKeys    | 设置选中的节点 key             | `(keys, leafOnly?)`                |
+| getCurrentNode    | 获取当前选中节点               | -                                  |
+| setCurrentNode    | 设置当前选中节点               | `(node)`                           |
+| getCurrentKey     | 获取当前选中节点的 key         | -                                  |
+| setCurrentKey     | 设置当前选中节点的 key         | `(key)`                            |
+| filter            | 过滤节点                       | `(value)`                          |
+| getNode           | 根据 key 获取节点              | `(key)`                            |
+| remove            | 删除节点                       | `(key)`                            |
+| append            | 追加节点                       | `(data, parentKey?)`               |
+| insertBefore      | 在节点前插入                   | `(data, key)`                      |
+| insertAfter       | 在节点后插入                   | `(data, key)`                      |
+| updateKeyChildren | 更新节点的子节点（懒加载）     | `(key, data)`                      |
+| replace           | 替换指定节点的数据（详见下文） | `(data, key)`                      |
+| scrollToNode      | 滚动到指定节点                 | `(key, options?)`                  |
+
+#### replace 方法说明
+
+`replace(data, key)` 用于**节点级局部更新**，替换指定节点的数据：
+
+- `data` 中**不包含** `children` 时：保留原子树，原地更新节点数据（O(1) 视图刷新，不重建整树）
+- `data` 中**包含** `children` 时：整体替换该节点的子树（走全量重建）
+- 新数据的 key 与原 key 不同时：自动迁移该节点的展开 / 勾选 / 半选 / 当前选中状态
+
+```ts
+const treeRef = ref();
+
+// 仅更新 label，保留子树
+treeRef.value.replace({ id: 1, label: "新名称" }, 1);
+
+// 替换子树
+treeRef.value.replace({ id: 1, label: "新名称", children: [{ id: 11, label: "子节点" }] }, 1);
+```
 
 ### Slots
 
@@ -185,6 +206,19 @@ pnpm add @wxwzl/vue-virtual-tree vue-virtual-scroller@next
 | tree-loading | 整个树的加载状态   | -                |
 | loading      | 节点懒加载时的状态 | `{ node, data }` |
 | icon         | 自定义节点图标     | `{ node, data }` |
+
+## 大数据量与性能
+
+组件针对百万级节点做了专项优化：
+
+- **分片初始化**：扁平化按 8ms 时间片分批执行并让出主线程，初始化期间页面保持可交互（会短暂显示加载状态），百万节点不卡顿
+- **O(n) 勾选状态**：父子关联勾选基于扁平数组一次倒序遍历完成，无 O(n²) 的元数据预计算
+- **两种滚动模式**：
+  - 默认动态行高（DynamicScroller）：支持超长 label 自动换行，适合中小数据量
+  - `fixed-height` 固定行高（RecycleScroller）：O(1) 滚动定位、无高度测量，超大数据量下快速拖拽滚动条不白屏，配合 `item-size` 指定行高
+- **局部更新**：优先使用 `append` / `remove` / `insertBefore` / `insertAfter` / `replace` / `updateKeyChildren` 方法做运行时数据变更，避免整树重建
+
+> 注意：`data` prop 采用浅监听（数组引用变化才触发重建）。原地修改数组或节点字段不会刷新视图，请改用上述命令式方法，或整体替换 `data` 数组。
 
 ## 开发
 
