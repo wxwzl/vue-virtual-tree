@@ -1,7 +1,6 @@
 <template>
   <TreeNode
     :node="item"
-    :index="index"
     :props="props"
     :show-checkbox="showCheckbox"
     :expand-on-click-node="expandOnClickNode"
@@ -103,7 +102,6 @@
    */
   interface TreeNodeItemProps {
     item: FlatTreeNode;
-    index: number;
     props?: TreePropsConfig;
     showCheckbox?: boolean;
     expandOnClickNode?: boolean;

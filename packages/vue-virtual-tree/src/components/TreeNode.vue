@@ -14,7 +14,6 @@
     :style="{ paddingLeft: `${node.level * indent}px` }"
     :draggable="draggable && !node.isDisabled"
     :data-node-id="node.id"
-    :data-node-index="index"
     @dragstart="handleDragStart"
     @dragenter="handleDragEnter"
     @dragleave="handleDragLeave"
@@ -74,7 +73,6 @@
   interface TreeNodeProps {
     node: FlatTreeNode;
     props?: TreePropsConfig;
-    index?: number;
     showCheckbox?: boolean;
     expandOnClickNode?: boolean;
     draggable?: boolean;

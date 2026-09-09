@@ -28,10 +28,9 @@
         v-bind="$attrs"
         class="vue-virtual-tree__scroller"
       >
-        <template #default="{ item, index }">
+        <template #default="{ item }">
           <TreeNodeItem
             :item="item"
-            :index="index"
             :props="props.props"
             :show-checkbox="showCheckbox"
             :expand-on-click-node="expandOnClickNode"
@@ -87,7 +86,6 @@
           >
             <TreeNodeItem
               :item="item"
-              :index="index"
               :props="props.props"
               :show-checkbox="showCheckbox"
               :expand-on-click-node="expandOnClickNode"
@@ -150,6 +148,7 @@
     TreeNodeInstance,
   } from "../types";
   import { useTreeData } from "../composables/useTreeData";
+  import { findVisibleNodeIndex } from "../composables/useTreeExpand";
   import {
     getNodeId,
     findNodeByKey,
@@ -236,18 +235,12 @@
     }
 
     const nodeId = nodeElement.getAttribute("data-node-id");
-    const nodeIndex = nodeElement.getAttribute("data-node-index");
     if (!nodeId) {
       return null;
     }
     // 尝试解析为 number 或 string
     const id = isNaN(Number(nodeId)) ? nodeId : Number(nodeId);
-    const index = isNaN(Number(nodeIndex)) ? undefined : Number(nodeIndex);
-    const flatNode = getFlatNode(id);
-    if (flatNode) {
-      flatNode.visibleIndex = index;
-    }
-    return flatNode;
+    return getFlatNode(id);
   };
 
   // 事件委托：树容器点击事件（只代理 click 事件）
@@ -729,8 +722,8 @@
         // 等待 DOM 更新完成
         await nextTick();
 
-        // 查找节点在 visibleNodes 中的索引
-        const index = visibleNodes.value.findIndex((node) => node.id === targetKey);
+        // 二分查找节点在 visibleNodes 中的索引（visibleNodes 按扁平 index 有序）
+        const index = findVisibleNodeIndex(visibleNodes.value, flatNode.index);
         if (index === -1) {
           console.warn(`[VirtualTree] Node with key "${targetKey}" is not visible`);
           return;

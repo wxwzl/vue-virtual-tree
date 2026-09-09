@@ -65,7 +65,6 @@
 - ✅ 使用 `slice + concat` 替代 `splice + spread`，避免中间数组和元素移动开销
 - ✅ 批量更新 `visibleIndex`，只更新受影响的节点范围
 - ✅ 使用迭代替代递归，避免栈溢出
-- ✅ 新增 `batchToggleNodes` API，合并多次操作为单次数组操作
 
 **实现详情**:
 
@@ -264,7 +263,6 @@ if (useWorker) {
 5. ✅ **已完成**: 优化 #3 - useTreeExpand 数组操作优化
    - 使用 `slice + concat` 替代 `splice + spread`
    - 批量更新 `visibleIndex`，减少响应式触发
-   - 新增 `batchToggleNodes` API 支持批量操作
 6. ✅ **已完成**: 优化 #4 - useTreeExpand 递归优化
    - 使用迭代替代递归，避免栈溢出
    - 支持任意深度树结构

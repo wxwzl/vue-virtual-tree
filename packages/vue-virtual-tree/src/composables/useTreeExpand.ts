@@ -32,16 +32,6 @@ const collectVisibleDescendants = (parent: FlatTreeNode): FlatTreeNode[] => {
 };
 
 /**
- * 批量更新节点可见索引
- * 避免在循环中逐个更新，减少响应式触发次数
- */
-const batchUpdateVisibleIndex = (nodes: FlatTreeNode[], startIndex: number): void => {
-  for (let i = startIndex; i < nodes.length; i++) {
-    nodes[i].visibleIndex = i;
-  }
-};
-
-/**
  * 在有序的 visibleNodes 中根据节点 index 找到对应的数组下标（不存在返回 -1）
  * 使用二分查找，O(log n) 复杂度
  */
@@ -77,8 +67,7 @@ export function findVisibleNodeIndex(visibleNodes: FlatTreeNode[], targetIndex: 
  * 主要优化点：
  * 1. 使用迭代替代递归，避免深层树栈溢出
  * 2. 使用数组拼接替代 splice + spread，减少中间数组创建和 GC 压力
- * 3. 批量更新 visibleIndex，减少响应式触发次数
- * 4. 使用二分查找定位节点，O(log n) 复杂度
+ * 3. 使用二分查找定位节点，O(log n) 复杂度
  */
 export function useTreeExpand(
   props: VirtualTreeProps,
@@ -115,12 +104,11 @@ export function useTreeExpand(
    *   - 对于大数据量，性能提升 5-10x
    */
   const expandVisibleNode = (node: FlatTreeNode) => {
-    // 每次操作前强制重新查找 visibleIndex
-    // 因为其他操作（如手风琴模式的折叠）可能已经修改了 visibleNodes 数组
-    node.visibleIndex = findVisibleNodeIndex(visibleNodes.value, node.index);
+    // 每次操作前重新二分定位，因为其他操作（如手风琴模式的折叠）可能已经修改了 visibleNodes 数组
+    const visibleIndex = findVisibleNodeIndex(visibleNodes.value, node.index);
 
     // 如果节点不在可见列表中，无法展开
-    if (typeof node.visibleIndex !== "number" || node.visibleIndex === -1) {
+    if (visibleIndex === -1) {
       return;
     }
 
@@ -130,15 +118,12 @@ export function useTreeExpand(
       return;
     }
 
-    const insertIndex = node.visibleIndex + 1;
+    const insertIndex = visibleIndex + 1;
 
     // 使用 slice + concat 替代 splice + spread，避免中间数组
     visibleNodes.value = visibleNodes.value
       .slice(0, insertIndex)
       .concat(descendants, visibleNodes.value.slice(insertIndex));
-
-    // 批量更新 visibleIndex，只更新受影响的节点
-    batchUpdateVisibleIndex(visibleNodes.value, insertIndex);
   };
 
   /**
@@ -153,15 +138,15 @@ export function useTreeExpand(
    *   - 无需移动元素，O(1) + O(n-k) 复杂度
    */
   const collapseVisibleNode = (node: FlatTreeNode) => {
-    // 每次操作前强制重新查找 visibleIndex
-    node.visibleIndex = findVisibleNodeIndex(visibleNodes.value, node.index);
+    // 每次操作前重新二分定位
+    const visibleIndex = findVisibleNodeIndex(visibleNodes.value, node.index);
 
     // 如果节点不在可见列表中，无法折叠
-    if (typeof node.visibleIndex !== "number" || node.visibleIndex === -1) {
+    if (visibleIndex === -1) {
       return;
     }
 
-    const startIndex = node.visibleIndex + 1;
+    const startIndex = visibleIndex + 1;
     const descendants = collectVisibleDescendants(node);
     if (descendants.length === 0) {
       return;
@@ -173,14 +158,6 @@ export function useTreeExpand(
     visibleNodes.value = visibleNodes.value
       .slice(0, startIndex)
       .concat(visibleNodes.value.slice(endIndex));
-
-    // 批量更新 visibleIndex
-    batchUpdateVisibleIndex(visibleNodes.value, startIndex);
-
-    // 清除被删除节点的 visibleIndex
-    descendants.forEach((desc) => {
-      desc.visibleIndex = undefined;
-    });
   };
 
   /**
@@ -254,84 +231,11 @@ export function useTreeExpand(
     }
   };
 
-  /**
-   * 批量展开/折叠多个节点
-   * 优化：合并多次数组操作为单次操作
-   */
-  const batchToggleNodes = (nodes: FlatTreeNode[], expand: boolean) => {
-    if (nodes.length === 0) {
-      return;
-    }
-
-    // 收集所有需要展开/折叠的节点
-    const allNodes: FlatTreeNode[] = [];
-    nodes.forEach((node) => {
-      if (expand && !node.isExpanded) {
-        node.isExpanded = true;
-        expandedKeys.value.add(node.id);
-        allNodes.push(node);
-      } else if (!expand && node.isExpanded) {
-        node.isExpanded = false;
-        expandedKeys.value.delete(node.id);
-        allNodes.push(node);
-      }
-    });
-
-    if (allNodes.length === 0) {
-      return;
-    }
-
-    // 一次性重建 visibleNodes
-    if (expand) {
-      // 展开模式：收集所有后代并合并
-      let allDescendants: FlatTreeNode[] = [];
-      allNodes.forEach((node) => {
-        if (typeof node.visibleIndex !== "number") {
-          node.visibleIndex = findVisibleNodeIndex(visibleNodes.value, node.index);
-        }
-        const descendants = collectVisibleDescendants(node);
-        allDescendants = allDescendants.concat(descendants);
-      });
-
-      if (allDescendants.length > 0) {
-        // 按 index 排序，保持顺序
-        allDescendants.sort((a, b) => a.index - b.index);
-        visibleNodes.value = visibleNodes.value.concat(allDescendants);
-        batchUpdateVisibleIndex(visibleNodes.value, 0);
-      }
-    } else {
-      // 折叠模式：收集所有要删除的节点
-      const indicesToRemove = new Set<number>();
-      allNodes.forEach((node) => {
-        if (typeof node.visibleIndex === "number") {
-          const startIndex = node.visibleIndex + 1;
-          const descendants = collectVisibleDescendants(node);
-          for (
-            let i = startIndex;
-            i < startIndex + descendants.length && i < visibleNodes.value.length;
-            i++
-          ) {
-            indicesToRemove.add(i);
-          }
-          descendants.forEach((desc) => {
-            desc.visibleIndex = undefined;
-          });
-        }
-      });
-
-      if (indicesToRemove.size > 0) {
-        visibleNodes.value = visibleNodes.value.filter((_, index) => !indicesToRemove.has(index));
-        batchUpdateVisibleIndex(visibleNodes.value, 0);
-      }
-    }
-  };
-
   return {
     expandedKeys,
     initExpandedKeys,
     expandNode,
     collapseNode,
     toggleNode,
-    batchToggleNodes,
   };
 }
