@@ -115,6 +115,18 @@ export const demoRoutes: RouteRecordRaw[] = [
     component: () => import("../components/DynamicDataDemo.vue"),
     meta: { title: "动态数据操作" },
   },
+  {
+    path: "/virtual-list",
+    name: "VirtualListDemo",
+    component: () => import("../components/VirtualListDemo.vue"),
+    meta: { title: "自研虚拟列表" },
+  },
+  {
+    path: "/virtual-list-bench",
+    name: "VirtualListBenchDemo",
+    component: () => import("../components/VirtualListBenchDemo.vue"),
+    meta: { title: "虚拟列表基准对比" },
+  },
 ];
 
 const router = createRouter({
