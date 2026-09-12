@@ -66,7 +66,7 @@ export function findVisibleNodeIndex(visibleNodes: FlatTreeNode[], targetIndex: 
  *
  * 主要优化点：
  * 1. 使用迭代替代递归，避免深层树栈溢出
- * 2. 使用数组拼接替代 splice + spread，减少中间数组创建和 GC 压力
+ * 2. 单次分配数组重建（预分配 + 一遍拷贝），减少内存分配与 GC 压力
  * 3. 使用二分查找定位节点，O(log n) 复杂度
  */
 export function useTreeExpand(
@@ -92,16 +92,13 @@ export function useTreeExpand(
   };
 
   /**
-   * 展开可见节点 - 使用优化的数组操作
+   * 展开可见节点 - 单次分配数组重建
    *
-   * 优化前: visibleNodes.value.splice(index + 1, 0, ...descendants)
-   *   - splice 需要移动 index 之后的所有元素
-   *   - spread 创建中间数组
+   * 优化前: slice + concat + slice（3 次数组分配、约 2 遍元素拷贝，GC 压力大）
    *
-   * 优化后: 使用 slice + concat
-   *   - 只创建两个 slice，更少的内存分配
-   *   - 单次赋值触发一次响应式更新
-   *   - 对于大数据量，性能提升 5-10x
+   * 优化后: 预分配精确长度的新数组，一遍 for 循环拷贝三段
+   *   - 仅 1 次数组分配、1 遍拷贝
+   *   - 保持数组 identity 变化以触发 scroller 更新（scroller 依赖 items 引用变化）
    */
   const expandVisibleNode = (node: FlatTreeNode) => {
     // 每次操作前重新二分定位，因为其他操作（如手风琴模式的折叠）可能已经修改了 visibleNodes 数组
@@ -119,23 +116,26 @@ export function useTreeExpand(
     }
 
     const insertIndex = visibleIndex + 1;
-
-    // 使用 slice + concat 替代 splice + spread，避免中间数组
-    visibleNodes.value = visibleNodes.value
-      .slice(0, insertIndex)
-      .concat(descendants, visibleNodes.value.slice(insertIndex));
+    const old = visibleNodes.value;
+    const next: FlatTreeNode[] = new Array(old.length + descendants.length);
+    for (let i = 0; i < insertIndex; i++) {
+      next[i] = old[i];
+    }
+    for (let i = 0; i < descendants.length; i++) {
+      next[insertIndex + i] = descendants[i];
+    }
+    for (let i = insertIndex; i < old.length; i++) {
+      next[i + descendants.length] = old[i];
+    }
+    visibleNodes.value = next;
   };
 
   /**
-   * 折叠可见节点 - 使用优化的数组操作
+   * 折叠可见节点 - 单次分配数组重建
    *
-   * 优化前: visibleNodes.value.splice(index + 1, count)
-   *   - splice 需要移动后续所有元素填补空缺
-   *   - 对于大量节点，性能差
+   * 优化前: slice + concat（3 次数组分配、约 2 遍元素拷贝）
    *
-   * 优化后: 使用两次 slice + concat
-   *   - 直接跳过被删除的节点
-   *   - 无需移动元素，O(1) + O(n-k) 复杂度
+   * 优化后: 预分配精确长度的新数组，一遍 for 循环拷贝两段
    */
   const collapseVisibleNode = (node: FlatTreeNode) => {
     // 每次操作前重新二分定位
@@ -153,11 +153,15 @@ export function useTreeExpand(
     }
 
     const endIndex = startIndex + descendants.length;
-
-    // 使用 slice + concat 替代 splice，避免元素移动开销
-    visibleNodes.value = visibleNodes.value
-      .slice(0, startIndex)
-      .concat(visibleNodes.value.slice(endIndex));
+    const old = visibleNodes.value;
+    const next: FlatTreeNode[] = new Array(old.length - descendants.length);
+    for (let i = 0; i < startIndex; i++) {
+      next[i] = old[i];
+    }
+    for (let i = endIndex; i < old.length; i++) {
+      next[i - descendants.length] = old[i];
+    }
+    visibleNodes.value = next;
   };
 
   /**

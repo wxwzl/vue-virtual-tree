@@ -1,4 +1,4 @@
-# [1.0.0](https://github.com/wxwzl/vue-virtual-tree/compare/0.1.13...1.0.0) (2026-09-06)
+# [1.0.0](https://github.com/wxwzl/vue-virtual-tree/compare/0.1.13...1.0.0) (2026-09-12)
 
 ### Bug Fixes
 
@@ -10,6 +10,7 @@
 
 ### Performance Improvements
 
+- **expand:** 移除 visibleIndex 缓存与 batchToggleNodes 死代码 ([52af3ed](https://github.com/wxwzl/vue-virtual-tree/commit/52af3eda72dae68d58f6ed6fb6c41da7e17f8c60))
 - **expand:** 重新优化 useTreeExpand 数组操作与递归 ([ce86085](https://github.com/wxwzl/vue-virtual-tree/commit/ce860850db87a4a7804b9e70735d55c38a3ad399))
 - **init:** 大数据量初始化性能优化，新增节点级 replace 方法 ([ea7c903](https://github.com/wxwzl/vue-virtual-tree/commit/ea7c90367bae47a5ef8b1da383805b72b1b55cbe))
 - **selection:** 优化 O(n²) 选择算法为 O(h) 复杂度 ([6447cf8](https://github.com/wxwzl/vue-virtual-tree/commit/6447cf857b8f1f3c2b1cc514bd3bd6d599f35f6e))
