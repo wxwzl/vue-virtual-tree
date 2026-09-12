@@ -14,7 +14,7 @@
       :key="rowKey(i)"
       class="vv-list__row"
       :data-index="i"
-      :style="{ height: `${itemSize}px` }"
+      :style="dynamic ? undefined : { height: `${itemSize}px` }"
     >
       <slot
         :item="itemAt(i)"
@@ -30,7 +30,7 @@
 
 <script setup lang="ts" generic="T">
   import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
-  import { FixedSizeModel, type SizeModel } from "./core/sizeModel";
+  import { FixedSizeModel, MeasuredSizeModel, type SizeModel } from "./core/sizeModel";
   import { coverRange, EMPTY_RANGE, type RowRange } from "./core/range";
 
   /**
@@ -50,8 +50,10 @@
     getItemAt?: (index: number) => T;
     /** 行 key，默认用行号（数据顺移时会全量重渲染，建议提供） */
     getKey?: (item: T, index: number) => string | number;
-    /** 固定行高（px）。动态测量模式后续版本支持 */
+    /** 行高（px）。固定模式为精确行高；dynamic 模式下作为未测量行的估计高度 */
     itemSize: number;
+    /** 动态行高模式：行高由内容决定，渲染后经 ResizeObserver 实测回写 */
+    dynamic?: boolean;
     /** 上下缓冲（px），默认 200 */
     buffer?: number;
     /** 容器高度，默认 100%（由父容器决定） */
@@ -63,6 +65,7 @@
     itemCount: undefined,
     getItemAt: undefined,
     getKey: undefined,
+    dynamic: false,
     buffer: 200,
     height: "100%",
   });
@@ -80,13 +83,18 @@
 
   const count = computed(() => (props.items ? props.items.length : (props.itemCount ?? 0)));
 
-  let model: SizeModel = new FixedSizeModel(count.value, props.itemSize);
+  const createModel = (n: number, size: number, dyn: boolean): SizeModel =>
+    dyn ? new MeasuredSizeModel(n, size) : new FixedSizeModel(n, size);
 
-  watch([count, () => props.itemSize], ([n, size]) => {
-    if (model instanceof FixedSizeModel && model.sizeOf(0) === size) {
+  let model: SizeModel = createModel(count.value, props.itemSize, props.dynamic);
+
+  watch([count, () => props.itemSize, () => props.dynamic], ([n, size, dyn], [, prevSize]) => {
+    const sameKind = dyn ? model instanceof MeasuredSizeModel : model instanceof FixedSizeModel;
+    if (sameKind && size === prevSize) {
+      // 仅 count 变化：保留已测量行高
       model.setCount(n);
     } else {
-      model = new FixedSizeModel(n, size);
+      model = createModel(n, size, dyn);
     }
     range.value = EMPTY_RANGE;
     modelTick.value++;
@@ -159,6 +167,72 @@
   };
 
   let resizeObserver: ResizeObserver | null = null;
+  /** 动态模式：行高实测观察器与当前被观察的行元素集合 */
+  let rowObserver: ResizeObserver | null = null;
+  let observedRows = new Set<HTMLElement>();
+
+  /**
+   * 行实测回写与滚动锚定补偿。
+   * 视口顶以上的行变高 delta 会把视口内容整体下推 delta px，补偿
+   * scrollOffset += delta（配合 spacerTop 的 drift 重算，k>1 时同样精确）；
+   * 视口顶以下的行变化不影响当前视口内容，无需补偿。
+   */
+  const onRowResize = (entries: ResizeObserverEntry[]) => {
+    const el = containerRef.value;
+    if (!el) {
+      return;
+    }
+    let deltaAbove = 0;
+    let changed = false;
+    for (const entry of entries) {
+      const rowEl = entry.target as HTMLElement;
+      const i = Number(rowEl.dataset.index);
+      if (Number.isNaN(i)) {
+        continue;
+      }
+      const oldOffset = model.offsetOf(i);
+      const delta = model.measure(i, rowEl.offsetHeight);
+      if (delta === 0) {
+        continue;
+      }
+      changed = true;
+      if (oldOffset < scrollOffset.value) {
+        deltaAbove += delta;
+      }
+    }
+    if (!changed) {
+      return;
+    }
+    const k = scale.value;
+    modelTick.value++;
+    if (deltaAbove !== 0) {
+      scrollOffset.value += deltaAbove;
+      el.scrollTop = scrollOffset.value / k;
+    }
+    updateRange();
+  };
+
+  /** 渲染窗口变化后同步行观察：观察新行、解除移除的行 */
+  const syncRowObserver = () => {
+    if (!props.dynamic || !rowObserver || !containerRef.value) {
+      return;
+    }
+    const seen = new Set<HTMLElement>();
+    containerRef.value.querySelectorAll<HTMLElement>(".vv-list__row").forEach((el) => {
+      seen.add(el);
+      if (!observedRows.has(el)) {
+        rowObserver!.observe(el);
+      }
+    });
+    for (const el of observedRows) {
+      if (!seen.has(el)) {
+        rowObserver.unobserve(el);
+      }
+    }
+    observedRows = seen;
+  };
+
+  watch(range, syncRowObserver, { flush: "post" });
 
   onMounted(() => {
     const el = containerRef.value;
@@ -175,12 +249,19 @@
         updateRange();
       });
       resizeObserver.observe(el);
+      if (props.dynamic) {
+        rowObserver = new ResizeObserver(onRowResize);
+        syncRowObserver();
+      }
     }
   });
 
   onBeforeUnmount(() => {
     resizeObserver?.disconnect();
     resizeObserver = null;
+    rowObserver?.disconnect();
+    rowObserver = null;
+    observedRows.clear();
   });
 
   const scrollToIndex = (
