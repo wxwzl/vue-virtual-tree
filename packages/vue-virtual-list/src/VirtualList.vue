@@ -157,12 +157,20 @@
     return Math.max(0, (model.totalSize - model.offsetOf(range.value.end + 1)) / scale.value);
   });
 
+  /** 快速滚动抑制窗口：期间禁止锚定补偿回写 scrollTop，避免与滚动条拖拽打架 */
+  let suppressAnchorUntil = 0;
+
   const onScroll = () => {
     const el = containerRef.value;
     if (!el) {
       return;
     }
-    scrollOffset.value = el.scrollTop * scale.value;
+    const next = el.scrollTop * scale.value;
+    // 单帧位移超过一个视口视为快速滚动/跳转，开启短暂抑制窗口
+    if (Math.abs(next - scrollOffset.value) > viewportH.value) {
+      suppressAnchorUntil = performance.now() + 150;
+    }
+    scrollOffset.value = next;
     updateRange();
   };
 
@@ -176,6 +184,8 @@
    * 视口顶以上的行变高 delta 会把视口内容整体下推 delta px，补偿
    * scrollOffset += delta（配合 spacerTop 的 drift 重算，k>1 时同样精确）；
    * 视口顶以下的行变化不影响当前视口内容，无需补偿。
+   * 快速滚动/拖拽滚动条期间抑制补偿：高速位移下估计误差的视觉修正不可感知，
+   * 回写 scrollTop 反而会与滚动条拖拽打架。
    */
   const onRowResize = (entries: ResizeObserverEntry[]) => {
     const el = containerRef.value;
@@ -205,7 +215,7 @@
     }
     const k = scale.value;
     modelTick.value++;
-    if (deltaAbove !== 0) {
+    if (deltaAbove !== 0 && performance.now() > suppressAnchorUntil) {
       scrollOffset.value += deltaAbove;
       el.scrollTop = scrollOffset.value / k;
     }
