@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { Fenwick } from "../../virtual-list/core/fenwick";
-import { FixedSizeModel, MeasuredSizeModel } from "../../virtual-list/core/sizeModel";
-import { visibleRange, coverRange, EMPTY_RANGE } from "../../virtual-list/core/range";
+import { Fenwick } from "../core/fenwick";
+import { FixedSizeModel, MeasuredSizeModel } from "../core/sizeModel";
+import { visibleRange, coverRange, EMPTY_RANGE } from "../core/range";
 
 describe("Fenwick", () => {
   it("前缀和与单点更新", () => {

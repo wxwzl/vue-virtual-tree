@@ -6,9 +6,10 @@
   "scripts": {
     "prepare": "husky",
     "dev": "pnpm --filter playground dev",
-    "test": "pnpm --filter @wxwzl/vue-virtual-tree test",
-    "build": "pnpm --filter @wxwzl/vue-virtual-tree build",
+    "test": "pnpm -r --filter \"@wxwzl/*\" run test",
+    "build": "pnpm -r --filter \"@wxwzl/*\" run build",
     "publish": "pnpm run build && pnpm --filter @wxwzl/vue-virtual-tree publish",
+    "publish:list": "pnpm --filter @wxwzl/vue-virtual-list publish",
     "build:data-generator": "cd packages/data-generator && wasm-pack build --target web --out-dir ../../playground/lib",
     "build:playground": "pnpm run build:data-generator && pnpm --filter playground build",
     "type-check": "pnpm --filter @wxwzl/vue-virtual-tree type-check",

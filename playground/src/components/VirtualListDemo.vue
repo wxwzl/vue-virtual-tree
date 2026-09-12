@@ -63,7 +63,7 @@
 
 <script setup lang="ts">
   import { computed, ref } from "vue";
-  import { VirtualList } from "@wxwzl/vue-virtual-tree";
+  import { VirtualList } from "@wxwzl/vue-virtual-list";
 
   interface RowData {
     id: number;

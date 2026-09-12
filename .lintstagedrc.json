@@ -2,5 +2,8 @@
   "packages/vue-virtual-tree/**/*.{js,jsx,ts,tsx,json,css,vue}": [
     "pnpm --filter @wxwzl/vue-virtual-tree run lint:staged"
   ],
+  "packages/vue-virtual-list/**/*.{js,jsx,ts,tsx,json,css,vue}": [
+    "pnpm --filter @wxwzl/vue-virtual-list run lint:staged"
+  ],
   "**/*.{js,jsx,ts,tsx,json,css,md,vue}": ["npx  prettier --write"]
 }

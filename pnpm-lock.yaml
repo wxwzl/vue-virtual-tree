@@ -33,6 +33,52 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
+  packages/vue-virtual-list:
+    dependencies:
+      vue:
+        specifier: 3.4.0
+        version: 3.4.0(typescript@5.9.3)
+    devDependencies:
+      '@eslint/js':
+        specifier: ^10.0.1
+        version: 10.0.1(eslint@10.0.3(jiti@2.6.1))
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.1
+      '@vitejs/plugin-vue':
+        specifier: ^5.0.0
+        version: 5.2.4(vite@5.4.21(@types/node@24.10.1)(sass-embedded@1.93.3)(sass@1.93.3))(vue@3.4.0(typescript@5.9.3))
+      '@vitest/coverage-v8':
+        specifier: ^1.6.0
+        version: 1.6.0(vitest@1.6.0(@types/node@24.10.1)(happy-dom@20.8.4)(sass-embedded@1.93.3)(sass@1.93.3))
+      eslint:
+        specifier: ^10.0.3
+        version: 10.0.3(jiti@2.6.1)
+      eslint-plugin-vue:
+        specifier: ^10.8.0
+        version: 10.8.0(@typescript-eslint/parser@8.57.0(eslint@10.0.3(jiti@2.6.1))(typescript@5.9.3))(eslint@10.0.3(jiti@2.6.1))(vue-eslint-parser@10.4.0(eslint@10.0.3(jiti@2.6.1)))
+      globals:
+        specifier: ^17.4.0
+        version: 17.4.0
+      happy-dom:
+        specifier: ^20.8.4
+        version: 20.8.4
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.57.0
+        version: 8.57.0(eslint@10.0.3(jiti@2.6.1))(typescript@5.9.3)
+      vite:
+        specifier: ^5.0.0
+        version: 5.4.21(@types/node@24.10.1)(sass-embedded@1.93.3)(sass@1.93.3)
+      vite-plugin-dts:
+        specifier: ^4.5.4
+        version: 4.5.4(@types/node@24.10.1)(rollup@4.53.2)(typescript@5.9.3)(vite@5.4.21(@types/node@24.10.1)(sass-embedded@1.93.3)(sass@1.93.3))
+      vitest:
+        specifier: ^1.6.0
+        version: 1.6.0(@types/node@24.10.1)(happy-dom@20.8.4)(sass-embedded@1.93.3)(sass@1.93.3)
+
   packages/vue-virtual-tree:
     dependencies:
       vue:
@@ -90,6 +136,9 @@ importers:
 
   playground:
     dependencies:
+      '@wxwzl/vue-virtual-list':
+        specifier: workspace:*
+        version: link:../packages/vue-virtual-list
       '@wxwzl/vue-virtual-tree':
         specifier: workspace:*
         version: link:../packages/vue-virtual-tree
@@ -3580,7 +3629,7 @@ snapshots:
 
   '@vue/compiler-core@3.4.0':
     dependencies:
-      '@babel/parser': 7.28.5
+      '@babel/parser': 7.29.0
       '@vue/shared': 3.4.0
       entities: 4.5.0
       estree-walker: 2.0.2
@@ -3588,7 +3637,7 @@ snapshots:
 
   '@vue/compiler-core@3.5.24':
     dependencies:
-      '@babel/parser': 7.28.5
+      '@babel/parser': 7.29.0
       '@vue/shared': 3.5.24
       entities: 4.5.0
       estree-walker: 2.0.2
@@ -3606,7 +3655,7 @@ snapshots:
 
   '@vue/compiler-sfc@3.4.0':
     dependencies:
-      '@babel/parser': 7.28.5
+      '@babel/parser': 7.29.0
       '@vue/compiler-core': 3.4.0
       '@vue/compiler-dom': 3.4.0
       '@vue/compiler-ssr': 3.4.0

@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@wxwzl/vue-virtual-tree": resolve(__dirname, "../packages/vue-virtual-tree/src"),
+      "@wxwzl/vue-virtual-list": resolve(__dirname, "../packages/vue-virtual-list/src"),
     },
   },
 });

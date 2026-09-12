@@ -69,7 +69,7 @@
 
 <script setup lang="ts">
   import { computed, h, ref, watch, type FunctionalComponent } from "vue";
-  import { VirtualList } from "@wxwzl/vue-virtual-tree";
+  import { VirtualList } from "@wxwzl/vue-virtual-list";
   import { RecycleScroller } from "vue-virtual-scroller";
   import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 
