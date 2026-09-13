@@ -255,8 +255,22 @@
     if (!el) {
       return;
     }
-    lastScrollAt = performance.now();
     const next = el.scrollTop * scale.value;
+    // 吸附写入（贴底位置维护）产生的 scroll 事件不视为用户滚动：跳过快速滚动重置
+    // 与滚动时间戳更新，否则 cumDelta 清零改变几何 → scrollHeight 变化 → 再次吸附，
+    // 且吸附事件反复刷新 lastScrollAt 会让空闲调度（预测量提速/flush 防抖）永远失效
+    const selfSnap = snappingToBottom && Math.abs(el.scrollTop - lastSnapTarget) <= 1;
+    snappingToBottom = false;
+    if (selfSnap) {
+      baseOffset = next;
+      // 贴底期间 scrollOffset 钉在模型底部而非由 scrollTop 反推（frozenTotal 滞后
+      // 于 totalSize，反推值漂移后 updateRange 的贴底强制末行条件会失效）
+      scrollOffset.value = Math.max(0, model.totalSize - viewportH.value);
+      updateRange();
+      stickToBottom = el.scrollHeight - el.clientHeight - el.scrollTop <= 4;
+      return;
+    }
+    lastScrollAt = performance.now();
     // 单帧位移超过一个视口视为快速滚动/跳转：内容整体换帧，锚定补偿清零防累积；
     // 同时暂停预测量，把主线程让给滚动帧
     if (Math.abs(next - baseOffset) > viewportH.value) {
@@ -267,9 +281,21 @@
     scrollOffset.value = next + cumDelta.value;
     updateRange();
     // 近底吸附标记：仅在 scroll 事件里维护（scrollHeight 增长不触发事件，不会误置位）
+    const wasStuck = stickToBottom;
     stickToBottom = el.scrollHeight - el.clientHeight - el.scrollTop <= 4;
-    if (scrollOffset.value + viewportH.value * 2 >= frozenTotal.value) {
+    if (!wasStuck && stickToBottom) {
+      // 刚贴底：flush 一次让 spacerBottom 归零（否则底部露出空白 spacer），
+      // 随后预测量暂停（stepMeasure 检查 stickToBottom），几何完全静止
       flushTotal();
+      return;
+    }
+    // 贴底后预测量仍在回写，totalSize 每批抖动 ±数百 px；若每个滚动事件都 flush，
+    // scrollHeight 跟随抖动并与吸附互激。漂移超过两个视口才 flush（贴底时吸附会
+    // 吸收误差，精度让位于稳定）；未贴底的近底滚动维持即时 flush 保证底部可达。
+    if (scrollOffset.value + viewportH.value * 2 >= frozenTotal.value) {
+      if (!stickToBottom || Math.abs(model.totalSize - frozenTotal.value) > viewportH.value * 2) {
+        flushTotal();
+      }
     } else {
       scheduleFlush();
     }
@@ -304,9 +330,20 @@
     if (!changed && m.measuredCount === beforeCount) {
       return;
     }
-    const deltaAbove = m.offsetOf(anchorRow) - offBefore;
-    cumDelta.value += deltaAbove;
-    scrollOffset.value += deltaAbove;
+    // 贴底期间不做锚定补偿（补偿只扰动 spacerTop，与吸附互激成限幅振荡），
+    // 但 scrollOffset 必须钉在底部（totalSize − 视口），否则 totalSize 漂移后
+    // updateRange 的贴底强制末行条件失效，窗口萎缩导致底部露白
+    if (stickToBottom) {
+      scrollOffset.value = Math.max(0, m.totalSize - viewportH.value);
+      // 贴底前的在途批次可能在 engage-flush 之后才回写，frozenTotal 过期会让
+      // spacerBottom = (frozenTotal − totalSize)/k 常驻为底部空白；同步后再冻结跨度
+      frozenTotal.value = m.totalSize;
+      updateFrozenSpan();
+    } else {
+      const deltaAbove = m.offsetOf(anchorRow) - offBefore;
+      cumDelta.value += deltaAbove;
+      scrollOffset.value += deltaAbove;
+    }
     modelTick.value++;
     updateRange();
     stickBottomIfNeeded();
@@ -319,13 +356,23 @@
    * 故标记只在 onScroll 里维护，吸附写入的事件仍满足 ≈max，状态自保持。
    */
   let stickToBottom = false;
+  /**
+   * 吸附写入标记与目标位置：贴底是位置维护而非用户滚动，其 scroll 事件不应触发
+   * 快速滚动重置（否则与吸附形成振荡）。但 scroll 事件按帧合并派发，用户紧接
+   * 吸附写入后的滚动会并入同一事件——须比对目标位置，偏差即用户滚动，照常解除吸附
+   */
+  let snappingToBottom = false;
+  let lastSnapTarget = -1;
   const stickBottomIfNeeded = () => {
     const el = containerRef.value;
     if (!stickToBottom || !el) {
       return;
     }
     void nextTick(() => {
-      el.scrollTop = el.scrollHeight - el.clientHeight;
+      const target = el.scrollHeight - el.clientHeight;
+      lastSnapTarget = target;
+      snappingToBottom = true;
+      el.scrollTop = target;
     });
   };
 
@@ -477,6 +524,15 @@
         measureTimer = null;
         scheduleMeasure();
       }, 200);
+      return;
+    }
+    if (stickToBottom) {
+      // 贴底期间暂停扩散：回写扰动 totalSize/spacer 会与吸附互激成振荡。
+      // 模型冻结后 scrollHeight/内容完全静止；离开底部经 onScroll → range 变化唤醒
+      measureTimer = setTimeout(() => {
+        measureTimer = null;
+        scheduleMeasure();
+      }, 300);
       return;
     }
     const batch = pickBatch(now - lastScrollAt < 100 ? SCROLL_BATCH : IDLE_BATCH);
