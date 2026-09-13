@@ -43,7 +43,6 @@
         ref="listRef"
         :item-count="rowCount"
         :get-item-at="getItemAt"
-        :get-key="(item) => item.id"
         :item-size="rowHeight"
         :buffer="300"
         height="100%"

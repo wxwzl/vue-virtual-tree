@@ -33,7 +33,6 @@
             ref="oursRef"
             :item-count="rowCount"
             :get-item-at="getItemAt"
-            :get-key="(item) => item.id"
             :item-size="32"
             :buffer="300"
             height="100%"
