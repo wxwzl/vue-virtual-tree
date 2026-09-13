@@ -167,6 +167,17 @@
   /** 渲染窗口平移：可见范围逃出当前渲染范围时才更新 */
   const updateRange = () => {
     const next = coverRange(model, scrollOffset.value, viewportH.value, props.buffer, range.value);
+    // 近底吸附期间浏览器锚定的是内容末尾，渲染窗口必须覆盖到末行，
+    // 否则虚拟锚点与估计总高的残差会让底部出现一段空白 spacer
+    if (
+      stickToBottom &&
+      next.end >= 0 &&
+      next.end < count.value - 1 &&
+      scrollOffset.value + viewportH.value >= model.totalSize - viewportH.value
+    ) {
+      range.value = { start: next.start, end: count.value - 1 };
+      return;
+    }
     if (next.start !== range.value.start || next.end !== range.value.end) {
       range.value = next;
     }
@@ -226,6 +237,7 @@
       updateRange();
     }
     updateFrozenSpan();
+    stickBottomIfNeeded();
   };
   const scheduleFlush = () => {
     if (flushTimer) {
@@ -254,6 +266,8 @@
     baseOffset = next;
     scrollOffset.value = next + cumDelta.value;
     updateRange();
+    // 近底吸附标记：仅在 scroll 事件里维护（scrollHeight 增长不触发事件，不会误置位）
+    stickToBottom = el.scrollHeight - el.clientHeight - el.scrollTop <= 4;
     if (scrollOffset.value + viewportH.value * 2 >= frozenTotal.value) {
       flushTotal();
     } else {
@@ -295,6 +309,24 @@
     scrollOffset.value += deltaAbove;
     modelTick.value++;
     updateRange();
+    stickBottomIfNeeded();
+  };
+
+  /**
+   * 近底吸附：用户已滚到底（scrollTop ≈ maxScroll）时，测量/flush 导致的
+   * scrollHeight 增长会重新拉开与底部的距离（浏览器不会跟随），吸附回底部；
+   * 用户向上滚动后自动解除。scrollHeight 增长不触发 scroll 事件，
+   * 故标记只在 onScroll 里维护，吸附写入的事件仍满足 ≈max，状态自保持。
+   */
+  let stickToBottom = false;
+  const stickBottomIfNeeded = () => {
+    const el = containerRef.value;
+    if (!stickToBottom || !el) {
+      return;
+    }
+    void nextTick(() => {
+      el.scrollTop = el.scrollHeight - el.clientHeight;
+    });
   };
 
   /** RO 兜底：可见行内容异步变化（图片加载等）时的尺寸回写 */
@@ -485,6 +517,8 @@
     frontAbove = range.value.start - 1;
     frontBelow = range.value.end + 1;
     scheduleMeasure();
+    // 窗口平移改变 spacer（不经 applyMeasurements），吸附状态需要补一次贴底
+    stickBottomIfNeeded();
   };
 
   watch(range, afterWindowShift, { flush: "post" });
