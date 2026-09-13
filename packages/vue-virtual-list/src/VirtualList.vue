@@ -5,49 +5,56 @@
     :style="{ height: typeof height === 'number' ? `${height}px` : height }"
     @scroll.passive="onScroll"
   >
+    <!-- spacer 高度不经响应式渲染：scrollOffset/cumDelta 每个滚动事件都变，
+         绑定式更新会让整棵行 vnode 树每事件重建（占滚动帧耗时大头）。
+         改为静态节点 + 命令式 style 写入，组件仅在 range/测量批次变化时重渲染 -->
     <div
+      ref="spacerTopEl"
       class="vv-list__spacer"
-      :style="{ height: `${spacerTop}px` }"
     ></div>
-    <div
-      v-for="i in rowIndexes"
-      :key="i - range.start"
-      class="vv-list__row"
-      :data-index="i"
-      :style="dynamic ? undefined : { height: `${itemSize}px` }"
-    >
-      <slot
-        :item="itemAt(i)"
-        :index="i"
-      ></slot>
-    </div>
-    <div
-      class="vv-list__spacer"
-      :style="{ height: `${spacerBottom}px` }"
-    ></div>
-    <div
-      v-if="dynamic"
-      ref="measureRef"
-      class="vv-list__measure"
-      aria-hidden="true"
-    >
+    <!-- rowMemo：行号 key + 按行号缓存 vnode，窗口平移时未变行复用同一 vnode
+         对象（Vue 对相同引用直接跳过 patch，连插槽都不再调用），仅进出窗口的
+         行挂载/卸载；插槽依赖 items[i] 之外的外部状态时不要开启。
+         默认槽位 key 池化：DOM 全复用但每行内容随平移就地重渲染 -->
+    <MemoRows v-if="rowMemo" />
+    <template v-else>
       <div
-        v-for="i in measureQueue"
-        :key="i"
+        v-for="i in rowIndexes"
+        :key="i - range.start"
         class="vv-list__row"
         :data-index="i"
+        :style="dynamic ? undefined : { height: `${itemSize}px` }"
       >
         <slot
           :item="itemAt(i)"
           :index="i"
         ></slot>
       </div>
-    </div>
+    </template>
+    <div
+      ref="spacerBottomEl"
+      class="vv-list__spacer"
+    ></div>
+    <!-- 预测量通道独立成子组件：批次队列每帧变化，隔离后其重渲染不再
+         连带重建上方可见行的 vnode 树 -->
+    <MeasureLane v-if="dynamic" />
   </div>
 </template>
 
 <script setup lang="ts" generic="T">
-  import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
+  import {
+    computed,
+    defineComponent,
+    h,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    shallowRef,
+    useSlots,
+    watch,
+    type VNode,
+  } from "vue";
   import { FixedSizeModel, MeasuredSizeModel, type SizeModel } from "./core/sizeModel";
   import { coverRange, EMPTY_RANGE, type RowRange } from "./core/range";
 
@@ -79,6 +86,13 @@
     dynamic?: boolean;
     /** 上下缓冲（px），默认 200 */
     buffer?: number;
+    /**
+     * 行内容缓存：开启后行仅在「行号或 items[i] 引用变化」时重渲染，
+     * 窗口平移时未变行完全跳过 slot 调用与 patch（滚动帧耗时大头）。
+     * 注意：插槽内容若依赖 items[i] 之外的外部状态（如选中态、拖拽态），
+     * 不要开启——那些变化不会触发重渲染
+     */
+    rowMemo?: boolean;
     /** 容器高度，默认 100%（由父容器决定） */
     height?: number | string;
   }
@@ -89,6 +103,7 @@
     getItemAt: undefined,
     dynamic: false,
     buffer: 200,
+    rowMemo: false,
     height: "100%",
   });
 
@@ -146,6 +161,7 @@
     frozenTotal.value = model.totalSize;
     // 数据源变化：清空预测量队列并重建抽样种子，前沿由 range watch 重置
     measureQueue.value = [];
+    rowVNodeCache.clear();
     buildSeeds(n);
     // scale 可能随 count 变化，须按新 scale 重新同步虚拟偏移
     const el = containerRef.value;
@@ -154,6 +170,14 @@
     updateRange();
     updateFrozenSpan();
   });
+
+  // items 数组身份变化（等长替换也算）：缓存的行 vnode 内容可能已过期，全部作废
+  watch(
+    () => props.items,
+    () => {
+      rowVNodeCache.clear();
+    }
+  );
 
   /** 高度缩放因子：spacer 存 scaled 高度，scrollTop × k 还原虚拟偏移；滚动期间随 frozenTotal 冻结 */
   const scale = computed(() => {
@@ -164,9 +188,30 @@
     return props.items ? props.items[i] : props.getItemAt!(i);
   };
 
-  /** 渲染窗口平移：可见范围逃出当前渲染范围时才更新 */
-  const updateRange = () => {
-    const next = coverRange(model, scrollOffset.value, viewportH.value, props.buffer, range.value);
+  /**
+   * 滚动速度 EMA（虚拟 px/事件）。k 缩放会把 DOM 位移放大 k 倍（如 1M 行 k=4，
+   * DOM 滚 120px/帧 = 虚拟 480px/帧），固定 buffer 一帧即被耗尽、窗口帧帧平移；
+   * 用速度自适应 buffer 让窗口余量覆盖约 3 帧位移，上限 4 个视口
+   */
+  let velEma = 0;
+  const effBuffer = (): number => {
+    if (!props.dynamic) {
+      return props.buffer;
+    }
+    const cap = Math.max(viewportH.value * 4, props.buffer);
+    return Math.min(Math.max(props.buffer, velEma * 3), cap);
+  };
+
+  /** 渲染窗口平移：可见范围逃出当前渲染范围时才更新；strict 见 coverRange */
+  const updateRange = (strict = false) => {
+    const next = coverRange(
+      model,
+      scrollOffset.value,
+      viewportH.value,
+      effBuffer(),
+      range.value,
+      strict
+    );
     // 近底吸附期间浏览器锚定的是内容末尾，渲染窗口必须覆盖到末行，
     // 否则虚拟锚点与估计总高的残差会让底部出现一段空白 spacer
     if (
@@ -221,6 +266,25 @@
     return Math.max(0, frozenSpan.value - spacerTop.value - rendered);
   });
 
+  /**
+   * spacer 高度命令式写入（不经响应式渲染）。
+   * spacerTop 每个滚动事件都变，若走模板绑定，组件每次都要重建整棵行
+   * vnode 树再 patch——这是滚动帧耗时大头；静态节点 + 直接写 style 后，
+   * 组件仅在 range / 测量批次变化时重渲染。post flush 批量合并同一帧的
+   * 多次变化，绘制前生效，视觉与绑定式一致。
+   */
+  const spacerTopEl = ref<HTMLElement | null>(null);
+  const spacerBottomEl = ref<HTMLElement | null>(null);
+  const applySpacers = () => {
+    if (spacerTopEl.value) {
+      spacerTopEl.value.style.height = `${spacerTop.value}px`;
+    }
+    if (spacerBottomEl.value) {
+      spacerBottomEl.value.style.height = `${spacerBottom.value}px`;
+    }
+  };
+  watch([spacerTop, spacerBottom], applySpacers, { flush: "post" });
+
   /** 同步冻结总高：空闲 150ms 后执行；接近底部时立即执行，保证底部可达 */
   let flushTimer: ReturnType<typeof setTimeout> | null = null;
   const flushTotal = () => {
@@ -271,6 +335,8 @@
       return;
     }
     lastScrollAt = performance.now();
+    // 滚动速度 EMA：供 effBuffer 自适应窗口余量（先于 baseOffset 更新取样）
+    velEma = velEma * 0.6 + Math.abs(next - baseOffset) * 0.4;
     // 单帧位移超过一个视口视为快速滚动/跳转：内容整体换帧，锚定补偿清零防累积；
     // 同时暂停预测量，把主线程让给滚动帧
     if (Math.abs(next - baseOffset) > viewportH.value) {
@@ -382,9 +448,19 @@
     for (const entry of entries) {
       const rowEl = entry.target as HTMLElement;
       const i = Number(rowEl.dataset.index);
-      if (!Number.isNaN(i)) {
-        list.push({ index: i, size: rowEl.offsetHeight });
+      if (Number.isNaN(i)) {
+        continue;
       }
+      // 尺寸取 entry 自带值（border-box ≈ offsetHeight）：回调常紧跟 DOM 写入，
+      // 此时读 offsetHeight 会逐批触发强制同步重排（滚动帧耗时大头之一）
+      const bs = entry.borderBoxSize as
+        | ResizeObserverSize
+        | readonly ResizeObserverSize[]
+        | undefined;
+      const size = Array.isArray(bs)
+        ? (bs[0]?.blockSize ?? entry.contentRect.height)
+        : (bs?.blockSize ?? entry.contentRect.height);
+      list.push({ index: i, size });
     }
     applyMeasurements(list);
   };
@@ -435,14 +511,79 @@
   /** 隐藏预测量：当前批次待渲染测量的行号 */
   const measureQueue = ref<number[]>([]);
   const measureRef = ref<HTMLElement | null>(null);
+
+  /**
+   * 预测量通道（独立子组件）：批次队列每个测量帧都变，若在主组件模板内
+   * 渲染，主组件会随之重渲染并连带重建全部可见行的 vnode 树；
+   * 隔离后只有本组件自身随批次重渲染。渲染函数直接闭包读取
+   * measureQueue / itemAt / 父级插槽，响应式追踪限定在本组件内。
+   */
+  const slots = useSlots();
+
+  /**
+   * 行 vnode 缓存（rowMemo 模式）：按行号缓存渲染结果，窗口平移时未变行复用
+   * 同一 vnode 对象——patch 对相同引用直接短路，连插槽都不再调用（v-memo 的
+   * 缓存按位置索引，窗口滑动后整体错位失效，故手写按键缓存）。仅新入行产生
+   * 插槽调用与挂载开销。items 身份/行高/模式变化时整体作废。
+   */
+  const rowVNodeCache = new Map<number, VNode>();
+  const renderRow = (i: number): VNode => {
+    let v = rowVNodeCache.get(i);
+    if (!v) {
+      v = h(
+        "div",
+        {
+          key: i,
+          class: "vv-list__row",
+          "data-index": i,
+          style: props.dynamic ? undefined : { height: `${props.itemSize}px` },
+        },
+        [slots.default?.({ item: itemAt(i), index: i })]
+      );
+      rowVNodeCache.set(i, v);
+    }
+    return v;
+  };
+  const MemoRows = defineComponent({
+    name: "VirtualListMemoRows",
+    setup() {
+      return () => {
+        const { start, end } = range.value;
+        const rows = rowIndexes.value.map(renderRow);
+        // 缓存只留窗口附近：长时间滚动不累积（窗外行重新进入时重新调用插槽）
+        if (rowVNodeCache.size > rows.length * 4) {
+          for (const key of rowVNodeCache.keys()) {
+            if (key < start || key > end) {
+              rowVNodeCache.delete(key);
+            }
+          }
+        }
+        return rows;
+      };
+    },
+  });
+  const MeasureLane = defineComponent({
+    name: "VirtualListMeasureLane",
+    setup() {
+      return () =>
+        h(
+          "div",
+          { ref: measureRef, class: "vv-list__measure", "aria-hidden": "true" },
+          measureQueue.value.map((i) =>
+            h("div", { key: i, class: "vv-list__row", "data-index": i }, [
+              slots.default?.({ item: itemAt(i), index: i }),
+            ])
+          )
+        );
+    },
+  });
   /** 预测量双前沿：围绕当前渲染窗口向外扩散 */
   let frontAbove = -1;
   let frontBelow = 0;
   let measureRafId = 0;
   let measureTimer: ReturnType<typeof setTimeout> | null = null;
-  /** 空闲批次 / 滚动中批次 */
+  /** 空闲预测量批次大小（滚动期间通道整体暂停，无滚动中小批次） */
   const IDLE_BATCH = 24;
-  const SCROLL_BATCH = 8;
 
   /**
    * 全局均匀抽样种子：数据就绪后先抽样测量（~256 行均布），
@@ -478,16 +619,21 @@
         out.push(i);
       }
     }
+    // 扩散范围限于窗口前后 ~8 个视口：均值已被种子收敛，远处逐行实测没有收益，
+    // 无界扩散会让通道在空闲时永远全速渲染+回读（每帧都在偷主线程）
+    const lead = Math.max(64, Math.ceil((viewportH.value * 8) / Math.max(1, m.avg)));
+    const belowCap = Math.min(n - 1, range.value.end + lead);
+    const aboveCap = Math.max(0, range.value.start - lead);
     let picked = 0;
     while (out.length < size) {
-      while (frontBelow < n && m.isMeasured(frontBelow)) {
+      while (frontBelow <= belowCap && m.isMeasured(frontBelow)) {
         frontBelow++;
       }
-      while (frontAbove >= 0 && m.isMeasured(frontAbove)) {
+      while (frontAbove >= aboveCap && m.isMeasured(frontAbove)) {
         frontAbove--;
       }
-      const canBelow = frontBelow < n;
-      const canAbove = frontAbove >= 0;
+      const canBelow = frontBelow <= belowCap;
+      const canAbove = frontAbove >= aboveCap;
       if (!canBelow && !canAbove) {
         break;
       }
@@ -518,12 +664,14 @@
       return;
     }
     const now = performance.now();
-    if (now < pauseMeasureUntil) {
-      // 快速滚动期间暂停，稍后重试
+    // 任何滚动活动期间都暂停预测量：通道渲染 + 批次回读会与滚动帧争抢主线程，
+    // 且回读发生在 spacer 写入之后，每次都触发整树强制重排；窗口内未测行由
+    // measureWindow 兜底（平移后一次性批量读），正确性不依赖滚动期的通道
+    if (now < pauseMeasureUntil || now - lastScrollAt < 150) {
       measureTimer = setTimeout(() => {
         measureTimer = null;
         scheduleMeasure();
-      }, 200);
+      }, 180);
       return;
     }
     if (stickToBottom) {
@@ -535,7 +683,7 @@
       }, 300);
       return;
     }
-    const batch = pickBatch(now - lastScrollAt < 100 ? SCROLL_BATCH : IDLE_BATCH);
+    const batch = pickBatch(IDLE_BATCH);
     if (batch.length === 0) {
       return; // 缓存已覆盖全部行，休眠（range/数据变化时唤醒）
     }
@@ -589,8 +737,9 @@
     frozenTotal.value = model.totalSize;
     baseOffset = el.scrollTop * scale.value;
     scrollOffset.value = baseOffset;
-    updateRange();
+    updateRange(true);
     updateFrozenSpan();
+    applySpacers();
     if (props.dynamic) {
       buildSeeds(count.value);
     }
@@ -604,7 +753,7 @@
         }
         lastWidth = el.clientWidth;
         range.value = EMPTY_RANGE;
-        updateRange();
+        updateRange(true);
       });
       resizeObserver.observe(el);
       if (props.dynamic) {
@@ -727,5 +876,13 @@
     visibility: hidden;
     pointer-events: none;
     contain: strict;
+  }
+</style>
+
+<style>
+  /* MeasureLane 子组件内渲染的测量行不带本组件 scoped 属性，补同款
+     overflow（BFC 防 margin 折叠，保证实测高度与可见行一致） */
+  .vv-list__measure > .vv-list__row {
+    overflow: hidden;
   }
 </style>

@@ -88,21 +88,22 @@
 
   let frames = 0;
   let costSum = 0;
-  let metricRafId = 0;
+  let metricTimer: ReturnType<typeof setTimeout> | null = null;
   const onScroll = (e: Event) => {
     const t0 = performance.now();
     const st = (e.target as HTMLElement).scrollTop;
     costSum += performance.now() - t0;
     frames++;
-    // 指标更新按帧节流：避免每个 scroll 事件触发整页重渲染
-    if (metricRafId) {
+    // 指标 150ms 节流：demo 组件每次重渲染都要重建插槽 vnode 树，
+    // 逐帧更新会成为滚动帧耗时大头
+    if (metricTimer) {
       return;
     }
-    metricRafId = requestAnimationFrame(() => {
-      metricRafId = 0;
+    metricTimer = setTimeout(() => {
+      metricTimer = null;
       scrollTop.value = st;
       frameCost.value = costSum / frames;
-    });
+    }, 150);
   };
 
   const jumpTo = (pos: "start" | "middle" | "end") => {

@@ -45,6 +45,7 @@
         :get-item-at="getItemAt"
         :item-size="estimate"
         :dynamic="true"
+        :row-memo="true"
         :buffer="300"
         height="100%"
         @scroll.passive="onScroll"
@@ -94,18 +95,20 @@
     return { id: index, lines };
   };
 
-  let metricRafId = 0;
+  let metricTimer: ReturnType<typeof setTimeout> | null = null;
+  let pendingScrollTop = 0;
   const onScroll = (e: Event) => {
-    const st = (e.target as HTMLElement).scrollTop;
-    // 指标更新按帧节流：避免每个 scroll 事件触发整页重渲染
-    if (metricRafId) {
+    pendingScrollTop = (e.target as HTMLElement).scrollTop;
+    // 指标 150ms 节流：demo 组件每次重渲染都要重建插槽 vnode 树，
+    // 逐帧更新会成为滚动帧耗时大头（组件自身 bail-out 也救不了父级渲染）
+    if (metricTimer) {
       return;
     }
-    metricRafId = requestAnimationFrame(() => {
-      metricRafId = 0;
-      scrollTop.value = st;
+    metricTimer = setTimeout(() => {
+      metricTimer = null;
+      scrollTop.value = pendingScrollTop;
       measuredCount.value = listRef.value?.getMeasuredCount() ?? 0;
-    });
+    }, 150);
   };
 
   const jumpTo = (pos: "start" | "middle" | "end") => {
