@@ -31,7 +31,7 @@
     </div>
     <div class="metrics">
       <span>scrollTop：{{ scrollTop.toFixed(0) }} px</span>
-      <span>已测量行数：{{ measuredCount.toLocaleString() }}</span>
+      <span>已缓存行高：{{ measuredCount.toLocaleString() }}</span>
     </div>
     <p class="tip">
       行高由内容决定（1~3 行文本，约 32~80px），未测量行按估计高度参与定位，渲染后 ResizeObserver
@@ -94,15 +94,18 @@
     return { id: index, lines };
   };
 
-  let lastMeasureSync = 0;
+  let metricRafId = 0;
   const onScroll = (e: Event) => {
-    scrollTop.value = (e.target as HTMLElement).scrollTop;
-    // 粗略展示测量进度：统计窗口内已渲染行数变化（节流）
-    const now = performance.now();
-    if (now - lastMeasureSync > 500) {
-      lastMeasureSync = now;
-      measuredCount.value = document.querySelectorAll(".vv-list__row").length;
+    const st = (e.target as HTMLElement).scrollTop;
+    // 指标更新按帧节流：避免每个 scroll 事件触发整页重渲染
+    if (metricRafId) {
+      return;
     }
+    metricRafId = requestAnimationFrame(() => {
+      metricRafId = 0;
+      scrollTop.value = st;
+      measuredCount.value = listRef.value?.getMeasuredCount() ?? 0;
+    });
   };
 
   const jumpTo = (pos: "start" | "middle" | "end") => {

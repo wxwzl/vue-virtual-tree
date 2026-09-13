@@ -25,23 +25,45 @@
       class="vv-list__spacer"
       :style="{ height: `${spacerBottom}px` }"
     ></div>
+    <div
+      v-if="dynamic"
+      ref="measureRef"
+      class="vv-list__measure"
+      aria-hidden="true"
+    >
+      <div
+        v-for="i in measureQueue"
+        :key="i"
+        class="vv-list__row"
+        :data-index="i"
+      >
+        <slot
+          :item="itemAt(i)"
+          :index="i"
+        ></slot>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts" generic="T">
-  import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
+  import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
   import { FixedSizeModel, MeasuredSizeModel, type SizeModel } from "./core/sizeModel";
   import { coverRange, EMPTY_RANGE, type RowRange } from "./core/range";
 
   /**
-   * 通用虚拟列表（spacer 流式 + 边界回收 + 行池化）
+   * 通用虚拟列表（spacer 流式 + 边界回收 + 行池化 + 隐藏预测量）
    *
    * 与 transform 池化路线不同：行是普通流式内容，行内滚动完全由浏览器
    * 原生处理（每帧零 DOM 操作），仅当可见范围逃出渲染范围时才平移窗口，
    * 由上下 spacer 补偿高度，视觉零跳动。行 key 用窗口槽位号而非数据 key，
    * 窗口平移时 Vue 就地 patch 复用 DOM，避免整窗拆装。
-   * 动态行高实测回写后永不回写 scrollTop：锚定补偿由 cumDelta 虚拟修正项
-   * 吸收进 spacerTop 公式，滚动条拖拽全程不被干扰。
+   * 动态行高由隐藏预测量通道在滚动前提前实测并缓存（前瞻窗口 + 空闲向外扩散，
+   * 未测行用自适应均值），可见路径几乎不再产生测量回写；少量逃逸行与内容
+   * 异步变化的补偿永不回写 scrollTop，由 cumDelta 虚拟修正项吸收进
+   * spacerTop 公式，滚动条拖拽全程不被干扰。
+   * 注意：动态模式下插槽内容会在隐藏通道额外渲染一份（限速、不可见），
+   * 插槽内不应依赖可见性或产生副作用。
    */
 
   export interface VirtualListProps<T> {
@@ -107,6 +129,8 @@
     modelTick.value++;
     cumDelta.value = 0;
     frozenTotal.value = model.totalSize;
+    // 数据源变化：清空预测量队列，前沿由 range watch 重置
+    measureQueue.value = [];
     // scale 可能随 count 变化，须按新 scale 重新同步虚拟偏移
     const el = containerRef.value;
     baseOffset = el ? el.scrollTop * scale.value : 0;
@@ -186,15 +210,22 @@
     flushTimer = setTimeout(flushTotal, 150);
   };
 
+  /** 最近一次滚动时间（决定预测量批次大小）与快速滚动暂停窗口 */
+  let lastScrollAt = 0;
+  let pauseMeasureUntil = 0;
+
   const onScroll = () => {
     const el = containerRef.value;
     if (!el) {
       return;
     }
+    lastScrollAt = performance.now();
     const next = el.scrollTop * scale.value;
-    // 单帧位移超过一个视口视为快速滚动/跳转：内容整体换帧，锚定补偿清零防累积
+    // 单帧位移超过一个视口视为快速滚动/跳转：内容整体换帧，锚定补偿清零防累积；
+    // 同时暂停预测量，把主线程让给滚动帧
     if (Math.abs(next - baseOffset) > viewportH.value) {
       cumDelta.value = 0;
+      pauseMeasureUntil = lastScrollAt + 200;
     }
     baseOffset = next;
     scrollOffset.value = next + cumDelta.value;
@@ -207,85 +238,84 @@
   };
 
   let resizeObserver: ResizeObserver | null = null;
+  /** 容器内容宽度：变化时动态模式的实测缓存全部失效 */
+  let lastWidth = 0;
   /** 动态模式：行高实测观察器与当前被观察的行元素集合 */
   let rowObserver: ResizeObserver | null = null;
   let observedRows = new Set<HTMLElement>();
 
   /**
-   * 行实测回写与滚动锚定补偿。
-   * 视口顶以上的行变高 delta 会把视口内容整体下推 delta px，补偿
-   * cumDelta += delta（由 spacerTop 公式吸收，k>1 时同样精确）；
-   * 视口顶以下的行变化不影响当前视口内容，无需补偿。
-   * 永不回写 scrollTop：回写会与滚动条拖拽打架，快速滚动时也无法感知修正。
+   * 批量回写实测高度并做锚定补偿。
+   * 补偿量 = 锚点所在行顶部在测量前后的偏移差（精确含行 delta 与均值漂移），
+   * 并入 cumDelta 由 spacerTop 公式吸收，永不回写 scrollTop。
    */
-  const onRowResize = (entries: ResizeObserverEntry[]) => {
-    let deltaAbove = 0;
-    let changed = false;
-    for (const entry of entries) {
-      const rowEl = entry.target as HTMLElement;
-      const i = Number(rowEl.dataset.index);
-      if (Number.isNaN(i)) {
-        continue;
-      }
-      const oldOffset = model.offsetOf(i);
-      const delta = model.measure(i, rowEl.offsetHeight);
-      if (delta === 0) {
-        continue;
-      }
-      changed = true;
-      if (oldOffset < scrollOffset.value) {
-        deltaAbove += delta;
-      }
-    }
-    if (!changed) {
+  const applyMeasurements = (list: Array<{ index: number; size: number }>) => {
+    if (!list.length || !props.dynamic) {
       return;
     }
+    const m = model as MeasuredSizeModel;
+    const beforeCount = m.measuredCount;
+    const anchorRow = m.indexAt(scrollOffset.value);
+    const offBefore = m.offsetOf(anchorRow);
+    let changed = false;
+    for (const { index, size } of list) {
+      if (m.measure(index, size) !== 0) {
+        changed = true;
+      }
+    }
+    if (!changed && m.measuredCount === beforeCount) {
+      return;
+    }
+    const deltaAbove = m.offsetOf(anchorRow) - offBefore;
     cumDelta.value += deltaAbove;
     scrollOffset.value += deltaAbove;
     modelTick.value++;
     updateRange();
   };
 
+  /** RO 兜底：可见行内容异步变化（图片加载等）时的尺寸回写 */
+  const onRowResize = (entries: ResizeObserverEntry[]) => {
+    const list: Array<{ index: number; size: number }> = [];
+    for (const entry of entries) {
+      const rowEl = entry.target as HTMLElement;
+      const i = Number(rowEl.dataset.index);
+      if (!Number.isNaN(i)) {
+        list.push({ index: i, size: rowEl.offsetHeight });
+      }
+    }
+    applyMeasurements(list);
+  };
+
   /**
-   * 窗口平移后显式实测一遍所有渲染行：行池化下 DOM 元素复用，
-   * 尺寸不变时 RO 不触发，必须主动测量，否则模型长期停留在估计值。
+   * 窗口平移后的兜底补测：行池化下 DOM 元素复用，尺寸不变时 RO 不触发。
+   * 已被预测量通道缓存的行直接跳过（滚动关键路径零强制重排）；
+   * 快速滚动帧整段跳过，让位给滚动。
    */
   const measureWindow = () => {
     if (!props.dynamic || !containerRef.value) {
       return;
     }
-    let deltaAbove = 0;
-    let changed = false;
-    containerRef.value.querySelectorAll<HTMLElement>(".vv-list__row").forEach((rowEl) => {
-      const i = Number(rowEl.dataset.index);
-      if (Number.isNaN(i)) {
-        return;
-      }
-      const oldOffset = model.offsetOf(i);
-      const delta = model.measure(i, rowEl.offsetHeight);
-      if (delta === 0) {
-        return;
-      }
-      changed = true;
-      if (oldOffset < scrollOffset.value) {
-        deltaAbove += delta;
-      }
-    });
-    if (changed) {
-      cumDelta.value += deltaAbove;
-      scrollOffset.value += deltaAbove;
-      modelTick.value++;
-      updateRange();
+    if (performance.now() < pauseMeasureUntil) {
+      return;
     }
+    const list: Array<{ index: number; size: number }> = [];
+    containerRef.value.querySelectorAll<HTMLElement>(":scope > .vv-list__row").forEach((rowEl) => {
+      const i = Number(rowEl.dataset.index);
+      if (Number.isNaN(i) || model.isMeasured(i)) {
+        return;
+      }
+      list.push({ index: i, size: rowEl.offsetHeight });
+    });
+    applyMeasurements(list);
   };
 
-  /** 渲染窗口变化后同步行观察：观察新行、解除移除的行 */
+  /** 渲染窗口变化后同步行观察：观察新行、解除移除的行（:scope 限定可见行，排除测量通道） */
   const syncRowObserver = () => {
     if (!props.dynamic || !rowObserver || !containerRef.value) {
       return;
     }
     const seen = new Set<HTMLElement>();
-    containerRef.value.querySelectorAll<HTMLElement>(".vv-list__row").forEach((el) => {
+    containerRef.value.querySelectorAll<HTMLElement>(":scope > .vv-list__row").forEach((el) => {
       seen.add(el);
       if (!observedRows.has(el)) {
         rowObserver!.observe(el);
@@ -299,9 +329,97 @@
     observedRows = seen;
   };
 
+  /** 隐藏预测量：当前批次待渲染测量的行号 */
+  const measureQueue = ref<number[]>([]);
+  const measureRef = ref<HTMLElement | null>(null);
+  /** 预测量双前沿：围绕当前渲染窗口向外扩散 */
+  let frontAbove = -1;
+  let frontBelow = 0;
+  let measureRafId = 0;
+  let measureTimer: ReturnType<typeof setTimeout> | null = null;
+  /** 空闲批次 / 滚动中批次 */
+  const IDLE_BATCH = 24;
+  const SCROLL_BATCH = 8;
+
+  /** 取一批待测行号：以下方（滚动前进方向）为主，约 2:1；已测行跳过 */
+  const pickBatch = (size: number): number[] => {
+    const m = model as MeasuredSizeModel;
+    const n = count.value;
+    const out: number[] = [];
+    let picked = 0;
+    while (out.length < size) {
+      while (frontBelow < n && m.isMeasured(frontBelow)) {
+        frontBelow++;
+      }
+      while (frontAbove >= 0 && m.isMeasured(frontAbove)) {
+        frontAbove--;
+      }
+      const canBelow = frontBelow < n;
+      const canAbove = frontAbove >= 0;
+      if (!canBelow && !canAbove) {
+        break;
+      }
+      if (picked % 3 === 2 && canAbove) {
+        out.push(frontAbove--);
+      } else if (canBelow) {
+        out.push(frontBelow++);
+      } else {
+        out.push(frontAbove--);
+      }
+      picked++;
+    }
+    return out;
+  };
+
+  const scheduleMeasure = () => {
+    if (!props.dynamic || measureRafId || measureTimer) {
+      return;
+    }
+    measureRafId = requestAnimationFrame(stepMeasure);
+  };
+
+  /** rAF 时间片：渲染一批隐藏行 → 一次性读高度 → 批量回写（每批至多一次排版） */
+  const stepMeasure = () => {
+    measureRafId = 0;
+    const lane = measureRef.value;
+    if (!props.dynamic || !lane) {
+      return;
+    }
+    const now = performance.now();
+    if (now < pauseMeasureUntil) {
+      // 快速滚动期间暂停，稍后重试
+      measureTimer = setTimeout(() => {
+        measureTimer = null;
+        scheduleMeasure();
+      }, 200);
+      return;
+    }
+    const batch = pickBatch(now - lastScrollAt < 100 ? SCROLL_BATCH : IDLE_BATCH);
+    if (batch.length === 0) {
+      return; // 缓存已覆盖全部行，休眠（range/数据变化时唤醒）
+    }
+    measureQueue.value = batch;
+    void nextTick(() => {
+      const list: Array<{ index: number; size: number }> = [];
+      for (const rowEl of Array.from(lane.children)) {
+        const el = rowEl as HTMLElement;
+        const i = Number(el.dataset.index);
+        if (!Number.isNaN(i)) {
+          list.push({ index: i, size: el.offsetHeight });
+        }
+      }
+      applyMeasurements(list);
+      scheduleMeasure();
+    });
+  };
+
   const afterWindowShift = () => {
     measureWindow();
     syncRowObserver();
+    // 窗口平移后重置预测量前沿并唤醒调度器
+    frontAbove = range.value.start - 1;
+    frontBelow = range.value.end + 1;
+    scheduleMeasure();
   };
 
   watch(range, afterWindowShift, { flush: "post" });
@@ -312,6 +430,7 @@
       return;
     }
     viewportH.value = el.clientHeight;
+    lastWidth = el.clientWidth;
     frozenTotal.value = model.totalSize;
     baseOffset = el.scrollTop * scale.value;
     scrollOffset.value = baseOffset;
@@ -319,6 +438,12 @@
     if (typeof ResizeObserver !== "undefined") {
       resizeObserver = new ResizeObserver(() => {
         viewportH.value = el.clientHeight;
+        if (props.dynamic && lastWidth && el.clientWidth !== lastWidth) {
+          // 宽度变化 => 已测高度全部失效，清缓存重测
+          (model as MeasuredSizeModel).invalidateAll();
+          modelTick.value++;
+        }
+        lastWidth = el.clientWidth;
         range.value = EMPTY_RANGE;
         updateRange();
       });
@@ -326,6 +451,9 @@
       if (props.dynamic) {
         rowObserver = new ResizeObserver(onRowResize);
         syncRowObserver();
+        frontAbove = range.value.start - 1;
+        frontBelow = range.value.end + 1;
+        scheduleMeasure();
       }
     }
   });
@@ -334,6 +462,14 @@
     if (flushTimer) {
       clearTimeout(flushTimer);
       flushTimer = null;
+    }
+    if (measureRafId) {
+      cancelAnimationFrame(measureRafId);
+      measureRafId = 0;
+    }
+    if (measureTimer) {
+      clearTimeout(measureTimer);
+      measureTimer = null;
     }
     resizeObserver?.disconnect();
     resizeObserver = null;
@@ -365,13 +501,18 @@
     flushTotal();
     // 精确映射下虚拟可滚上限即 total - 视口高，且任意位置均可达
     const maxOffset = Math.max(0, model.totalSize - viewportH.value);
-    el.scrollTop = Math.min(Math.max(0, target), maxOffset) / scale.value;
+    const clamped = Math.min(Math.max(0, target), maxOffset);
     // 跳转后锚定补偿清零，以新位置为基准重新累积
     cumDelta.value = 0;
     // scroll 事件异步触发，这里同步一次保证渲染窗口立即覆盖目标位置
-    baseOffset = el.scrollTop * scale.value;
-    scrollOffset.value = baseOffset;
+    baseOffset = clamped;
+    scrollOffset.value = clamped;
     updateRange();
+    // flushTotal 刚更新 frozenTotal，spacer 的 DOM 高度要等 Vue 刷新后才生效；
+    // 立即写 scrollTop 可能被旧 scrollHeight 钳位（跳底部时差最后一截），延到刷新后写入
+    void nextTick(() => {
+      el.scrollTop = clamped / scale.value;
+    });
   };
 
   const scrollTo = (offset: number) => {
@@ -380,13 +521,18 @@
       return;
     }
     cumDelta.value = 0;
-    el.scrollTop = offset / scale.value;
-    baseOffset = el.scrollTop * scale.value;
-    scrollOffset.value = baseOffset;
+    baseOffset = offset;
+    scrollOffset.value = offset;
     updateRange();
+    void nextTick(() => {
+      el.scrollTop = offset / scale.value;
+    });
   };
 
-  defineExpose({ scrollToIndex, scrollTo });
+  /** 已实测缓存的行数（动态模式为缓存进度指标） */
+  const getMeasuredCount = () => model.measuredCount;
+
+  defineExpose({ scrollToIndex, scrollTo, getMeasuredCount });
 </script>
 
 <style scoped>
@@ -405,5 +551,22 @@
 
   .vv-list__row {
     overflow: hidden;
+  }
+
+  /*
+   * 隐藏预测量通道：脱离文档流且 0 高 + contain，内部行正常排版但
+   * 不影响 scrollHeight；宽度与可见行一致（同容器 content box），
+   * 保证测得的高度与真实渲染一致。
+   */
+  .vv-list__measure {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+    contain: strict;
   }
 </style>

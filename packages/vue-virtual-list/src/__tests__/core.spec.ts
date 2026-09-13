@@ -32,6 +32,13 @@ describe("Fenwick", () => {
     expect(bit.lowerBound(-5)).toBe(0); // 负数 clamp 到 0
   });
 
+  it("Int32 存储模式", () => {
+    const bit = new Fenwick(5, true);
+    [1, 2, 3, 4, 5].forEach((v, i) => bit.add(i, v));
+    expect(bit.sum(3)).toBe(6);
+    expect(bit.total()).toBe(15);
+  });
+
   it("空树", () => {
     const bit = new Fenwick(0);
     expect(bit.total()).toBe(0);
@@ -78,18 +85,21 @@ describe("MeasuredSizeModel", () => {
     expect(m.indexAt(300)).toBe(10);
   });
 
-  it("measure 修正前缀和", () => {
+  it("measure 修正前缀和，均值随测量收缩", () => {
     const m = new MeasuredSizeModel(10, 30);
-    // 第 0 行实测 100：后续行偏移整体后移 70
+    // 第 0 行实测 100：行级 delta = 100 − 当前估计 30
     expect(m.measure(0, 100)).toBe(70);
-    expect(m.totalSize).toBe(370);
+    // 均值 = (100 + 32×30) / 33（先验收缩）
+    const avg1 = (100 + 32 * 30) / 33;
+    expect(m.totalSize).toBeCloseTo(100 + avg1 * 9, 10);
     expect(m.offsetOf(1)).toBe(100);
     expect(m.indexAt(99)).toBe(0);
     expect(m.indexAt(100)).toBe(1);
     // 重复测量返回相对当前值的 delta
     expect(m.measure(0, 100)).toBe(0);
     expect(m.measure(0, 50)).toBe(-50);
-    expect(m.totalSize).toBe(320);
+    const avg2 = (50 + 32 * 30) / 33;
+    expect(m.totalSize).toBeCloseTo(50 + avg2 * 9, 10);
   });
 
   it("measure 忽略非法输入", () => {
@@ -104,32 +114,72 @@ describe("MeasuredSizeModel", () => {
   it("setCount 保留已测量前缀", () => {
     const m = new MeasuredSizeModel(5, 30);
     m.measure(0, 100);
+    const avg = (100 + 32 * 30) / 33;
     m.setCount(3);
     expect(m.count).toBe(3);
     expect(m.sizeOf(0)).toBe(100);
-    expect(m.totalSize).toBe(160);
+    expect(m.totalSize).toBeCloseTo(100 + avg * 2, 10);
     m.setCount(10);
     expect(m.sizeOf(0)).toBe(100);
-    expect(m.totalSize).toBe(100 + 30 * 9);
+    expect(m.totalSize).toBeCloseTo(100 + avg * 9, 10);
+  });
+
+  it("已测标记与未测行计数", () => {
+    const m = new MeasuredSizeModel(10, 30);
+    expect(m.isMeasured(0)).toBe(false);
+    expect(m.measuredCount).toBe(0);
+    m.measure(3, 90);
+    m.measure(7, 60);
+    expect(m.isMeasured(3)).toBe(true);
+    expect(m.isMeasured(4)).toBe(false);
+    expect(m.measuredCount).toBe(2);
+    expect(m.unmeasuredCountBelow(3)).toBe(3); // [0,3) 全未测
+    expect(m.unmeasuredCountBelow(4)).toBe(3); // 3 已测
+    expect(m.unmeasuredCountBelow(10)).toBe(8);
+  });
+
+  it("均值自适应收敛", () => {
+    const m = new MeasuredSizeModel(1000, 30);
+    expect(m.avg).toBe(30);
+    for (let i = 0; i < 500; i++) {
+      m.measure(i, 60);
+    }
+    expect(m.avg).toBeCloseTo((500 * 60 + 32 * 30) / 532, 10);
+    expect(m.sizeOf(999)).toBeCloseTo(m.avg, 10);
+    expect(m.totalSize).toBeCloseTo(500 * 60 + m.avg * 500, 10);
+  });
+
+  it("invalidateAll 清空缓存并沉淀均值", () => {
+    const m = new MeasuredSizeModel(10, 30);
+    m.measure(0, 90);
+    const avgBefore = m.avg;
+    m.invalidateAll();
+    expect(m.measuredCount).toBe(0);
+    expect(m.isMeasured(0)).toBe(false);
+    expect(m.avg).toBeCloseTo(avgBefore, 10); // 均值沉淀为估计值
+    expect(m.totalSize).toBeCloseTo(avgBefore * 10, 10);
+    m.measure(0, 90);
+    expect(m.offsetOf(1)).toBe(90);
   });
 
   it("一百万行混合测量后的精度", () => {
     const n = 1_000_000;
     const m = new MeasuredSizeModel(n, 32);
-    let expected = 0;
+    let measuredTotal = 0;
     for (let i = 0; i < n; i += 1000) {
       const size = 16 + ((i * 7919) % 96); // 16~111 确定性伪随机
-      expected += size - 32;
+      measuredTotal += size;
       m.measure(i, size);
     }
-    expect(m.totalSize).toBeCloseTo(n * 32 + expected, 6);
-    // 抽点验证 offsetOf 与暴力求和一致
+    const avg = (measuredTotal + 32 * 32) / (1000 + 32);
+    expect(m.totalSize).toBeCloseTo(measuredTotal + avg * (n - 1000), 6);
+    // 抽点验证 offsetOf 与暴力求和一致（sizeOf 为唯一事实源；均值非 2 的幂，用相对误差）
     let brute = 0;
     for (let i = 0; i < 500_000; i++) {
       brute += m.sizeOf(i);
     }
-    expect(m.offsetOf(500_000)).toBeCloseTo(brute, 6);
-    expect(m.indexAt(brute)).toBe(500_000);
+    expect(Math.abs(m.offsetOf(500_000) - brute) / brute).toBeLessThan(1e-9);
+    expect(m.indexAt(m.offsetOf(500_000))).toBe(500_000);
   });
 });
 

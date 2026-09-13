@@ -88,13 +88,21 @@
 
   let frames = 0;
   let costSum = 0;
+  let metricRafId = 0;
   const onScroll = (e: Event) => {
     const t0 = performance.now();
-    scrollTop.value = (e.target as HTMLElement).scrollTop;
-    // 统计滚动事件处理耗时（不含 Vue 渲染，渲染耗时由阶段 2 的 Performance trace 量化）
+    const st = (e.target as HTMLElement).scrollTop;
     costSum += performance.now() - t0;
     frames++;
-    frameCost.value = costSum / frames;
+    // 指标更新按帧节流：避免每个 scroll 事件触发整页重渲染
+    if (metricRafId) {
+      return;
+    }
+    metricRafId = requestAnimationFrame(() => {
+      metricRafId = 0;
+      scrollTop.value = st;
+      frameCost.value = costSum / frames;
+    });
   };
 
   const jumpTo = (pos: "start" | "middle" | "end") => {

@@ -1,18 +1,19 @@
 /**
- * 树状数组（Fenwick / Binary Indexed Tree），Float64 前缀和
+ * 树状数组（Fenwick / Binary Indexed Tree），前缀和
  * 用于百万级行高的 offsetOf / indexAt O(log n) 查询
+ * int32 模式用 Int32Array 存储（如已测行计数），内存减半
  */
 export class Fenwick {
   /** 逻辑长度（元素个数） */
   private n: number;
   /** 1-based 内部存储 */
-  private tree: Float64Array;
+  private tree: Float64Array | Int32Array;
   /** 不超过 n 的最大 2 的幂，用于二分下降 */
   private highest: number;
 
-  constructor(n: number) {
+  constructor(n: number, int32 = false) {
     this.n = n;
-    this.tree = new Float64Array(n + 1);
+    this.tree = int32 ? new Int32Array(n + 1) : new Float64Array(n + 1);
     let h = 1;
     while (h << 1 <= n) {
       h <<= 1;
