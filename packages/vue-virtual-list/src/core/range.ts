@@ -35,7 +35,16 @@ export function coverRange(
     return { start: 0, end: -1 };
   }
   if (current.end >= current.start && vis.start >= current.start && vis.end <= current.end) {
-    return current;
+    // 行号包含之外再校验像素覆盖：挂载初期视口可能尚未撑开（或容器事后变大），
+    // 仅按行号判断会卡在浅 buffer 状态；渲染窗口像素不足 intended buffer 时重算
+    const topCovered = model.offsetOf(current.start) <= Math.max(0, offset - buffer);
+    // end 已到末行时下方无法再扩（重算结果相同），视为覆盖充足，避免近底反复重算振荡
+    const bottomCovered =
+      current.end === model.count - 1 ||
+      model.offsetOf(current.end + 1) >= offset + viewport + buffer;
+    if (topCovered && bottomCovered) {
+      return current;
+    }
   }
   const start = Math.max(0, model.indexAt(Math.max(0, offset - buffer)));
   const end = Math.min(model.count - 1, model.indexAt(offset + viewport + buffer));

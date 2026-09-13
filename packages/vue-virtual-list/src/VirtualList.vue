@@ -114,8 +114,23 @@
 
   let model: SizeModel = createModel(count.value, props.itemSize, props.dynamic);
 
-  /** 冻结总高：滚动期间 scale 与 spacerBottom 以其为准，避免测量回写改变 scrollHeight 干扰拖拽；空闲时同步 */
+  /** 冻结总高：滚动期间 scale 以其为准；空闲时同步 */
   const frozenTotal = ref(model.totalSize);
+  /** 冻结渲染总跨度（DOM px）：两次 flush 之间 spacerBottom 吸收一切变化，scrollHeight 恒定，滚动条拇指不漂移 */
+  const frozenSpan = ref(0);
+
+  /** 按当前模型重算 frozenSpan（= spacerTop + 渲染行高 + 旧公式 spacerBottom，flush 时刻前后连续） */
+  const updateFrozenSpan = () => {
+    const k = scale.value;
+    const base = scrollOffset.value - cumDelta.value;
+    const top = Math.max(
+      0,
+      model.offsetOf(range.value.start) - base * ((k - 1) / k) - cumDelta.value
+    );
+    const rendered = model.offsetOf(range.value.end + 1) - model.offsetOf(range.value.start);
+    const bottom = Math.max(0, (frozenTotal.value - model.offsetOf(range.value.end + 1)) / k);
+    frozenSpan.value = top + rendered + bottom;
+  };
 
   watch([count, () => props.itemSize, () => props.dynamic], ([n, size, dyn], [, prevSize]) => {
     const sameKind = dyn ? model instanceof MeasuredSizeModel : model instanceof FixedSizeModel;
@@ -129,13 +144,15 @@
     modelTick.value++;
     cumDelta.value = 0;
     frozenTotal.value = model.totalSize;
-    // 数据源变化：清空预测量队列，前沿由 range watch 重置
+    // 数据源变化：清空预测量队列并重建抽样种子，前沿由 range watch 重置
     measureQueue.value = [];
+    buildSeeds(n);
     // scale 可能随 count 变化，须按新 scale 重新同步虚拟偏移
     const el = containerRef.value;
     baseOffset = el ? el.scrollTop * scale.value : 0;
     scrollOffset.value = baseOffset;
     updateRange();
+    updateFrozenSpan();
   });
 
   /** 高度缩放因子：spacer 存 scaled 高度，scrollTop × k 还原虚拟偏移；滚动期间随 frozenTotal 冻结 */
@@ -181,10 +198,16 @@
     return Math.max(0, model.offsetOf(range.value.start) - drift - cumDelta.value);
   });
 
-  /** 底部 spacer：窗口之后剩余高度的 1/k 缩放，钳位到 0；滚动期间随 frozenTotal 冻结 */
+  /**
+   * 底部 spacer = frozenSpan − spacerTop − 渲染行高（模型估值）。
+   * 两次 flush 之间 scrollHeight 恒定：spacerTop 随滚动/锚定补偿逐帧变化、
+   * 测量回写改变模型偏移，全部被本式吸收，滚动条拇指不漂移；
+   * 仅 flush 时 frozenSpan 步进一次（空闲 150ms 后或近底立即）。
+   */
   const spacerBottom = computed(() => {
     void modelTick.value;
-    return Math.max(0, (frozenTotal.value - model.offsetOf(range.value.end + 1)) / scale.value);
+    const rendered = model.offsetOf(range.value.end + 1) - model.offsetOf(range.value.start);
+    return Math.max(0, frozenSpan.value - spacerTop.value - rendered);
   });
 
   /** 同步冻结总高：空闲 150ms 后执行；接近底部时立即执行，保证底部可达 */
@@ -202,6 +225,7 @@
       scrollOffset.value = baseOffset + cumDelta.value;
       updateRange();
     }
+    updateFrozenSpan();
   };
   const scheduleFlush = () => {
     if (flushTimer) {
@@ -341,11 +365,40 @@
   const IDLE_BATCH = 24;
   const SCROLL_BATCH = 8;
 
-  /** 取一批待测行号：以下方（滚动前进方向）为主，约 2:1；已测行跳过 */
+  /**
+   * 全局均匀抽样种子：数据就绪后先抽样测量（~256 行均布），
+   * avg 约 0.2s 内收敛到真实均值，总高尽早算准、scrollHeight 一次到位，
+   * 避免局部扩散期间滚动条拇指长时间漂移
+   */
+  let seedIndexes: number[] = [];
+  let seedCursor = 0;
+  let seedFlushed = true;
+  const SEED_SAMPLES = 256;
+  const buildSeeds = (n: number) => {
+    seedIndexes = [];
+    seedCursor = 0;
+    seedFlushed = true;
+    if (!props.dynamic || n <= 0) {
+      return;
+    }
+    const stride = n / SEED_SAMPLES;
+    for (let s = 0; s < SEED_SAMPLES; s++) {
+      seedIndexes.push(Math.floor(s * stride));
+    }
+    seedFlushed = false;
+  };
+
+  /** 取一批待测行号：抽样种子优先，其次下方（滚动前进方向）为主约 2:1；已测行跳过 */
   const pickBatch = (size: number): number[] => {
     const m = model as MeasuredSizeModel;
     const n = count.value;
     const out: number[] = [];
+    while (out.length < size && seedCursor < seedIndexes.length) {
+      const i = seedIndexes[seedCursor++];
+      if (i < n && !m.isMeasured(i)) {
+        out.push(i);
+      }
+    }
     let picked = 0;
     while (out.length < size) {
       while (frontBelow < n && m.isMeasured(frontBelow)) {
@@ -409,6 +462,18 @@
         }
       }
       applyMeasurements(list);
+      if (!seedFlushed && seedCursor >= seedIndexes.length) {
+        // 抽样完成：avg 已收敛，立即 flush 一次让 scrollHeight 到位
+        seedFlushed = true;
+        flushTotal();
+      } else if (
+        performance.now() - lastScrollAt > 300 &&
+        Math.abs(model.totalSize - frozenTotal.value) >
+          Math.max(frozenTotal.value * 0.005, viewportH.value * 2)
+      ) {
+        // 空闲扩散期间总高漂移超阈值时步进同步（滚动期间绝不 flush）
+        flushTotal();
+      }
       scheduleMeasure();
     });
   };
@@ -435,6 +500,10 @@
     baseOffset = el.scrollTop * scale.value;
     scrollOffset.value = baseOffset;
     updateRange();
+    updateFrozenSpan();
+    if (props.dynamic) {
+      buildSeeds(count.value);
+    }
     if (typeof ResizeObserver !== "undefined") {
       resizeObserver = new ResizeObserver(() => {
         viewportH.value = el.clientHeight;

@@ -210,4 +210,16 @@ describe("range", () => {
     const r4 = coverRange(m, 16000, 320, buffer, r3);
     expect(r4).toEqual({ start: 498, end: 512 });
   });
+
+  it("coverRange 行号包含但像素 buffer 不足时重算", () => {
+    const m = new FixedSizeModel(1000, 32);
+    const buffer = 64;
+    const r1 = coverRange(m, 0, 288, buffer, EMPTY_RANGE);
+    expect(r1).toEqual({ start: 0, end: 11 });
+    // 视口 288 → 352：可见 end=11 仍被行号包含，但下方像素 buffer 不足 → 重算
+    const r2 = coverRange(m, 0, 352, buffer, r1);
+    expect(r2).toEqual({ start: 0, end: 13 });
+    // 覆盖充足后保持稳定
+    expect(coverRange(m, 0, 352, buffer, r2)).toBe(r2);
+  });
 });
