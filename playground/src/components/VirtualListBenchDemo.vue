@@ -67,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, h, ref, watch, type FunctionalComponent } from "vue";
+  import { computed, h, ref, shallowRef, watch, type FunctionalComponent } from "vue";
   import { VirtualList } from "@wxwzl/vue-virtual-list";
   import { RecycleScroller } from "vue-virtual-scroller";
   import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
@@ -95,11 +95,14 @@
   const theirsRef = ref<InstanceType<typeof RecycleScroller> | null>(null);
 
   // RecycleScroller 必须物化数组；自研侧用回调源零内存占用（差异本身也是对比点）
-  const items = ref<RowData[]>([]);
+  // shallowRef：100 万行数组不需要深层响应式代理（只整体替换，从不原地修改）
+  const items = shallowRef<RowData[]>([]);
+  // 注意：行标签不能用 toLocaleString——百万次 Intl 格式化约 9s，整页卡死；
+  // 千分位只留在渲染侧（可见行才格式化，每屏仅几十次）
   const genItems = (n: number) => {
     const arr = new Array<RowData>(n);
     for (let i = 0; i < n; i++) {
-      arr[i] = { id: i, label: `Row ${i.toLocaleString()} — 基准对比行内容`, meta: `${i * 32} px` };
+      arr[i] = { id: i, label: `Row ${i} — 基准对比行内容`, meta: `${i * 32} px` };
     }
     return arr;
   };
