@@ -81,6 +81,9 @@ importers:
 
   packages/vue-virtual-tree:
     dependencies:
+      '@wxwzl/vue-virtual-list':
+        specifier: workspace:*
+        version: link:../vue-virtual-list
       vue:
         specifier: 3.4.0
         version: 3.4.0(typescript@5.9.3)

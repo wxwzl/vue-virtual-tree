@@ -27,12 +27,13 @@ export default defineConfig({
       formats: ["es", "cjs"],
     },
     rollupOptions: {
-      external: ["vue", "vue-virtual-scroller"],
+      external: ["vue", "vue-virtual-scroller", "@wxwzl/vue-virtual-list"],
       output: {
         exports: "named", // 同时使用默认导出和命名导出
         globals: {
           vue: "Vue",
           "vue-virtual-scroller": "VueVirtualScroller",
+          "@wxwzl/vue-virtual-list": "VueVirtualList",
         },
       },
     },

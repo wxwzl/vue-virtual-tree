@@ -207,7 +207,9 @@
     const next = coverRange(
       model,
       scrollOffset.value,
-      viewportH.value,
+      // 视口兜底：容器暂不可测（0 高，如挂载初期/隐藏容器/无布局环境）时
+      // 至少渲染一行高度 + buffer，避免完全空白；RO 就位后按真实视口重算
+      Math.max(viewportH.value, props.itemSize),
       effBuffer(),
       range.value,
       strict
@@ -806,6 +808,12 @@
       target = itemOffset;
     }
     target += offset;
+    // 显式定位先解除贴底吸附：否则 updateRange 触发的窗口平移会调
+    // stickBottomIfNeeded，其 nextTick 吸附写入排在本函数的 scrollTop
+    // 写入之后执行，把跳转目标重新拉回底部（吸附事件还被判为 selfSnap，
+    // 吸附状态自保持，跳转被完全吞掉）。目标即底部时由随后的 onScroll 重新吸附
+    stickToBottom = false;
+    snappingToBottom = false;
     flushTotal();
     // 精确映射下虚拟可滚上限即 total - 视口高，且任意位置均可达
     const maxOffset = Math.max(0, model.totalSize - viewportH.value);
@@ -828,6 +836,9 @@
     if (!el) {
       return;
     }
+    // 同 scrollToIndex：显式定位前解除贴底吸附
+    stickToBottom = false;
+    snappingToBottom = false;
     cumDelta.value = 0;
     baseOffset = offset;
     scrollOffset.value = offset;

@@ -36,6 +36,14 @@ declare module "vue-virtual-scroller" {
 
   export const DynamicScrollerItem: DefineComponent<DynamicScrollerItemProps, any, any>;
 
+  export const RecycleScroller: DefineComponent<
+    { items?: any[]; itemSize?: number; keyField?: string; [key: string]: any },
+    any,
+    any
+  > & {
+    scrollToItem?: (index: number, align?: "start" | "center" | "end") => void;
+  };
+
   const VueVirtualScroller: {
     install(app: App): void;
   };

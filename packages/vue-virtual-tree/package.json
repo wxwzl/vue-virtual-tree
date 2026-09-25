@@ -71,6 +71,7 @@
     "format:staged": "prettier --write"
   },
   "dependencies": {
+    "@wxwzl/vue-virtual-list": "workspace:*",
     "vue": "3.4.0",
     "vue-virtual-scroller": "2.0.0-beta.9"
   }
