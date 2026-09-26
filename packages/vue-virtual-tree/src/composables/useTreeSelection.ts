@@ -148,17 +148,28 @@ export function useTreeSelection(
 
     // 如果有默认选中的节点，批量设置
     if (props.defaultCheckedKeys && props.defaultCheckedKeys.length > 0) {
-      for (const key of props.defaultCheckedKeys) {
-        const node = getFlatNode(key);
-        if (node) {
-          checkedKeys.value.add(key);
-          node.isChecked = true;
-          node.isIndeterminate = false;
+      if (props.checkStrictly) {
+        // 严格模式：只设置列出的节点本身
+        for (const key of props.defaultCheckedKeys) {
+          const node = getFlatNode(key);
+          if (node) {
+            checkedKeys.value.add(key);
+            node.isChecked = true;
+            node.isIndeterminate = false;
+          }
         }
-      }
-
-      // 批量计算所有祖先状态
-      if (!props.checkStrictly) {
+      } else {
+        // 父子关联模式（与 Element Plus 一致）：勾选一个节点会级联勾选其所有后代，
+        // 祖先状态由子节点自底向上推导。
+        // 注意不能只标记列出的节点再做自底向上重算——内部节点的选中态会被
+        // 「子节点未全选」推导覆盖掉，导致默认选中的父节点最终既未勾选也未半选。
+        for (const key of props.defaultCheckedKeys) {
+          const node = getFlatNode(key);
+          if (node) {
+            setNodeCheckedInTree(node, true);
+          }
+        }
+        // 统一收尾，保证所有祖先的勾选/半选状态一致
         batchUpdateAllStates();
       }
     }
