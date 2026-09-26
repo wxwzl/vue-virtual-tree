@@ -232,16 +232,10 @@
         return;
       }
 
+      // 注意：targetMeta 是在移除拖拽节点之后的 workingData 上查到的，
+      // 其 index 已经是移除后的索引，无需再做同父前移的 -1 修正
       const insertIntoParent = (parent: TreeNodeData | null, index: number) => {
         const siblings = parent ? (parent.children = parent.children || []) : workingData;
-        if (
-          removedMeta.parent &&
-          parent &&
-          removedMeta.parent.id === parent.id &&
-          removedMeta.index < index
-        ) {
-          index -= 1;
-        }
         siblings.splice(index, 0, removedMeta.node);
       };
 
