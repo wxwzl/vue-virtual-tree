@@ -1,6 +1,6 @@
 # Vue Virtual Tree
 
-一个基于 `vue-virtual-scroller@next` 的高性能 Vue 3 虚拟树列表组件库，功能参照 Element Plus Tree 组件。
+一个基于自研虚拟列表（`@wxwzl/vue-virtual-list`）的高性能 Vue 3 虚拟树列表组件库，功能参照 Element Plus Tree 组件。
 
 ## 特性
 
@@ -15,7 +15,7 @@
 ## 安装
 
 ```bash
-pnpm add @wxwzl/vue-virtual-tree vue-virtual-scroller@next
+pnpm add @wxwzl/vue-virtual-tree
 ```
 
 ## 快速开始
@@ -26,8 +26,8 @@ pnpm add @wxwzl/vue-virtual-tree vue-virtual-scroller@next
 </template>
 
 <script setup lang="ts">
-  import { VirtualTree } from "vue-virtual-tree";
-  import "vue-virtual-tree/style";
+  import { VirtualTree } from "@wxwzl/vue-virtual-tree";
+  import "@wxwzl/vue-virtual-tree/style";
 
   const treeData = [
     {
@@ -59,7 +59,7 @@ pnpm add @wxwzl/vue-virtual-tree vue-virtual-scroller@next
 
 <script setup lang="ts">
   import { ref } from "vue";
-  import { VirtualTree } from "vue-virtual-tree";
+  import { VirtualTree } from "@wxwzl/vue-virtual-tree";
 
   const isLoading = ref(true);
   const treeData = ref([]);

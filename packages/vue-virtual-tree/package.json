@@ -58,9 +58,7 @@
     "vitest": "^1.6.0"
   },
   "scripts": {
-    "prepublish": "pnpm run build",
     "build": "vite build",
-    "publish": "npm publish",
     "type-check": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -68,7 +66,8 @@
     "lint": "eslint . --ext .js,.ts,.vue",
     "lint:fix": "eslint . --ext .js,.ts,.vue --fix",
     "lint:staged": "eslint --fix",
-    "format:staged": "prettier --write"
+    "format:staged": "prettier --write",
+    "release": "pnpm run build && pnpm publish"
   },
   "dependencies": {
     "@wxwzl/vue-virtual-list": "workspace:*",

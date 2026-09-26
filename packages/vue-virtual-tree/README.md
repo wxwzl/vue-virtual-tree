@@ -26,8 +26,8 @@ pnpm add @wxwzl/vue-virtual-tree
 </template>
 
 <script setup lang="ts">
-  import { VirtualTree } from "vue-virtual-tree";
-  import "vue-virtual-tree/style";
+  import { VirtualTree } from "@wxwzl/vue-virtual-tree";
+  import "@wxwzl/vue-virtual-tree/style";
 
   const treeData = [
     {
@@ -59,7 +59,7 @@ pnpm add @wxwzl/vue-virtual-tree
 
 <script setup lang="ts">
   import { ref } from "vue";
-  import { VirtualTree } from "vue-virtual-tree";
+  import { VirtualTree } from "@wxwzl/vue-virtual-tree";
 
   const isLoading = ref(true);
   const treeData = ref([]);
