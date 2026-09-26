@@ -17,13 +17,16 @@
           <option :value="4000">4000 px（疯狂甩动）</option>
         </select>
       </label>
-      <button class="btn" :disabled="running" @click="runBench">
-        {{ running ? "压测中..." : "开始压测（两侧各扫一遍全量行程）" }}
+      <button class="btn" :disabled="runningOurs" @click="runBenchOurs">
+        {{ runningOurs ? "压测中..." : "压测自研 VirtualList" }}
+      </button>
+      <button class="btn btn-secondary" :disabled="runningTheirs" @click="runBenchTheirs">
+        {{ runningTheirs ? "压测中..." : "压测 RecycleScroller" }}
       </button>
     </div>
     <p class="tip">
       压测方式：rAF 驱动每帧滚动固定距离，从顶部扫过 32 万 px（1 万行），统计帧率/掉帧/长任务/DOM
-      节点数/堆增量。两侧行 DOM 结构完全一致，仅虚拟化实现不同。
+      节点数/堆增量。两侧行 DOM 结构完全一致，仅虚拟化实现不同。两个按钮相互独立，可单侧分别压测。
     </p>
     <div class="panes">
       <div class="pane">
@@ -88,7 +91,8 @@
 
   const rowCount = ref(1_000_000);
   const stepPx = ref(800);
-  const running = ref(false);
+  const runningOurs = ref(false);
+  const runningTheirs = ref(false);
   const resultOurs = ref("");
   const resultTheirs = ref("");
   const oursRef = ref<InstanceType<typeof VirtualList> | null>(null);
@@ -200,17 +204,28 @@
     return root;
   });
 
-  const runBench = async () => {
-    running.value = true;
+  const runBenchOurs = async () => {
+    runningOurs.value = true;
     resultOurs.value = "压测中...";
     await sleep(100);
-    const rOurs = await sweep(oursEl.value!);
-    resultOurs.value = fmt(rOurs);
+    try {
+      const r = await sweep(oursEl.value!);
+      resultOurs.value = fmt(r);
+    } finally {
+      runningOurs.value = false;
+    }
+  };
+
+  const runBenchTheirs = async () => {
+    runningTheirs.value = true;
     resultTheirs.value = "压测中...";
-    await sleep(300);
-    const rTheirs = await sweep(theirsEl.value!);
-    resultTheirs.value = fmt(rTheirs);
-    running.value = false;
+    await sleep(100);
+    try {
+      const r = await sweep(theirsEl.value!);
+      resultTheirs.value = fmt(r);
+    } finally {
+      runningTheirs.value = false;
+    }
   };
 </script>
 
@@ -235,6 +250,25 @@
     color: #909399;
     font-size: 12px;
     margin: 0 0 8px;
+  }
+
+  .btn {
+    padding: 6px 14px;
+    background-color: #409eff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background-color: #67c23a;
   }
 
   .panes {
