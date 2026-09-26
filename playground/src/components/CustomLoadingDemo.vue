@@ -7,8 +7,8 @@
         使用loading插槽自定义懒加载时的loading显示效果
       </p>
       <ul>
-        <li>使用loading插槽可以完全自定义loading的UI</li>
-        <li>插槽接收node和data参数，可以根据不同节点显示不同效果</li>
+        <li>使用loading插槽可以完全自定义loading的UI（本示例仅显示旋转图标）</li>
+        <li>插槽接收node和data参数，可根据不同节点显示不同效果</li>
         <li>支持文本、动画、图标等多种自定义loading样式</li>
       </ul>
     </div>
@@ -21,10 +21,9 @@
           lazy
           :load="handleLazyLoad"
         >
-          <template #loading="{ node, data }">
+          <template #loading>
             <div class="custom-loading">
               <div class="loading-spinner"></div>
-              <span class="loading-text">正在加载 {{ data.label }}...</span>
             </div>
           </template>
         </VirtualTree>
@@ -184,7 +183,6 @@
   .custom-loading {
     display: flex;
     align-items: center;
-    gap: 8px;
     padding: 4px 0;
   }
 
@@ -195,11 +193,6 @@
     border-top-color: #409eff;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
-  }
-
-  .loading-text {
-    font-size: 12px;
-    color: #909399;
   }
 
   @keyframes spin {
