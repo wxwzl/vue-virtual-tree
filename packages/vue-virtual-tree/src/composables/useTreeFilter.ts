@@ -79,14 +79,6 @@ export function useTreeFilter(
     setVisibleNodes(result);
   };
 
-  // 默认过滤方法
-  const defaultFilterMethod = (value: string, data: any): boolean => {
-    if (!value) {
-      return true;
-    }
-    const label = getNodeLabel(data, props.props);
-    return label.toLowerCase().includes(value.toLowerCase());
-  };
   /**
    * 克隆节点（浅拷贝基本属性，children 需要重新构造）
    * shallowReactive 保持节点字段响应式，与扁平化生成的节点行为一致
@@ -96,6 +88,14 @@ export function useTreeFilter(
       ...node,
       children: undefined, // children 需要重新构造
     }) as FlatTreeNode;
+  };
+
+  /**
+   * 原树叶子节点（无子节点）在过滤结果中无需任何修改，直接复用原节点，
+   * 避免对占多数的叶子做 shallowReactive 克隆（大树过滤时克隆是最大开销）
+   */
+  const cloneIfInternal = (node: FlatTreeNode): FlatTreeNode => {
+    return node.children && node.children.length > 0 ? cloneNode(node) : node;
   };
 
   const filterText = ref("");
@@ -118,50 +118,68 @@ export function useTreeFilter(
     isFiltered.value = true;
     expandedKeys.value.clear();
     return new Promise<void>((resolve) => {
-      const filterMethod = props.filterNodeMethod || defaultFilterMethod;
+      // value 只小写化一次，避免每个节点重复分配
+      const lowerValue = value.toLowerCase();
+      const filterMethod =
+        props.filterNodeMethod ||
+        ((v: string, data: any) =>
+          getNodeLabel(data, props.props).toLowerCase().includes(lowerValue));
 
       // 第一步：收集所有匹配的节点（包括需要显示的父节点），并克隆它们
       const clonedNodes = new Map<string | number, FlatTreeNode>();
 
-      // 收集直接匹配的节点并克隆
+      // 收集直接匹配的节点并克隆（叶子复用原节点）
       flatTree.value.forEach((node) => {
         if (filterMethod(value, node.data)) {
           // 克隆匹配的节点
           if (!clonedNodes.has(node.id)) {
-            clonedNodes.set(node.id, cloneNode(node));
+            clonedNodes.set(node.id, cloneIfInternal(node));
           }
 
-          // 收集并克隆所有父节点
+          // 收集并克隆所有父节点（父节点必为内部节点，直接克隆）
           let parentId: string | number | null = node.parentId;
           while (parentId) {
             const parentNode = flatNodeMap.value.get(parentId);
             if (parentNode && !clonedNodes.has(parentId)) {
-              clonedNodes.set(parentId, cloneNode(parentNode));
+              clonedNodes.set(parentId, cloneIfInternal(parentNode));
             }
             parentId = parentNode?.parentId || null;
           }
         }
       });
 
-      // 第二步：根据 parentId 关系重建每个节点的 children 属性
+      // 第二步：按 parentId 一次分组，重建每个节点的 children 属性
+      // （原实现对每个节点都全表扫描 clonedNodes，O(n²)，万级匹配时主线程卡死数秒）
+      const childrenByParent = new Map<string | number, FlatTreeNode[]>();
+      clonedNodes.forEach((childNode) => {
+        const pid = childNode.parentId;
+        if (pid !== null && pid !== undefined && clonedNodes.has(pid)) {
+          const list = childrenByParent.get(pid);
+          if (list) {
+            list.push(childNode);
+          } else {
+            childrenByParent.set(pid, [childNode]);
+          }
+        }
+      });
+
       clonedNodes.forEach((clonedNode) => {
         filteredFlatNodeMap.value.set(clonedNode.id, clonedNode);
-        // 查找所有子节点（在 clonedNodes 中的）
-        const children: FlatTreeNode[] = [];
-        clonedNodes.forEach((childNode) => {
-          if (childNode.parentId === clonedNode.id) {
-            children.push(childNode);
-          }
-        });
+        const children = childrenByParent.get(clonedNode.id);
 
         // 按 index 排序子节点，保持原始顺序
-        if (children.length > 0) {
+        if (children && children.length > 0) {
           clonedNode.children = mergeSort(children);
           clonedNode.isExpanded = true;
           expandedKeys.value.add(clonedNode.id);
         } else {
-          clonedNode.children = undefined;
-          clonedNode.isLeaf = true;
+          // 复用的原树叶子节点已是该状态，避免对共享节点做冗余响应式写
+          if (clonedNode.children !== undefined) {
+            clonedNode.children = undefined;
+          }
+          if (!clonedNode.isLeaf) {
+            clonedNode.isLeaf = true;
+          }
         }
       });
 
