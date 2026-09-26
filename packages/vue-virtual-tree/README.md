@@ -1,6 +1,6 @@
 # Vue Virtual Tree
 
-一个基于 `vue-virtual-scroller@next` 的高性能 Vue 3 虚拟树列表组件库，功能参照 Element Plus Tree 组件。
+一个基于自研虚拟列表（`@wxwzl/vue-virtual-list`）的高性能 Vue 3 虚拟树列表组件库，功能参照 Element Plus Tree 组件。
 
 ## 特性
 
@@ -15,7 +15,7 @@
 ## 安装
 
 ```bash
-pnpm add @wxwzl/vue-virtual-tree vue-virtual-scroller@next
+pnpm add @wxwzl/vue-virtual-tree
 ```
 
 ## 快速开始
@@ -138,7 +138,7 @@ pnpm add @wxwzl/vue-virtual-tree vue-virtual-scroller@next
 | height | 虚拟滚动容器高度 | `number \| string` | `'100%'` |
 | indent | 每一级节点的缩进值，支持数字或函数（函数入参为 `node: FlatTreeNode`） | `number \| (node) => number` | `18` |
 | loading | 是否显示加载状态 | `boolean` | `false` |
-| fixed-height | 固定行高模式。`true` 时使用 RecycleScroller：O(1) 滚动定位、无高度测量，大数据量下快速滚动不白屏；此时超长 label 不换行（省略号截断），行高恒等于 `item-size` | `boolean` | `false` |
+| fixed-height | 固定行高模式。`true` 时行高恒等于 `item-size`：O(1) 滚动定位、无高度测量，大数据量下快速滚动不白屏；此时超长 label 不换行（省略号截断） | `boolean` | `false` |
 | buffer | 虚拟滚动缓冲区（px） | `number` | `500` |
 
 ### Events
@@ -213,9 +213,9 @@ treeRef.value.replace({ id: 1, label: "新名称", children: [{ id: 11, label: "
 
 - **分片初始化**：扁平化按 8ms 时间片分批执行并让出主线程，初始化期间页面保持可交互（会短暂显示加载状态），百万节点不卡顿
 - **O(n) 勾选状态**：父子关联勾选基于扁平数组一次倒序遍历完成，无 O(n²) 的元数据预计算
-- **两种滚动模式**：
-  - 默认动态行高（DynamicScroller）：支持超长 label 自动换行，适合中小数据量
-  - `fixed-height` 固定行高（RecycleScroller）：O(1) 滚动定位、无高度测量，超大数据量下快速拖拽滚动条不白屏，配合 `item-size` 指定行高
+- **两种滚动模式**（统一由自研 `@wxwzl/vue-virtual-list` 承载，Fenwick 树高度模型，展开/收起仅 O(log n)）：
+  - 默认动态行高：支持超长 label 自动换行，行高由 ResizeObserver 实测回写
+  - `fixed-height` 固定行高：O(1) 滚动定位、无高度测量，超大数据量下快速拖拽滚动条不白屏，配合 `item-size` 指定行高
 - **局部更新**：优先使用 `append` / `remove` / `insertBefore` / `insertAfter` / `replace` / `updateKeyChildren` 方法做运行时数据变更，避免整树重建
 
 > 注意：`data` prop 采用浅监听（数组引用变化才触发重建）。原地修改数组或节点字段不会刷新视图，请改用上述命令式方法，或整体替换 `data` 数组。
@@ -237,7 +237,7 @@ pnpm build
 
 - Vue 3 (Composition API)
 - TypeScript
-- vue-virtual-scroller@next
+- @wxwzl/vue-virtual-list（自研虚拟列表）
 - Vite
 - pnpm
 

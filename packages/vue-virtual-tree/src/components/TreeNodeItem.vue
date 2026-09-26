@@ -97,7 +97,7 @@
   import type { FlatTreeNode, TreePropsConfig } from "../types";
 
   /**
-   * 单行节点渲染（供 RecycleScroller / DynamicScroller 两种模式复用）
+   * 单行节点渲染（固定/动态行高两种模式共用）
    * TreeNode 的 drag 事件通过 $attrs 透传，无需重新声明
    */
   interface TreeNodeItemProps {

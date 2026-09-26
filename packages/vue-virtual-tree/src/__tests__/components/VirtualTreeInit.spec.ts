@@ -227,7 +227,7 @@ describe("VirtualTree - 大数据量初始化", () => {
     wrapper.unmount();
   }, 20000);
 
-  it("固定高度模式（fixed-height）使用 RecycleScroller 渲染", async () => {
+  it("固定高度模式（fixed-height）行高恒等于 itemSize", async () => {
     const data: TreeNodeData[] = [
       { id: "1", label: "甲", children: [{ id: "1-1", label: "甲-1" }] },
       { id: "2", label: "乙" },
@@ -237,10 +237,11 @@ describe("VirtualTree - 大数据量初始化", () => {
     });
     await waitForGenerated(wrapper);
 
-    // RecycleScroller 容器存在，节点行内高度固定为 itemSize
-    expect(wrapper.find(".vue-recycle-scroller").exists()).toBe(true);
+    // VirtualList 容器存在，固定模式下行内联高度固定为 itemSize
+    expect(wrapper.find(".vv-list").exists()).toBe(true);
     const firstNode = wrapper.find(".vue-virtual-tree-node");
     expect(firstNode.exists()).toBe(true);
+    expect(firstNode.attributes("style")).toContain("height: 32px");
 
     const vm = wrapper.vm as unknown as {
       getNode: (k: string) => { key: string } | null;

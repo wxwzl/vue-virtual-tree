@@ -17,70 +17,21 @@
       </slot>
     </template>
     <template v-else>
-      <!-- 固定行高模式：RecycleScroller O(1) 滚动定位，无测量开销，快速滚动不白屏 -->
-      <RecycleScroller
-        v-if="fixedHeight && data.length > 0"
-        ref="scrollerRef"
-        :items="visibleNodes"
-        :item-size="itemSize || 32"
-        :buffer="buffer"
-        key-field="id"
-        v-bind="$attrs"
-        class="vue-virtual-tree__scroller"
-      >
-        <template #default="{ item }">
-          <TreeNodeItem
-            :item="item"
-            :props="props.props"
-            :show-checkbox="showCheckbox"
-            :expand-on-click-node="expandOnClickNode"
-            :draggable="draggable"
-            :indent="props.indent"
-            :current-key="selectedKey"
-            :drop-type="
-              dragState.dropNode?.value?.id === item.id ? (dragState.dropType?.value ?? null) : null
-            "
-            :style="{ height: `${itemSize || 32}px`, overflow: 'hidden' }"
-            @drag-start="handleDragStart"
-            @drag-enter="handleDragEnter"
-            @drag-leave="handleDragLeave"
-            @drag-over="handleDragOver"
-            @drag-end="handleDragEnd"
-            @drop="handleDrop"
-          >
-            <template #default="slotProps">
-              <slot v-bind="slotProps"></slot>
-            </template>
-            <template #loading="slotProps">
-              <slot
-                name="loading"
-                v-bind="slotProps"
-              ></slot>
-            </template>
-            <template #icon="slotProps">
-              <slot
-                name="icon"
-                v-bind="slotProps"
-              ></slot>
-            </template>
-          </TreeNodeItem>
-        </template>
-      </RecycleScroller>
       <!--
-        动态行高模式：自研 VirtualList（Fenwick 高度模型 + ResizeObserver 实测回写）。
-        展开/收起只改变 itemCount → setCount，O(log n)；不触发 DynamicScroller 那种
-        对 111 万 items 逐条读 sizeField 建响应式依赖 + 深 watch 遍历的 O(n) 重建。
-        行高由内容决定，行上 RO 自动实测回写，语义覆盖原 sizeDependencies。
+        自研 VirtualList 统一承载两种模式：
+        - 固定行高（fixedHeight）：dynamic=false，O(1) 定位、无测量开销；
+        - 动态行高：Fenwick 高度模型 + ResizeObserver 实测回写，行高由内容决定。
+        展开/收起只改变 itemCount → setCount，O(log n)，百万节点切换毫秒级。
         不开 rowMemo：树行依赖 selectedKey/拖拽态等外部状态，memo 会拿到过期视图。
-        已知取舍：高度缓存按行号，展开/收起使后续行号整体平移导致缓存错位；
-        行高分布相近时误差有界，可见行经 RO 立即纠正、滚动时逐步重测自愈。
+        已知取舍（动态模式）：高度缓存按行号，展开/收起使后续行号整体平移导致
+        缓存错位；行高分布相近时误差有界，可见行经 RO 立即纠正、滚动时逐步重测自愈。
       -->
       <VirtualList
-        v-else-if="data.length > 0"
+        v-if="data.length > 0"
         ref="scrollerRef"
         :items="visibleNodes"
         :item-size="itemSize || 32"
-        :dynamic="true"
+        :dynamic="!fixedHeight"
         :buffer="buffer"
         height="100%"
         v-bind="$attrs"
@@ -98,6 +49,7 @@
             :drop-type="
               dragState.dropNode?.value?.id === item.id ? (dragState.dropType?.value ?? null) : null
             "
+            :style="fixedHeight ? { height: `${itemSize || 32}px`, overflow: 'hidden' } : undefined"
             @drag-start="handleDragStart"
             @drag-enter="handleDragEnter"
             @drag-leave="handleDragLeave"
@@ -137,7 +89,6 @@
 
 <script setup lang="ts">
   import { computed, nextTick, ref } from "vue";
-  import { RecycleScroller } from "vue-virtual-scroller";
   import { VirtualList } from "@wxwzl/vue-virtual-list";
   import TreeNodeItem from "./TreeNodeItem.vue";
   import type {
@@ -211,12 +162,10 @@
     filter: filterNodes,
   } = useTreeData(props, emit);
 
-  // 动态模式为 VirtualList（泛型组件无法 InstanceType），固定模式为 RecycleScroller；
-  // 取两者滚动方法的并集做结构化类型
+  // VirtualList 是泛型组件无法 InstanceType，用结构化类型描述暴露的滚动方法
   interface ScrollerLike {
-    scrollTo?: (offset: number) => void;
-    scrollToIndex?: (index: number, align?: "start" | "center" | "end", offset?: number) => void;
-    scrollToItem?: (index: number, align?: "start" | "center" | "end") => void;
+    scrollTo: (offset: number) => void;
+    scrollToIndex: (index: number, align?: "start" | "center" | "end", offset?: number) => void;
   }
   const scrollerRef = ref<ScrollerLike | null>(null);
 
@@ -567,13 +516,7 @@
     filter: (value: string) => {
       return filterNodes(value).then(() => {
         nextTick(() => {
-          // VirtualList 用 scrollTo，RecycleScroller 用 scrollToItem
-          const scroller = scrollerRef.value;
-          if (scroller?.scrollTo) {
-            scroller.scrollTo(0);
-          } else {
-            scroller?.scrollToItem?.(0);
-          }
+          scrollerRef.value?.scrollTo(0);
         });
       });
     },
@@ -733,7 +676,7 @@
           return;
         }
 
-        // 调用虚拟列表的滚动定位：VirtualList 用 scrollToIndex，RecycleScroller 用 scrollToItem
+        // 调用 VirtualList 的 scrollToIndex 定位（动态行高下基于估计值近似定位，随测量逐步精确）
         if (scrollerRef.value) {
           const align = options?.align || "top";
           const offset = options?.offset || 0;
@@ -745,13 +688,7 @@
             bottom: "end",
           };
 
-          // 动态行高下基于估计值近似定位，随测量逐步精确
-          const scroller = scrollerRef.value;
-          if (scroller.scrollToIndex) {
-            scroller.scrollToIndex(index, alignMap[align], offset);
-          } else {
-            scroller.scrollToItem?.(index, alignMap[align]);
-          }
+          scrollerRef.value.scrollToIndex(index, alignMap[align], offset);
         }
       };
 
