@@ -195,18 +195,19 @@
    */
   let velEma = 0;
   const effBuffer = (): number => {
-    if (!props.dynamic) {
-      return props.buffer;
-    }
+    // 固定/动态模式都需要速度自适应：scroll 事件异步，窗口天然滞后一帧，
+    // 位移超过固定 buffer（如压测 800px/帧 > 300px）时视口底边会露出空白带
     const cap = Math.max(viewportH.value * 4, props.buffer);
     return Math.min(Math.max(props.buffer, velEma * 3), cap);
   };
 
   /** 渲染窗口平移：可见范围逃出当前渲染范围时才更新；strict 见 coverRange */
-  const updateRange = (strict = false) => {
+  const updateRange = (strict = false, lead = 0) => {
     const next = coverRange(
       model,
-      scrollOffset.value,
+      // lead：按当前速度向滚动方向预见一帧位移——scroll 事件异步，DOM 总比
+      // 滚动位置滞后一帧，仅覆盖当前位置会让视口边缘在逃出帧露出空白条
+      scrollOffset.value + lead,
       // 视口兜底：容器暂不可测（0 高，如挂载初期/隐藏容器/无布局环境）时
       // 至少渲染一行高度 + buffer，避免完全空白；RO 就位后按真实视口重算
       Math.max(viewportH.value, props.itemSize),
@@ -337,6 +338,8 @@
       return;
     }
     lastScrollAt = performance.now();
+    // 滚动方向（供窗口预见一帧位移的方向）
+    const dir = next > baseOffset ? 1 : next < baseOffset ? -1 : 0;
     // 滚动速度 EMA：供 effBuffer 自适应窗口余量（先于 baseOffset 更新取样）
     velEma = velEma * 0.6 + Math.abs(next - baseOffset) * 0.4;
     // 单帧位移超过一个视口视为快速滚动/跳转：内容整体换帧，锚定补偿清零防累积；
@@ -347,7 +350,7 @@
     }
     baseOffset = next;
     scrollOffset.value = next + cumDelta.value;
-    updateRange();
+    updateRange(false, dir * Math.min(velEma, viewportH.value));
     // 近底吸附标记：仅在 scroll 事件里维护（scrollHeight 增长不触发事件，不会误置位）
     const wasStuck = stickToBottom;
     stickToBottom = el.scrollHeight - el.clientHeight - el.scrollTop <= 4;
