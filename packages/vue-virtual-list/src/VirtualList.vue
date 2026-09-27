@@ -610,8 +610,14 @@
       return;
     }
     const stride = n / SEED_SAMPLES;
+    // n < SEED_SAMPLES 时 floor 会产生重复种子，去重（重复 key 会让 Vue 报 duplicate keys）
+    let prev = -1;
     for (let s = 0; s < SEED_SAMPLES; s++) {
-      seedIndexes.push(Math.floor(s * stride));
+      const idx = Math.floor(s * stride);
+      if (idx !== prev) {
+        seedIndexes.push(idx);
+        prev = idx;
+      }
     }
     seedFlushed = false;
   };
@@ -632,12 +638,15 @@
     const lead = Math.max(64, Math.ceil((viewportH.value * 8) / Math.max(1, m.avg)));
     const belowCap = Math.min(n - 1, range.value.end + lead);
     const aboveCap = Math.max(0, range.value.start - lead);
+    // 种子与扩散前沿可能指向同一行（种子已入队但未回写时 isMeasured 仍为 false），
+    // 同批去重避免 measureQueue 出现重复 key
+    const seen = new Set(out);
     let picked = 0;
     while (out.length < size) {
-      while (frontBelow <= belowCap && m.isMeasured(frontBelow)) {
+      while (frontBelow <= belowCap && (m.isMeasured(frontBelow) || seen.has(frontBelow))) {
         frontBelow++;
       }
-      while (frontAbove >= aboveCap && m.isMeasured(frontAbove)) {
+      while (frontAbove >= aboveCap && (m.isMeasured(frontAbove) || seen.has(frontAbove))) {
         frontAbove--;
       }
       const canBelow = frontBelow <= belowCap;
@@ -645,13 +654,16 @@
       if (!canBelow && !canAbove) {
         break;
       }
+      let idx: number;
       if (picked % 3 === 2 && canAbove) {
-        out.push(frontAbove--);
+        idx = frontAbove--;
       } else if (canBelow) {
-        out.push(frontBelow++);
+        idx = frontBelow++;
       } else {
-        out.push(frontAbove--);
+        idx = frontAbove--;
       }
+      out.push(idx);
+      seen.add(idx);
       picked++;
     }
     return out;
