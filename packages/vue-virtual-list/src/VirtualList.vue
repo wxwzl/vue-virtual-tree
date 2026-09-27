@@ -462,9 +462,10 @@
         | ResizeObserverSize
         | readonly ResizeObserverSize[]
         | undefined;
+      // Array.isArray 无法收窄 readonly 数组（TS 已知限制），else 分支需显式断言
       const size = Array.isArray(bs)
         ? (bs[0]?.blockSize ?? entry.contentRect.height)
-        : (bs?.blockSize ?? entry.contentRect.height);
+        : ((bs as ResizeObserverSize | undefined)?.blockSize ?? entry.contentRect.height);
       list.push({ index: i, size });
     }
     applyMeasurements(list);
@@ -570,14 +571,16 @@
   const MeasureLane = defineComponent({
     name: "VirtualListMeasureLane",
     setup() {
-      return () =>
+      // 显式返回类型：插槽调用经 itemAt→T 形成类型循环引用，不标注会推不出 MeasureLane 类型
+      return (): VNode =>
         h(
           "div",
           { ref: measureRef, class: "vv-list__measure", "aria-hidden": "true" },
-          measureQueue.value.map((i) =>
-            h("div", { key: i, class: "vv-list__row", "data-index": i }, [
-              slots.default?.({ item: itemAt(i), index: i }),
-            ])
+          measureQueue.value.map(
+            (i): VNode =>
+              h("div", { key: i, class: "vv-list__row", "data-index": i }, [
+                slots.default?.({ item: itemAt(i), index: i }),
+              ])
           )
         );
     },

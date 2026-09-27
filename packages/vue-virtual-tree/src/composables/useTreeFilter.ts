@@ -122,7 +122,7 @@ export function useTreeFilter(
       const lowerValue = value.toLowerCase();
       const filterMethod =
         props.filterNodeMethod ||
-        ((v: string, data: any) =>
+        ((_v: string, data: any) =>
           getNodeLabel(data, props.props).toLowerCase().includes(lowerValue));
 
       // 第一步：收集所有匹配的节点（包括需要显示的父节点），并克隆它们
