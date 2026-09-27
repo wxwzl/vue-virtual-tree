@@ -92,7 +92,7 @@
   </TreeNode>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" vapor>
   import TreeNode from "./TreeNode.vue";
   import type { FlatTreeNode, TreePropsConfig } from "../types";
 
@@ -100,7 +100,8 @@
    * 单行节点渲染（固定/动态行高两种模式共用）
    * TreeNode 的 drag 事件通过 $attrs 透传，无需重新声明
    */
-  interface TreeNodeItemProps {
+  // vapor 模式下 Volar 生成代码需引用 props 类型，必须导出（TS4025）
+  export interface TreeNodeItemProps {
     item: FlatTreeNode;
     props?: TreePropsConfig;
     showCheckbox?: boolean;

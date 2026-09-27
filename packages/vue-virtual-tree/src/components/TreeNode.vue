@@ -65,12 +65,15 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<!-- vapor 双模单源：3.6+ compiler 识别 vapor attr 编译为 vapor 组件；
+     3.4/3.5 compiler 忽略未知 attr 仍按 vdom 编译（主产物与单测路径） -->
+<script setup lang="ts" vapor>
   import { computed, ref } from "vue";
   import type { FlatTreeNode, TreePropsConfig } from "../types";
   import { getNodeLabel, isLeafNode } from "../utils/tree";
 
-  interface TreeNodeProps {
+  // vapor 模式下 Volar 生成代码需引用 props 类型，必须导出（TS4025）
+  export interface TreeNodeProps {
     node: FlatTreeNode;
     props?: TreePropsConfig;
     showCheckbox?: boolean;
