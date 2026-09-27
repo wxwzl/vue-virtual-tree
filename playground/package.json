@@ -9,14 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.4.0",
+    "vue": "^3.6.0-rc.9",
     "vue-router": "^4.4.0",
     "vue-virtual-scroller": "^2.0.0-beta.8",
     "@wxwzl/vue-virtual-tree": "workspace:*",
     "@wxwzl/vue-virtual-list": "workspace:*"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.0.0",
+    "@vitejs/plugin-vue": "^6.0.0",
     "vite": "^5.0.0"
   }
 }
