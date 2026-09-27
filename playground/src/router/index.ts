@@ -116,6 +116,12 @@ export const demoRoutes: RouteRecordRaw[] = [
     meta: { title: "动态数据操作" },
   },
   {
+    path: "/vapor-bench",
+    name: "VaporBenchDemo",
+    component: () => import("../components/VaporBenchDemo.vue"),
+    meta: { title: "Vapor vs Vdom 基准对比" },
+  },
+  {
     path: "/virtual-list",
     name: "VirtualListDemo",
     component: () => import("../components/VirtualListDemo.vue"),
