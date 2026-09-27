@@ -17,7 +17,17 @@
         "default": "./dist/index.cjs"
       }
     },
-    "./style": "./dist/style.css"
+    "./style": "./dist/style.css",
+    "./vapor": {
+      "import": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/vapor/index.js"
+      },
+      "require": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/vapor/index.cjs"
+      }
+    }
   },
   "files": [
     "dist"
@@ -58,7 +68,7 @@
     "vitest": "^1.6.0"
   },
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && pnpm --filter @internal/vapor-build build",
     "type-check": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

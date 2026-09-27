@@ -1,0 +1,16 @@
+{
+  "name": "@internal/vapor-build",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "内部构建包：用 Vue 3.6 编译器产出 @wxwzl/vue-virtual-tree 的 opt-in vapor 子路径产物（dist/vapor）。主构建链（plugin-vue 5 + vue 3.4）不受影响。",
+  "scripts": {
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "sass-embedded": "^1.93.3",
+    "vite": "^5.0.0",
+    "vue": "^3.6.0-rc.9"
+  }
+}

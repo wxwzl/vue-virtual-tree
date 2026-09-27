@@ -36,6 +36,21 @@ importers:
         specifier: ^3.3.11
         version: 3.3.11(typescript@5.9.3)
 
+  internals/vapor-build:
+    devDependencies:
+      '@vitejs/plugin-vue':
+        specifier: ^6.0.0
+        version: 6.0.9(vite@5.4.21(@types/node@24.10.1)(sass-embedded@1.93.3)(sass@1.93.3))(vue@3.6.0-rc.9(typescript@5.9.3))
+      sass-embedded:
+        specifier: ^1.93.3
+        version: 1.93.3
+      vite:
+        specifier: ^5.0.0
+        version: 5.4.21(@types/node@24.10.1)(sass-embedded@1.93.3)(sass@1.93.3)
+      vue:
+        specifier: ^3.6.0-rc.9
+        version: 3.6.0-rc.9(typescript@5.9.3)
+
   packages/vue-virtual-list:
     dependencies:
       vue:

@@ -220,6 +220,37 @@ treeRef.value.replace({ id: 1, label: "新名称", children: [{ id: 11, label: "
 
 > 注意：`data` prop 采用浅监听（数组引用变化才触发重建）。原地修改数组或节点字段不会刷新视图，请改用上述命令式方法，或整体替换 `data` 数组。
 
+## Vapor 模式（实验性，Vue ≥ 3.6）
+
+组件库提供 opt-in 的 Vapor 子路径入口：`TreeNode` / `TreeNodeItem` 两个行级组件按 Vapor 编译，其余容器组件（VirtualTree / VirtualList）保持 vdom，经 `vaporInteropPlugin` 混合运行。默认入口不受影响，永远是稳定的 vdom 路径。
+
+```ts
+import { createApp, vaporInteropPlugin } from "vue";
+import { VirtualTree } from "@wxwzl/vue-virtual-tree/vapor";
+import "@wxwzl/vue-virtual-tree/style";
+
+const app = createApp(App);
+app.use(vaporInteropPlugin); // 混合模式（vdom 父 → vapor 子）必需
+app.mount("#app");
+```
+
+使用前提（均为 Vue 3.6 RC 的打包限制）：
+
+1. `vue` 版本 ≥ 3.6；
+2. **应用内必须统一**把 `vue` 解析到带 vapor 运行时的独立产物——vapor runtime 与 `vaporInteropPlugin` 只存在于 `vue.runtime-with-vapor.*.js`，默认 bundler 入口不含。Vite 配置示例：
+
+   ```ts
+   export default defineConfig({
+     resolve: {
+       alias: { vue: "vue/dist/vue.runtime-with-vapor.esm-browser.js" },
+     },
+   });
+   ```
+
+   不可混用两份 vue 产物（会出现静默的响应式系统分裂）。
+
+> Vapor 编译基于 Vue 3.6 RC，属实验特性；性能对比见 playground 的「Vapor vs Vdom 基准对比」页。
+
 ## 开发
 
 ```bash
