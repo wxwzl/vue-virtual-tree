@@ -46,5 +46,14 @@
   "engines": {
     "node": ">=16.0.0",
     "pnpm": ">=8.0.0"
+  },
+  "pnpm": {
+    "packageExtensions": {
+      "@vue/test-utils@2.4.6": {
+        "dependencies": {
+          "vue": "3.4.0"
+        }
+      }
+    }
   }
 }

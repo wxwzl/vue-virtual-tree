@@ -775,7 +775,9 @@
         range.value = EMPTY_RANGE;
         updateRange(true);
       });
-      resizeObserver.observe(el);
+      // vue-tsc 3.3.11 下 Volar 虚拟文件与全局 lib.dom 存在两套 DOM 声明，
+      // HTMLElement 与 ResizeObserver.observe 的 Element 形参结构性不兼容，断言绕过
+      resizeObserver.observe(el as unknown as Element);
       if (props.dynamic) {
         rowObserver = new ResizeObserver(onRowResize);
         syncRowObserver();

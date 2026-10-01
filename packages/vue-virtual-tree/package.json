@@ -1,6 +1,6 @@
 {
   "name": "@wxwzl/vue-virtual-tree",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "A high-performance virtual tree component for Vue 3",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -65,7 +65,8 @@
     "typescript-eslint": "^8.57.0",
     "vite": "^5.0.0",
     "vite-plugin-dts": "^4.5.4",
-    "vitest": "^1.6.0"
+    "vitest": "^1.6.0",
+    "vue": "3.4.0"
   },
   "scripts": {
     "build": "vite build && pnpm --filter @internal/vapor-build build",
@@ -80,7 +81,9 @@
     "release": "pnpm run build && pnpm publish"
   },
   "dependencies": {
-    "@wxwzl/vue-virtual-list": "workspace:*",
-    "vue": "3.4.0"
+    "@wxwzl/vue-virtual-list": "workspace:*"
+  },
+  "peerDependencies": {
+    "vue": "^3.4.0"
   }
 }
