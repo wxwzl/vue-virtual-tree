@@ -1,0 +1,1 @@
+import{A as r}from"./index-DLp6oPfU.js";const t=Symbol("VirtualTreeImpl"),i=()=>{const e=r(t);if(!e)throw new Error("useVirtualTree 必须在 /tree/:mode 路由组内使用（缺少 TreeModeProvider）");return e};export{t as V,i as u};
