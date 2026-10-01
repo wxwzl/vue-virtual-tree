@@ -1,6 +1,6 @@
 <template>
   <div class="demo-section">
-    <h2>Vapor vs Vdom 基准对比（TreeNode / TreeNodeItem）</h2>
+    <h2>Vapor vs Vdom 基准对比（整链 vapor）</h2>
     <div class="control-panel">
       <label>
         节点规模：
@@ -15,9 +15,10 @@
       <span class="node-count-info">总节点数：{{ totalNodeCount.toLocaleString() }}</span>
     </div>
     <p class="tip">
-      左侧为 dist 构建产物（3.4 工具链按 vdom 编译），右侧为源码经 Vue 3.6 按 vapor 编译（仅
-      TreeNode/TreeNodeItem 两个行组件不同，VirtualTree/VirtualList 两侧完全一致）。 计时口径：点击
-      → node-generated（扁平化完成）→ nextTick → 双 rAF（帧提交）。
+      左侧为 dist vdom 产物（VirtualList 经 alias 用源码、同样按 vdom 编译）；右侧为 dist/vapor 整链
+      vapor 产物（VirtualTree/VirtualList/TreeNodeItem/TreeNode 全部 vapor 编译、VirtualList
+      已内联，仅应用根一处 vdom↔vapor interop 边界）。 计时口径：点击 →
+      node-generated（扁平化完成）→ nextTick → 双 rAF（帧提交）。
       两侧按钮相互独立，请分别单侧压测（同时跑会互相干扰）。
     </p>
     <div class="panes">
@@ -66,11 +67,16 @@
 
 <script setup lang="ts">
   import { markRaw, nextTick, reactive, ref } from "vue";
-  import { VirtualTree as VaporTree } from "@wxwzl/vue-virtual-tree";
-  // vdom 基线：直接引用 dist 构建产物（同一份带 vapor attr 的源码，3.4 工具链忽略 attr 按 vdom 编译）
+  // vapor 侧：dist/vapor 整链 vapor 产物（features.vapor 全局强制编译，VirtualList 已内联）
+  // @ts-ignore -- dist 产物无内联类型声明，类型与源码入口一致
+  import { VirtualTree as VaporTree } from "../../../packages/vue-virtual-tree/dist/vapor/index.js";
+  // vdom 基线：dist 主产物（3.4 工具链全 vdom；其 external 的 VirtualList 经 alias 解析到
+  // 源码、由 playground 按 vdom 编译，基侧不含任何 vapor 组件）
   // @ts-ignore -- dist 产物无内联类型声明，类型与源码入口一致
   import { VirtualTree as VdomTree } from "../../../packages/vue-virtual-tree/dist/index.js";
   import "../../../packages/vue-virtual-tree/dist/style.css";
+  // vapor 产物内联了 VirtualList，样式也含 vv-list（主 dist/style.css 因 list external 不含）
+  import "../../../packages/vue-virtual-tree/dist/vapor/style.css";
   import type { TreeNodeData } from "@wxwzl/vue-virtual-tree";
   import { generateVirtualTreeData } from "../utils/treeData";
 
@@ -107,7 +113,7 @@
     },
     {
       key: "vapor",
-      title: "vapor（Vue 3.6 源码编译）",
+      title: "vapor（dist/vapor 整链）",
       component: markRaw(VaporTree),
       data: [],
       expandAll: false,

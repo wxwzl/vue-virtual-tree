@@ -222,7 +222,9 @@ treeRef.value.replace({ id: 1, label: "新名称", children: [{ id: 11, label: "
 
 ## Vapor 模式（实验性，Vue ≥ 3.6）
 
-组件库提供 opt-in 的 Vapor 子路径入口：`TreeNode` / `TreeNodeItem` 两个行级组件按 Vapor 编译，其余容器组件（VirtualTree / VirtualList）保持 vdom，经 `vaporInteropPlugin` 混合运行。默认入口不受影响，永远是稳定的 vdom 路径。
+组件库提供 opt-in 的 Vapor 子路径入口：整链（VirtualTree / VirtualList / TreeNodeItem / TreeNode）按 Vapor 编译，VirtualList 已内联进产物（不依赖 `@wxwzl/vue-virtual-list` 的 vdom 版本），经 `vaporInteropPlugin` 与 vdom 应用混跑（仅应用根一处模式边界）。默认入口不受影响，永远是稳定的 vdom 路径。
+
+> 已知边界：VirtualList 的 `rowMemo` 与 `dynamic` 隐藏测量通道是手写的 vdom 子组件，开启后经 interop 混跑（不影响正确性）。
 
 ```ts
 import { createApp, vaporInteropPlugin } from "vue";
@@ -249,7 +251,7 @@ app.mount("#app");
 
    不可混用两份 vue 产物（会出现静默的响应式系统分裂）。
 
-> Vapor 编译基于 Vue 3.6 RC，属实验特性；性能对比见 playground 的「Vapor vs Vdom 基准对比」页。
+> Vapor 编译基于 Vue 3.6 RC，属实验特性；性能对比见 playground 的「Vapor vs Vdom 基准对比」页。实测在虚拟滚动场景下（可视区仅数十行，实例开销已被虚拟化消除）vapor 暂无性能收益，该入口定位为技术验证与未来就绪，不建议以性能为目的接入。
 
 ## 开发
 

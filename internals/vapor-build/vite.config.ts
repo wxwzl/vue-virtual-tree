@@ -12,10 +12,20 @@ const pkgRoot = resolve(__dirname, "../../packages/vue-virtual-tree");
 export default defineConfig({
   root: pkgRoot,
   plugins: [
-    // 不开 features.vapor：按 <script setup vapor> attr 逐文件 opt-in，
-    // VirtualTree.vue 等不带 attr 的组件仍按 vdom 编译，与 playground 行为一致
-    vue({ compiler }),
+    // features.vapor 全局强制：整链（VirtualTree/VirtualList/TreeNodeItem/TreeNode）
+    // 全部按 vapor 编译，消除 vdom↔vapor 的逐行 interop 边界（仅构建期生效，
+    // 共享源码与主构建链不受影响）。已知边界：VirtualList 内联的 MemoRows/
+    // MeasureLane 是手写 h() 的 vdom 子组件，开启 rowMemo 或 dynamic 时经
+    // interop 混跑（消费方需安装 vaporInteropPlugin）。
+    vue({ compiler, features: { vapor: true } }),
   ],
+  resolve: {
+    alias: {
+      // VirtualList 必须内联进 vapor 产物（否则 external 解析到其 vdom dist，
+      // 行容器仍是 vdom，逐行边界依旧存在）——直接别名到源码随本构建一起 vapor 编译
+      "@wxwzl/vue-virtual-list": resolve(__dirname, "../../packages/vue-virtual-list/src/index.ts"),
+    },
+  },
   build: {
     lib: {
       entry: resolve(pkgRoot, "src/index.ts"),
@@ -27,12 +37,11 @@ export default defineConfig({
     outDir: "dist/vapor",
     emptyOutDir: false,
     rollupOptions: {
-      external: ["vue", "@wxwzl/vue-virtual-list"],
+      external: ["vue"],
       output: {
         exports: "named",
         globals: {
           vue: "Vue",
-          "@wxwzl/vue-virtual-list": "VueVirtualList",
         },
       },
     },
