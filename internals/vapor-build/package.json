@@ -11,6 +11,6 @@
     "@vitejs/plugin-vue": "^6.0.0",
     "sass-embedded": "^1.93.3",
     "vite": "^5.0.0",
-    "vue": "^3.6.0-rc.9"
+    "vue": "^3.6.0-rc.10"
   }
 }
