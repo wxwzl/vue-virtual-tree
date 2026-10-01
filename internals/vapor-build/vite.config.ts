@@ -14,9 +14,9 @@ export default defineConfig({
   plugins: [
     // features.vapor 全局强制：整链（VirtualTree/VirtualList/TreeNodeItem/TreeNode）
     // 全部按 vapor 编译，消除 vdom↔vapor 的逐行 interop 边界（仅构建期生效，
-    // 共享源码与主构建链不受影响）。已知边界：VirtualList 内联的 MemoRows/
-    // MeasureLane 是手写 h() 的 vdom 子组件，开启 rowMemo 或 dynamic 时经
-    // interop 混跑（消费方需安装 vaporInteropPlugin）。
+    // 共享源码与主构建链不受影响）。已知边界：VirtualList 内联的 MemoRows
+    // 是手写 h() 的 vdom 子组件，开启 rowMemo 时经 interop 混跑（消费方需
+    // 安装 vaporInteropPlugin）；MeasureLane 为独立 SFC，随本构建 vapor 编译。
     vue({ compiler, features: { vapor: true } }),
   ],
   resolve: {

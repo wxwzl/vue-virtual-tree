@@ -16,7 +16,7 @@
          对象（Vue 对相同引用直接跳过 patch，连插槽都不再调用），仅进出窗口的
          行挂载/卸载；插槽依赖 items[i] 之外的外部状态时不要开启。
          默认槽位 key 池化：DOM 全复用但每行内容随平移就地重渲染 -->
-    <MemoRows v-if="rowMemo && hLaneUsable" />
+    <MemoRows v-if="rowMemo && memoLaneUsable" />
     <template v-else>
       <div
         v-for="i in rowIndexes"
@@ -35,10 +35,18 @@
       ref="spacerBottomEl"
       class="vv-list__spacer"
     ></div>
-    <!-- 预测量通道独立成子组件：批次队列每帧变化，隔离后其重渲染不再
-         连带重建上方可见行的 vnode 树。hLaneUsable=false（vapor 编译
-         产物）时插槽不可经 h() 渲染，整个通道禁用 -->
-    <MeasureLane v-if="dynamic && hLaneUsable" />
+    <!-- 预测量通道独立 SFC：经 getter 取批次队列（父组件渲染不读值、
+         不形成依赖），通道重渲染不连带上方可见行；SFC 随构建链双模
+         编译，插槽全程不跨渲染模式边界 -->
+    <MeasureLane
+      v-if="dynamic"
+      :get-queue="getMeasureQueue"
+      :item-at="itemAt"
+    >
+      <template #default="slotProps">
+        <slot v-bind="slotProps"></slot>
+      </template>
+    </MeasureLane>
   </div>
 </template>
 
@@ -59,6 +67,7 @@
   } from "vue";
   import { FixedSizeModel, MeasuredSizeModel, type SizeModel } from "./core/sizeModel";
   import { coverRange, EMPTY_RANGE, type RowRange } from "./core/range";
+  import MeasureLane from "./MeasureLane.vue";
 
   /**
    * 通用虚拟列表（spacer 流式 + 边界回收 + 行池化 + 隐藏预测量）
@@ -519,25 +528,23 @@
 
   /** 隐藏预测量：当前批次待渲染测量的行号 */
   const measureQueue = ref<number[]>([]);
-  const measureRef = ref<HTMLElement | null>(null);
-
   /**
-   * 预测量通道（独立子组件）：批次队列每个测量帧都变，若在主组件模板内
-   * 渲染，主组件会随之重渲染并连带重建全部可见行的 vnode 树；
-   * 隔离后只有本组件自身随批次重渲染。渲染函数直接闭包读取
-   * measureQueue / itemAt / 父级插槽，响应式追踪限定在本组件内。
+   * 批次队列经 getter 传给 MeasureLane：父组件渲染只传函数引用、
+   * 不在渲染期读 measureQueue.value，避免形成依赖导致父组件随批次
+   * 重渲染（连带重建可见行）；只有通道自身渲染时才跟踪该 ref
    */
+  const getMeasureQueue = () => measureQueue.value;
+
   const slots = useSlots();
 
   /**
-   * 手写 h() 通道（MemoRows/MeasureLane）可用性：本组件被 vapor 编译时
-   * 插槽返回 vapor block（非 vdom VNode），h() 无法渲染该产物（实测退化
-   * 为文本 "[object Object]"），预测量会回写垃圾行高腐蚀尺寸模型——
-   * 表现为滚动停止后几何持续校正、定位偏移。首次有数据时探测一次插槽
-   * 产物类型；非 vdom 时禁用两条 h() 通道：行渲染走模板插槽（双模正确），
-   * 预测量由 measureWindow/RO 兜底（正确性优先，损失预测量加速）。
+   * MemoRows（手写 h()）可用性：本组件被 vapor 编译时插槽返回 vapor
+   * block（非 vdom VNode），h() 无法渲染该产物（实测退化为文本
+   * "[object Object]"）。首次有数据时探测一次插槽产物类型；非 vdom
+   * 时禁用 rowMemo 路径，行渲染回退模板插槽（双模正确）。
+   * （MeasureLane 已是独立 SFC，随构建链双模编译，不在此列。）
    */
-  const hLaneUsable = ref(true);
+  const memoLaneUsable = ref(true);
   let slotProbed = false;
   const probeSlotMode = () => {
     if (slotProbed || count.value <= 0 || !slots.default) {
@@ -547,9 +554,9 @@
     try {
       const out = slots.default({ item: itemAt(0), index: 0 });
       const arr = Array.isArray(out) ? out : [out];
-      hLaneUsable.value = arr.every((n) => isVNode(n));
+      memoLaneUsable.value = arr.every((n) => isVNode(n));
     } catch {
-      hLaneUsable.value = false;
+      memoLaneUsable.value = false;
     }
   };
 
@@ -593,23 +600,6 @@
         }
         return rows;
       };
-    },
-  });
-  const MeasureLane = defineComponent({
-    name: "VirtualListMeasureLane",
-    setup() {
-      // 显式返回类型：插槽调用经 itemAt→T 形成类型循环引用，不标注会推不出 MeasureLane 类型
-      return (): VNode =>
-        h(
-          "div",
-          { ref: measureRef, class: "vv-list__measure", "aria-hidden": "true" },
-          measureQueue.value.map(
-            (i): VNode =>
-              h("div", { key: i, class: "vv-list__row", "data-index": i }, [
-                slots.default?.({ item: itemAt(i), index: i }),
-              ])
-          )
-        );
     },
   });
   /** 预测量双前沿：围绕当前渲染窗口向外扩散 */
@@ -697,7 +687,7 @@
   };
 
   const scheduleMeasure = () => {
-    if (!props.dynamic || !hLaneUsable.value || measureRafId || measureTimer) {
+    if (!props.dynamic || measureRafId || measureTimer) {
       return;
     }
     measureRafId = requestAnimationFrame(stepMeasure);
@@ -706,7 +696,8 @@
   /** rAF 时间片：渲染一批隐藏行 → 一次性读高度 → 批量回写（每批至多一次排版） */
   const stepMeasure = () => {
     measureRafId = 0;
-    const lane = measureRef.value;
+    // 通道为独立 SFC（不经 ref 取实例）：直接取容器内通道根元素
+    const lane = containerRef.value?.querySelector<HTMLElement>(":scope > .vv-list__measure");
     if (!props.dynamic || !lane) {
       return;
     }
@@ -917,31 +908,6 @@
   }
 
   .vv-list__row {
-    overflow: hidden;
-  }
-
-  /*
-   * 隐藏预测量通道：脱离文档流且 0 高 + contain，内部行正常排版但
-   * 不影响 scrollHeight；宽度与可见行一致（同容器 content box），
-   * 保证测得的高度与真实渲染一致。
-   */
-  .vv-list__measure {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 0;
-    overflow: hidden;
-    visibility: hidden;
-    pointer-events: none;
-    contain: strict;
-  }
-</style>
-
-<style>
-  /* MeasureLane 子组件内渲染的测量行不带本组件 scoped 属性，补同款
-     overflow（BFC 防 margin 折叠，保证实测高度与可见行一致） */
-  .vv-list__measure > .vv-list__row {
     overflow: hidden;
   }
 </style>
