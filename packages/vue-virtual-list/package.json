@@ -1,6 +1,6 @@
 {
   "name": "@wxwzl/vue-virtual-list",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A high-performance virtual list for Vue 3 (spacer-flow layout, zero transforms, dynamic row heights, 10M+ rows)",
   "type": "module",
   "main": "./dist/index.cjs",

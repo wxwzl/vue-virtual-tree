@@ -1,4 +1,17 @@
-# [1.0.0](https://github.com/wxwzl/vue-virtual-tree/compare/0.3.1...1.0.0) (2026-09-27)
+# [1.0.0](https://github.com/wxwzl/vue-virtual-tree/compare/0.3.1...1.0.0) (2026-10-01)
+
+### Bug Fixes
+
+- **virtual-list:** 隐藏测量通道在节点数少于采样数时报 duplicate keys ([6099f72](https://github.com/wxwzl/vue-virtual-tree/commit/6099f72ca91ea6948c57e306f40b9d0856337269))
+- **virtual-list:** vapor 编译下禁用手写 h() 通道，修复滚动后几何持续漂移 ([12294ca](https://github.com/wxwzl/vue-virtual-tree/commit/12294ca51a6602a2d40f4f8ca2828872a55c409b))
+
+### Features
+
+- **playground:** 接入 vaporInteropPlugin，新增 Vapor vs Vdom 基准对比页 ([cfb9ec0](https://github.com/wxwzl/vue-virtual-tree/commit/cfb9ec032eda998a1611cf46948966dce4a0646d))
+- **playground:** 头部显示 tree/list/vue 版本徽章 ([4416b7e](https://github.com/wxwzl/vue-virtual-tree/commit/4416b7e37eb88201e13063d2c07a7045fc2cef60))
+- **tree:** 新增 opt-in Vapor 子路径 @wxwzl/vue-virtual-tree/vapor ([fd857d0](https://github.com/wxwzl/vue-virtual-tree/commit/fd857d03220d3dcbb78cf49bf39e6ecddcca75ff))
+- **tree:** TreeNode/TreeNodeItem 双模单源支持 Vapor 编译 ([9f83288](https://github.com/wxwzl/vue-virtual-tree/commit/9f83288bf93583c872d5d2bbd85424e55d6cbaa6))
+- **tree:** vapor 子路径升级为整链 vapor 编译 ([8671b33](https://github.com/wxwzl/vue-virtual-tree/commit/8671b33255d0d6575010acef04ce5e90c3edba96))
 
 ## [0.3.1](https://github.com/wxwzl/vue-virtual-tree/compare/0.2.1...0.3.1) (2026-09-27)
 
