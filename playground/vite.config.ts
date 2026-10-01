@@ -1,10 +1,22 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { resolve } from "path";
+import { readFileSync } from "fs";
+
+/** 头部版本徽章：构建期从各包 package.json 读取（包未导出 version 字段，运行时拿不到） */
+const pkgVersion = (pkgDir: string): string =>
+  (JSON.parse(readFileSync(resolve(pkgDir, "package.json"), "utf-8")) as { version: string })
+    .version;
+const treeVersion = pkgVersion(resolve(__dirname, "../packages/vue-virtual-tree"));
+const listVersion = pkgVersion(resolve(__dirname, "../packages/vue-virtual-list"));
 
 export default defineConfig({
   base: "/vue-virtual-tree/",
   plugins: [vue()],
+  define: {
+    __TREE_VERSION__: JSON.stringify(treeVersion),
+    __LIST_VERSION__: JSON.stringify(listVersion),
+  },
   resolve: {
     alias: {
       // vue 3.6 RC 的 vapor runtime 只在独立的 with-vapor dist 中（含 vaporInteropPlugin

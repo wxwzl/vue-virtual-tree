@@ -2,19 +2,29 @@
   <div class="app">
     <header class="app-header">
       <h1>Vue Virtual Tree Playground</h1>
-      <a
-        class="github-link"
-        href="https://github.com/wxwzl/vue-virtual-tree/tree/master/playground"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="GitHub"
-      >
-        <svg viewBox="0 0 1024 1024" class="github-icon" aria-hidden="true">
-          <path
-            d="M511.6 76.3C264.3 76.3 64 276.6 64 523.9c0 197.4 128 364.6 305.3 423.8 22.3 4.1 30.4-9.7 30.4-21.5 0-10.6-.4-38.7-.6-76-124.2 27-150.4-53.7-150.4-53.7-20.3-51.7-49.6-65.5-49.6-65.5-40.6-27.8 3.1-27.3 3.1-27.3 44.9 3.2 68.5 46.1 68.5 46.1 39.9 68.4 104.7 48.6 130.3 37.2 4-28.9 15.6-48.6 28.4-59.8-99.2-11.3-203.5-49.6-203.5-221 0-48.8 17.4-88.7 46-120-4.6-11.3-20-56.8 4.4-118.5 0 0 37.6-12 123.2 45.9 35.7-9.9 74-14.9 112.1-15.1 38.1.2 76.4 5.2 112.2 15.1 85.5-58 123.1-45.9 123.1-45.9 24.5 61.7 9.1 107.2 4.5 118.5 28.6 31.3 46 71.2 46 120 0 171.9-104.5 209.6-203.9 220.7 16 13.8 30.3 41.1 30.3 82.8 0 59.8-.5 108-.5 122.7 0 11.9 8 25.9 30.6 21.5C832 888.5 960 721.2 960 523.9c0-247.3-200.3-447.6-448.4-447.6z"
-          />
-        </svg>
-      </a>
+      <div class="header-right">
+        <div
+          class="version-badges"
+          title="vdom 模式加载 dist 主产物（稳定）；vapor 模式加载 dist/vapor 实验产物（vue 3.6 vapor 编译）"
+        >
+          <span class="version-badge">tree {{ treeVersion }}</span>
+          <span class="version-badge">list {{ listVersion }}</span>
+          <span class="version-badge">vue {{ vueVersion }}</span>
+        </div>
+        <a
+          class="github-link"
+          href="https://github.com/wxwzl/vue-virtual-tree/tree/master/playground"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="GitHub"
+        >
+          <svg viewBox="0 0 1024 1024" class="github-icon" aria-hidden="true">
+            <path
+              d="M511.6 76.3C264.3 76.3 64 276.6 64 523.9c0 197.4 128 364.6 305.3 423.8 22.3 4.1 30.4-9.7 30.4-21.5 0-10.6-.4-38.7-.6-76-124.2 27-150.4-53.7-150.4-53.7-20.3-51.7-49.6-65.5-49.6-65.5-40.6-27.8 3.1-27.3 3.1-27.3 44.9 3.2 68.5 46.1 68.5 46.1 39.9 68.4 104.7 48.6 130.3 37.2 4-28.9 15.6-48.6 28.4-59.8-99.2-11.3-203.5-49.6-203.5-221 0-48.8 17.4-88.7 46-120-4.6-11.3-20-56.8 4.4-118.5 0 0 37.6-12 123.2 45.9 35.7-9.9 74-14.9 112.1-15.1 38.1.2 76.4 5.2 112.2 15.1 85.5-58 123.1-45.9 123.1-45.9 24.5 61.7 9.1 107.2 4.5 118.5 28.6 31.3 46 71.2 46 120 0 171.9-104.5 209.6-203.9 220.7 16 13.8 30.3 41.1 30.3 82.8 0 59.8-.5 108-.5 122.7 0 11.9 8 25.9 30.6 21.5C832 888.5 960 721.2 960 523.9c0-247.3-200.3-447.6-448.4-447.6z"
+            />
+          </svg>
+        </a>
+      </div>
     </header>
     <div class="app-body">
       <aside class="sidebar">
@@ -68,9 +78,13 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, ref, watch } from "vue";
+  import { computed, ref, version as vueVersion, watch } from "vue";
   import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
   import { menuGroups, treeMenuItems } from "./router";
+
+  /** 头部版本徽章：tree/list 由 vite define 构建期注入，vue 取运行时实际版本 */
+  const treeVersion = __TREE_VERSION__;
+  const listVersion = __LIST_VERSION__;
 
   const treeModes = ["vdom", "vapor"] as const;
 
@@ -140,6 +154,29 @@
   h1 {
     color: #303133;
     font-size: 28px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .version-badges {
+    display: flex;
+    gap: 6px;
+    cursor: default;
+  }
+
+  .version-badge {
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #f4f4f5;
+    border: 1px solid #e4e7ed;
+    color: #909399;
+    font-size: 12px;
+    font-family: monospace;
+    line-height: 1.4;
   }
 
   .github-link {
