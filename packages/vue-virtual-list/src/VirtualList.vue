@@ -16,7 +16,7 @@
          对象（Vue 对相同引用直接跳过 patch，连插槽都不再调用），仅进出窗口的
          行挂载/卸载；插槽依赖 items[i] 之外的外部状态时不要开启。
          默认槽位 key 池化：DOM 全复用但每行内容随平移就地重渲染 -->
-    <MemoRows v-if="rowMemo" />
+    <MemoRows v-if="rowMemo && hLaneUsable" />
     <template v-else>
       <div
         v-for="i in rowIndexes"
@@ -36,8 +36,9 @@
       class="vv-list__spacer"
     ></div>
     <!-- 预测量通道独立成子组件：批次队列每帧变化，隔离后其重渲染不再
-         连带重建上方可见行的 vnode 树 -->
-    <MeasureLane v-if="dynamic" />
+         连带重建上方可见行的 vnode 树。hLaneUsable=false（vapor 编译
+         产物）时插槽不可经 h() 渲染，整个通道禁用 -->
+    <MeasureLane v-if="dynamic && hLaneUsable" />
   </div>
 </template>
 
@@ -46,6 +47,7 @@
     computed,
     defineComponent,
     h,
+    isVNode,
     nextTick,
     onBeforeUnmount,
     onMounted,
@@ -148,6 +150,7 @@
   };
 
   watch([count, () => props.itemSize, () => props.dynamic], ([n, size, dyn], [, prevSize]) => {
+    probeSlotMode();
     const sameKind = dyn ? model instanceof MeasuredSizeModel : model instanceof FixedSizeModel;
     if (sameKind && size === prevSize) {
       // 仅 count 变化：保留已测量行高
@@ -527,6 +530,30 @@
   const slots = useSlots();
 
   /**
+   * 手写 h() 通道（MemoRows/MeasureLane）可用性：本组件被 vapor 编译时
+   * 插槽返回 vapor block（非 vdom VNode），h() 无法渲染该产物（实测退化
+   * 为文本 "[object Object]"），预测量会回写垃圾行高腐蚀尺寸模型——
+   * 表现为滚动停止后几何持续校正、定位偏移。首次有数据时探测一次插槽
+   * 产物类型；非 vdom 时禁用两条 h() 通道：行渲染走模板插槽（双模正确），
+   * 预测量由 measureWindow/RO 兜底（正确性优先，损失预测量加速）。
+   */
+  const hLaneUsable = ref(true);
+  let slotProbed = false;
+  const probeSlotMode = () => {
+    if (slotProbed || count.value <= 0 || !slots.default) {
+      return;
+    }
+    slotProbed = true;
+    try {
+      const out = slots.default({ item: itemAt(0), index: 0 });
+      const arr = Array.isArray(out) ? out : [out];
+      hLaneUsable.value = arr.every((n) => isVNode(n));
+    } catch {
+      hLaneUsable.value = false;
+    }
+  };
+
+  /**
    * 行 vnode 缓存（rowMemo 模式）：按行号缓存渲染结果，窗口平移时未变行复用
    * 同一 vnode 对象——patch 对相同引用直接短路，连插槽都不再调用（v-memo 的
    * 缓存按位置索引，窗口滑动后整体错位失效，故手写按键缓存）。仅新入行产生
@@ -670,7 +697,7 @@
   };
 
   const scheduleMeasure = () => {
-    if (!props.dynamic || measureRafId || measureTimer) {
+    if (!props.dynamic || !hLaneUsable.value || measureRafId || measureTimer) {
       return;
     }
     measureRafId = requestAnimationFrame(stepMeasure);
@@ -752,6 +779,7 @@
     if (!el) {
       return;
     }
+    probeSlotMode();
     viewportH.value = el.clientHeight;
     lastWidth = el.clientWidth;
     frozenTotal.value = model.totalSize;
