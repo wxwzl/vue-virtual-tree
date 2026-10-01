@@ -31,7 +31,9 @@
 
 <script setup lang="ts">
   import { ref, onMounted } from "vue";
-  import { VirtualTree } from "@wxwzl/vue-virtual-tree";
+  import { useVirtualTree } from "../composables/useVirtualTree";
+
+  const VirtualTree = useVirtualTree();
   import type { TreeNodeData } from "@wxwzl/vue-virtual-tree";
 
   import { generateTreeDataAsync } from "../utils/treeData";

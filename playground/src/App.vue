@@ -18,28 +18,83 @@
     </header>
     <div class="app-body">
       <aside class="sidebar">
-        <RouterLink
-          v-for="route in menuItems"
-          :key="route.path"
-          :to="route.path"
-          class="menu-link"
-          active-class="is-active"
-        >
-          {{ route.meta?.title }}
-        </RouterLink>
+        <div class="mode-switch" role="tablist" aria-label="渲染模式">
+          <button
+            v-for="m in treeModes"
+            :key="m"
+            class="mode-tab"
+            :class="{ 'is-active': mode === m }"
+            role="tab"
+            :aria-selected="mode === m"
+            @click="switchMode(m)"
+          >
+            {{ m }}
+          </button>
+        </div>
+        <div class="menu-group">
+          <div class="menu-group-title">虚拟树功能示例</div>
+          <RouterLink
+            v-for="item in treeMenuItems"
+            :key="item.sub"
+            :to="`/tree/${mode}/${item.sub}`"
+            class="menu-link"
+            active-class="is-active"
+          >
+            {{ item.title }}
+          </RouterLink>
+        </div>
+        <div v-for="group in menuGroups" :key="group.title" class="menu-group">
+          <div class="menu-group-title">{{ group.title }}</div>
+          <RouterLink
+            v-for="item in group.items"
+            :key="item.path"
+            :to="item.path"
+            class="menu-link"
+            active-class="is-active"
+          >
+            {{ item.title }}
+          </RouterLink>
+        </div>
       </aside>
       <main class="content">
-        <RouterView />
+        <!-- 顶级路由记录作 key：vdom/vapor 两组共用 TreeModeProvider 组件，
+             不加 key 时跨组导航复用 provider 实例，provide 的实现不会切换 -->
+        <RouterView v-slot="{ Component, route }">
+          <component :is="Component" :key="route.matched[0]?.path" />
+        </RouterView>
       </main>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { RouterLink, RouterView } from "vue-router";
-  import { demoRoutes } from "./router";
+  import { computed, ref, watch } from "vue";
+  import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
+  import { menuGroups, treeMenuItems } from "./router";
 
-  const menuItems = demoRoutes;
+  const treeModes = ["vdom", "vapor"] as const;
+
+  const route = useRoute();
+  const router = useRouter();
+
+  /** 当前树路由携带的模式（非树页面为 undefined） */
+  const routeMode = computed(
+    () => route.path.match(/^\/tree\/(vdom|vapor)\//)?.[1] as "vdom" | "vapor" | undefined
+  );
+  /** 最近所处的树模式：基准/列表页时 Tab 保持上次选择，不掉回 vdom */
+  const lastMode = ref<"vdom" | "vapor">("vdom");
+  watch(routeMode, (m) => {
+    if (m) lastMode.value = m;
+  });
+  const mode = computed<"vdom" | "vapor">(() => routeMode.value ?? lastMode.value);
+  /** 当前树示例子路径（非树页面为 undefined） */
+  const currentSub = computed(() => route.path.match(/^\/tree\/(?:vdom|vapor)\/(.+)$/)?.[1]);
+
+  /** 切换模式：树示例页内保留当前示例（vdom/draggable ↔ vapor/draggable），其余页进该模式基础页 */
+  const switchMode = (m: "vdom" | "vapor") => {
+    if (m === mode.value) return;
+    router.push(`/tree/${m}/${currentSub.value ?? "basic"}`);
+  };
 </script>
 
 <style>
@@ -134,6 +189,54 @@
     gap: 8px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
     overflow-y: auto;
+  }
+
+  .mode-switch {
+    display: flex;
+    padding: 3px;
+    background: #f5f7fa;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+
+  .mode-tab {
+    flex: 1;
+    padding: 6px 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #606266;
+    font-size: 13px;
+    cursor: pointer;
+    transition:
+      background-color 0.2s,
+      color 0.2s;
+  }
+
+  .mode-tab.is-active {
+    background: #fff;
+    color: #409eff;
+    font-weight: 600;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  }
+
+  .menu-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .menu-group + .menu-group {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #ebeef5;
+  }
+
+  .menu-group-title {
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #909399;
   }
 
   .menu-link {

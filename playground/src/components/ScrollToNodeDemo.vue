@@ -90,7 +90,9 @@
 
 <script setup lang="ts">
   import { ref, computed, onMounted } from "vue";
-  import { VirtualTree } from "@wxwzl/vue-virtual-tree";
+  import { useVirtualTree } from "../composables/useVirtualTree";
+
+  const VirtualTree = useVirtualTree();
   // @ts-ignore - 类型定义可能未完全导出，但不影响运行时
   import type { VirtualTreeMethods, TreeNodeData } from "@wxwzl/vue-virtual-tree";
   import { generateVirtualTreeData } from "../utils/treeData";
